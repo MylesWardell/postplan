@@ -19,11 +19,17 @@ export interface Config {
   sessionSecret: string | undefined;
   shooBaseUrl: string;
   // Edge/proxy topology. Defaults preserve the Railway behaviour; see
-  // src/http/client-ip.ts and docs/aws-deployment-plan.md for the AWS values.
+  // src/lib/client-ip.ts and docs/aws-deployment-plan.md for the AWS values.
   trustProxy: TrustProxySetting;
   clientIpSource: ClientIpSource;
   requestIdHeader: string;
+  rateLimits: Record<"uploadIp" | "uploadKey" | "keyMint", RateLimitConfig>;
   s3: S3Config;
+}
+
+export interface RateLimitConfig {
+  maxRequests: number;
+  window: number;
 }
 
 const env = process.env;
@@ -42,6 +48,20 @@ export const config: Config = {
   trustProxy: parseTrustProxy(env.TRUST_PROXY),
   clientIpSource: parseClientIpSource(env.CLIENT_IP_SOURCE),
   requestIdHeader: (env.REQUEST_ID_HEADER || "x-railway-request-id").toLowerCase(),
+  rateLimits: {
+    uploadIp: {
+      maxRequests: Number(env.UPLOAD_IP_RATE_LIMIT_MAX || 60),
+      window: Number(env.UPLOAD_IP_RATE_LIMIT_WINDOW_MS || 60_000),
+    },
+    uploadKey: {
+      maxRequests: Number(env.UPLOAD_RATE_LIMIT_MAX || 30),
+      window: Number(env.UPLOAD_RATE_LIMIT_WINDOW_MS || 60_000),
+    },
+    keyMint: {
+      maxRequests: Number(env.KEY_MINT_RATE_LIMIT_MAX || 10),
+      window: Number(env.KEY_MINT_RATE_LIMIT_WINDOW_MS || 3_600_000),
+    },
+  },
   s3: {
     // Endpoint and static keys are only needed for S3-compatible stores
     // (Railway buckets, MinIO, R2). On AWS leave them unset: the SDK talks to

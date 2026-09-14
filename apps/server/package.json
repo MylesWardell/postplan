@@ -7,12 +7,58 @@
     "drizzle/"
   ],
   "type": "module",
+  "imports": {
+    "#auth/*": {
+      "source": "./src/auth/*.ts",
+      "default": "./dist/src/auth/*.js"
+    },
+    "#db/*": {
+      "source": "./src/db/*.ts",
+      "default": "./dist/src/db/*.js"
+    },
+    "#frontend/*": {
+      "source": "./src/frontend/*.ts",
+      "default": "./dist/src/frontend/*.js"
+    },
+    "#lib/*": {
+      "source": "./src/lib/*.ts",
+      "default": "./dist/src/lib/*.js"
+    },
+    "#routers/*": {
+      "source": "./src/routers/*.ts",
+      "default": "./dist/src/routers/*.js"
+    },
+    "#storage/*": {
+      "source": "./src/storage/*.ts",
+      "default": "./dist/src/storage/*.js"
+    },
+    "#client": {
+      "source": "./src/client.ts",
+      "default": "./dist/src/client.js"
+    },
+    "#config": {
+      "source": "./src/config.ts",
+      "default": "./dist/src/config.js"
+    },
+    "#context": {
+      "source": "./src/context.ts",
+      "default": "./dist/src/context.js"
+    },
+    "#index": {
+      "source": "./src/index.ts",
+      "default": "./dist/src/index.js"
+    },
+    "#orpc": {
+      "source": "./src/orpc.ts",
+      "default": "./dist/src/orpc.js"
+    }
+  },
   "scripts": {
     "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "bun test ./test",
+    "test": "bun test --conditions=source ./test",
     "start": "bun dist/src/index.js",
-    "dev": "bun --watch src/index.ts",
+    "dev": "bun --conditions=source --watch src/index.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun dist/src/db/migrate.js"
   },

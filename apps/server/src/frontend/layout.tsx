@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { renderToString } from "preact-render-to-string";
-import type { Session } from "../auth/types.js";
+import type { Session } from "#auth/types";
 import { styles } from "./styles.js";
 
 export function Layout({

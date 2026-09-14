@@ -1,16 +1,16 @@
-import { createDatabase } from "../src/db/client.js";
+import { createDatabase } from "#db/client";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { ORPCError, createORPCClient } from "@orpc/client";
 import { OpenAPILink } from "@orpc/openapi/fetch";
-import { accounts } from "../src/db/schema.js";
-import { createApiKey, seedAccounts } from "../src/routers/account-store.js";
+import { accounts } from "#db/schema";
+import { createApiKey, seedAccounts } from "#routers/account-store";
 import { contract, type ApiClient } from "@postplan/api";
-import { createServerOptions } from "../src/index.js";
-import { config } from "../src/config.js";
-import { createSessionCookie } from "../src/auth/session.js";
+import { createServerOptions } from "#index";
+import { config } from "#config";
+import { createSessionCookie } from "#auth/session";
 
 test("oRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
   const { db, client: sqlite } = createDatabase(":memory:");

@@ -1,4 +1,4 @@
-import { protectedOS } from "../orpc.js";
+import { protectedOS } from "#orpc";
 
 export const getAccount = protectedOS.account.me.handler(({ context: ctx }) => ({
   accountId: ctx.account.accountId,

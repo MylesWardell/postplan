@@ -1,6 +1,6 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type { S3ClientConfig } from "@aws-sdk/client-s3";
-import { config, requireEnv } from "../config.js";
+import { config, requireEnv } from "#config";
 
 let client: S3Client | undefined;
 

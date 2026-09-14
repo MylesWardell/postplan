@@ -1,6 +1,5 @@
 import { createRouterClient } from "@orpc/server";
-import type { ApiContext } from "./context.js";
-import { router } from "./routers/index.js";
+import type { BaseContext } from "./context.js";
+import { router } from "#routers/index";
 
-export const createCaller = (context: ApiContext) =>
-  createRouterClient(router, { context: { resolveContext: async () => context } });
+export const createCaller = (context: BaseContext) => createRouterClient(router, { context });

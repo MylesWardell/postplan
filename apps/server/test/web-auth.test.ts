@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { readCookie, signToken, verifyToken } from "../src/auth/session.js";
+import { readCookie, signToken, verifyToken } from "#auth/session";
 
 const secret = "test-secret";
 

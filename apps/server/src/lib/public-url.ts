@@ -6,6 +6,10 @@ export interface DraftUrlOptions {
   requestBaseUrl: string;
 }
 
+export function getRequestBaseUrl(req: Request): string {
+  return new URL(req.url).origin;
+}
+
 export function getHomeUrl({
   publicBaseUrl,
   requestBaseUrl,

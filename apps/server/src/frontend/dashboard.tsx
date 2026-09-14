@@ -1,4 +1,4 @@
-import type { Session } from "../auth/types.js";
+import type { Session } from "#auth/types";
 import { Layout, page } from "./layout.js";
 import type { AccountDraft } from "@postplan/api";
 import { date, Status } from "./shared.js";

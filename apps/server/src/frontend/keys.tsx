@@ -1,4 +1,4 @@
-import type { Session } from "../auth/types.js";
+import type { Session } from "#auth/types";
 import { Layout, page } from "./layout.js";
 import type { ApiKeySummary } from "@postplan/api";
 import { date } from "./shared.js";
