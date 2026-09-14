@@ -7,7 +7,7 @@ import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { accounts } from "#db/schema";
 import { seedAccounts } from "#routers/account-store";
-import { createServerOptions } from "./start-server.js";
+import { createServerOptions } from "./start-server";
 import { config } from "#config";
 import {
   createAuthStateCookie,
@@ -161,7 +161,9 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.ok(nonce);
     const scripts = [...dashboardHtml.matchAll(/<script\b[^>]*>/g)];
     assert.ok(scripts.length > 0);
-    for (const [tag] of scripts) assert.ok(tag.includes(`nonce="${nonce}"`), tag);
+    for (const [tag] of scripts) {
+      assert.ok(tag.includes(`nonce="${nonce}"`), tag);
+    }
     assert.match(dashboardHtml, /Project roadmap/);
     const concurrentPages = await Promise.all([
       get("/dashboard").then((response) => response.text()),
@@ -212,7 +214,9 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     );
     for (const [tag] of scripts) {
       const source = tag.match(/src="([^"]+)"/)?.[1];
-      if (!source) continue;
+      if (!source) {
+        continue;
+      }
       const asset = await get(source, "");
       assert.equal(asset.status, 200);
       assert.match(asset.headers.get("content-type")!, /javascript/);
@@ -362,9 +366,12 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       port: 0,
       async fetch(req) {
         const requestPath = new URL(req.url).pathname;
-        if (requestPath === "/.well-known/openid-configuration")
+        if (requestPath === "/.well-known/openid-configuration") {
           return Response.json({ issuer: config.shooBaseUrl });
-        if (requestPath === "/.well-known/jwks.json") return Response.json({ keys: [jwk] });
+        }
+        if (requestPath === "/.well-known/jwks.json") {
+          return Response.json({ keys: [jwk] });
+        }
         if (requestPath === "/token" && req.method === "POST") {
           exchanges++;
           const form = await req.formData();

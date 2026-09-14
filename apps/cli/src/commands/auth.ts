@@ -1,10 +1,10 @@
 import { once } from "node:events";
 import readline from "node:readline/promises";
 import type { Command } from "commander";
-import { createApiClient } from "../api.js";
-import { CliError } from "../errors.js";
-import { readAuth, saveCredentials } from "../state.js";
-import { apiUrlOption, type ApiUrlOptions } from "./options.js";
+import { createApiClient } from "../api";
+import { CliError } from "../errors";
+import { readAuth, saveCredentials } from "../state";
+import { apiUrlOption, type ApiUrlOptions } from "./options";
 
 export function registerAuthCommand(program: Command): void {
   const auth = program.command("auth").description("Manage CLI authentication.");

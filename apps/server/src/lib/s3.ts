@@ -5,7 +5,9 @@ import { config, requireEnv } from "#config";
 let client: S3Client | undefined;
 
 function getClient(): S3Client {
-  if (client) return client;
+  if (client) {
+    return client;
+  }
 
   const options: S3ClientConfig = {
     region: requireEnv("AWS_DEFAULT_REGION", config.s3.region),

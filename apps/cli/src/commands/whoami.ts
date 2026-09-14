@@ -1,6 +1,6 @@
 import type { Command } from "commander";
-import { createApiClient } from "../api.js";
-import { readAuth } from "../state.js";
+import { createApiClient } from "../api";
+import { readAuth } from "../state";
 
 export function registerWhoamiCommand(program: Command): void {
   program

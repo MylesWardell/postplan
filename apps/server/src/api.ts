@@ -14,7 +14,7 @@ import {
   ResponseHeadersHandlerPlugin,
   CORSHandlerPlugin,
 } from "@orpc/server/plugins";
-import type { ContextFactory } from "./context.js";
+import type { ContextFactory } from "./context";
 import { onlyApplication } from "#lib/host-guard";
 import { notFoundResponse } from "#frontend/response.server";
 

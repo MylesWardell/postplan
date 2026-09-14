@@ -12,7 +12,9 @@ const loadDraft = createServerFn({ method: "GET" })
     try {
       return { session, ...(await caller.drafts.detail(data)) };
     } catch (error) {
-      if (error instanceof ORPCError && error.code === "NOT_FOUND") throw notFound();
+      if (error instanceof ORPCError && error.code === "NOT_FOUND") {
+        throw notFound();
+      }
       throw error;
     }
   });

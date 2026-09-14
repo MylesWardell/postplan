@@ -73,7 +73,9 @@ export async function findApiKeyByToken(db: Database, token: string): Promise<Ap
       ),
     )
     .limit(1);
-  if (!key) return null;
+  if (!key) {
+    return null;
+  }
   await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, key.id));
   return key;
 }

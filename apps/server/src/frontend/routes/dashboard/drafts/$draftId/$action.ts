@@ -33,8 +33,9 @@ export const Route = createFileRoute("/dashboard/drafts/$draftId/$action")({
               await caller.drafts.enable({ draftId });
               break;
             case "delete":
-              if (form.confirmation !== "DELETE")
+              if (form.confirmation !== "DELETE") {
                 throw new ORPCError("BAD_REQUEST", { message: "Type DELETE to confirm deletion." });
+              }
               await caller.drafts.delete({ draftId });
               return redirect("/dashboard");
             default:

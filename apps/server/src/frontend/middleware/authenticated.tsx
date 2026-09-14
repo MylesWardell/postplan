@@ -1,10 +1,10 @@
 import { createMiddleware } from "@tanstack/react-start";
 import { assertApplicationOrigin, readSession } from "#auth/session";
 import { safeNextPath } from "#auth/handlers";
-import { requireConfiguredSignIn } from "../context.server.js";
-import { Layout } from "../layout.js";
-import { page } from "../response.server.js";
-import { webAction } from "../web.js";
+import { requireConfiguredSignIn } from "../context.server";
+import { Layout } from "../layout";
+import { page } from "../response.server";
+import { webAction } from "../web";
 
 // Server routes run independently of router beforeLoad, so protect document and form requests too.
 export const authenticated = createMiddleware().server(async ({ request, next }) =>

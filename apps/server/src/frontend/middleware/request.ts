@@ -1,5 +1,5 @@
 import { createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
-import type { AppRequestContext } from "../context.server.js";
+import type { AppRequestContext } from "../context.server";
 
 export const requestContext = createMiddleware().server<AppRequestContext>(({ context, next }) =>
   // Carry the host's request context through Start's middleware and server-function type inference.

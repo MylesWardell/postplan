@@ -1,5 +1,5 @@
 import { createStart } from "@tanstack/react-start";
-import { contentSecurityPolicy, csrfProtection, requestContext } from "./middleware/request.js";
+import { contentSecurityPolicy, csrfProtection, requestContext } from "./middleware/request";
 
 export const startInstance = createStart(() => ({
   requestMiddleware: [requestContext, contentSecurityPolicy, csrfProtection],
