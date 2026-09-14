@@ -16,7 +16,7 @@ import { newDraftId, newInternalId } from "./ids.js";
 import { renderHome, renderNotFound } from "./render.js";
 import { createRateLimiter } from "./rate-limit.js";
 import { getHtmlObject, putHtmlObject } from "./storage.js";
-import { validateHtml } from "./html-policy.js";
+import { validateHtml } from "@postplan/core";
 import { clientIp } from "./client-ip.js";
 import { listAccountDrafts } from "./drafts.js";
 import { registerWebRoutes } from "./web.js";

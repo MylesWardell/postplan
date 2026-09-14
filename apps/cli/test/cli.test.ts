@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 test("compiled CLI resolves package version and exposes commands", () => {
-  const cli = fileURLToPath(new URL("../bin/postplan.js", import.meta.url));
+  const cli = fileURLToPath(new URL("../../bin/postplan.js", import.meta.url));
   const pkg = JSON.parse(
     fs.readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
   ) as { version: string };

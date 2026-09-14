@@ -1,48 +1,29 @@
 {
-  "name": "postplan",
-  "version": "0.0.4",
-  "description": "Static HTML draft publishing for agents.",
-  "license": "MIT",
-  "bin": {
-    "postplan": "./dist/bin/postplan.js"
-  },
-  "files": [
-    "dist/bin/",
-    "dist/src/",
-    "skills/",
-    "docs/",
-    "README.md"
-  ],
+  "name": "postplan-workspace",
+  "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "build:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "node --enable-source-maps dist/src/server.js",
-    "dev": "node --enable-source-maps --watch-path=dist dist/src/server.js",
-    "test": "pnpm run build && node --test dist/test/*.test.js",
-    "lint": "oxlint --deny-warnings src bin test",
-    "lint:fix": "oxlint --fix src bin test",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "dev": "turbo run dev",
+    "start": "pnpm --filter @postplan/server start",
+    "lint": "oxlint --deny-warnings apps packages",
+    "lint:fix": "oxlint --fix apps packages",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm test",
-    "prepack": "pnpm run build"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.835.0",
-    "commander": "^14.0.0",
-    "express": "^5.1.0",
-    "jose": "^6.2.3",
-    "nanoid": "^5.1.5",
-    "parse5": "^7.3.0",
-    "pg": "^8.16.2"
+    "check": "pnpm format:check && pnpm lint && turbo run typecheck test",
+    "pack:cli": "pnpm --filter postplan pack --pack-destination ../../dist"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.2",
     "@types/pg": "^8.23.1",
+    "esbuild": "0.28.2",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
+    "tsx": "4.23.13",
+    "turbo": "2.10.12",
     "typescript": "^5.9.3"
   },
   "engines": {

@@ -8,7 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { Command } from "commander";
-import { validateHtml } from "../src/html-policy.js";
+import { validateHtml } from "@postplan/core";
 
 interface CliConfig {
   apiUrl?: string;
@@ -69,10 +69,8 @@ interface ListBody extends ApiBody {
   drafts?: ListedDraft[];
 }
 
-// Single source of truth for the version: package.json. CI bumps it on every
-// merge to main, so a hardcoded copy here would immediately drift. Compiled
-// output lives in dist/bin/, two levels below the package root.
-const { version: VERSION } = createRequire(import.meta.url)("../../package.json") as {
+// The bundled CLI reads its own package version.
+const { version: VERSION } = createRequire(import.meta.url)("../package.json") as {
   version: string;
 };
 const DEFAULT_API_URL = "https://postplan.dev";

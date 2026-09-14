@@ -4,8 +4,6 @@
     "lib": ["ES2023"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "rootDir": ".",
-    "outDir": "dist",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
@@ -16,8 +14,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true,
-    "declaration": false,
-    "verbatimModuleSyntax": true
-  },
-  "include": ["src/**/*.ts", "bin/**/*.ts", "test/**/*.ts"]
+    "declaration": true,
+    "verbatimModuleSyntax": true,
+    "declarationMap": true
+  }
 }
