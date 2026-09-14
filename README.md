@@ -160,7 +160,7 @@ Optional service variables:
 - `TRUST_PROXY`, `CLIENT_IP_SOURCE`, `REQUEST_ID_HEADER` - configure the trusted proxy topology; use `1`, `req-ip`, and `x-request-id` behind one trusted proxy. Local direct connections should use `false` and `req-ip`.
 - `POSTPLAN_PUBLIC_BASE_URL` - set to a normal base URL for `/d/<draft-id>` URLs, or a wildcard URL such as `https://*.postplan.dev` for draft subdomains.
 - `POSTPLAN_SESSION_SECRET` - together with `POSTPLAN_PUBLIC_BASE_URL`, enables web sign-in (the dashboard and `/cli/auth`). If either is absent, those routes return 503 and uploads/serving are unaffected.
-- `POSTPLAN_ALLOWED_LOGIN_DOMAINS` - optional comma-separated email domains permitted to sign in through Shoo, for example `abx.com,kinesis.money` (`@abx.com,@kinesis.money` is also accepted). Matching is case-insensitive and requires Shoo to confirm the email is verified. If unset or empty, all Shoo users may sign in.
+- `POSTPLAN_ALLOWED_LOGIN_DOMAINS` - optional comma-separated email domains permitted to sign in through Shoo, for example `example.com,test.dev` (`@example.com,@test.dev` is also accepted). Matching is case-insensitive and requires Shoo to confirm the email is verified. If unset or empty, all Shoo users may sign in.
 - `SHOO_BASE_URL` - identity broker for web sign-in (default `https://shoo.dev`).
 - `MAX_HTML_BYTES`
 - `UPLOAD_IP_RATE_LIMIT_WINDOW_MS`

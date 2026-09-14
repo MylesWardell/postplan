@@ -7,6 +7,8 @@
   ],
   "type": "module",
   "scripts": {
+    "postinstall": "node scripts/setup/link-skills.mjs",
+    "link-skills": "node scripts/setup/link-skills.mjs",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

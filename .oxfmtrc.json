@@ -8,6 +8,7 @@
     "**/.turbo/**",
     "bun.lock",
     "**/routeTree.gen.ts",
+    ".agents/skills/**",
     ".claude/**"
   ]
 }
