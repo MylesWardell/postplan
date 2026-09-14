@@ -12,6 +12,16 @@ import { r2Storage } from "../r2";
 import { authorizedProbe, runProbe } from "../probe";
 import { reserveProbe } from "../budget";
 
+test("usage kill switch survives repeated initialization and blocks further storage probes", async () => {
+  expect(await reserveProbe(env.POSTPLAN_DB)).toBe(true);
+  await env.POSTPLAN_DB.exec("INSERT INTO usage_guard VALUES (1,1)");
+  expect(await reserveProbe(env.POSTPLAN_DB)).toBe(false);
+  expect(await reserveProbe(env.POSTPLAN_DB)).toBe(false);
+  expect(
+    await env.POSTPLAN_DB.prepare("SELECT used FROM experiment_budget WHERE id=1").first("used"),
+  ).toBe(1);
+});
+
 test("persistent experiment budget admits only twenty concurrent reservations", async () => {
   const results = await Promise.all(
     Array.from({ length: 30 }, () => reserveProbe(env.POSTPLAN_DB)),

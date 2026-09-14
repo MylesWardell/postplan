@@ -1,0 +1,85 @@
+query ($a: string!, $day: Time!, $month: Time!, $end: Time!) {
+  viewer {
+    accounts(filter: { accountTag: $a }) {
+      workers: workersInvocationsAdaptive(
+        limit: 1
+        filter: { datetime_geq: $day, datetime_leq: $end }
+      ) {
+        sum {
+          requests
+          cpuTimeUs
+        }
+      }
+      d1: d1AnalyticsAdaptiveGroups(limit: 1, filter: { datetime_geq: $day, datetime_leq: $end }) {
+        sum {
+          rowsRead
+          rowsWritten
+        }
+      }
+      doRequests: durableObjectsInvocationsAdaptiveGroups(
+        limit: 1
+        filter: { datetime_geq: $day, datetime_leq: $end }
+      ) {
+        sum {
+          requests
+        }
+      }
+      doUsage: durableObjectsPeriodicGroups(
+        limit: 1
+        filter: { datetime_geq: $day, datetime_leq: $end }
+      ) {
+        sum {
+          duration
+          rowsRead
+          rowsWritten
+        }
+      }
+      r2: r2OperationsAdaptiveGroups(
+        limit: 1000
+        filter: { datetime_geq: $month, datetime_leq: $end }
+      ) {
+        sum {
+          requests
+        }
+        dimensions {
+          actionType
+        }
+      }
+      r2Storage: r2StorageAdaptiveGroups(
+        limit: 1000
+        filter: { datetime_geq: $month, datetime_leq: $end }
+      ) {
+        max {
+          payloadSize
+          metadataSize
+        }
+        dimensions {
+          bucketName
+          storageClass
+        }
+      }
+      d1Storage: d1StorageAdaptiveGroups(
+        limit: 1000
+        filter: { datetime_geq: $day, datetime_leq: $end }
+      ) {
+        max {
+          databaseSizeBytes
+        }
+        dimensions {
+          databaseId
+        }
+      }
+      doStorage: durableObjectsSqlStorageGroups(
+        limit: 1000
+        filter: { datetime_geq: $day, datetime_leq: $end }
+      ) {
+        max {
+          storedBytes
+        }
+        dimensions {
+          namespaceId
+        }
+      }
+    }
+  }
+}

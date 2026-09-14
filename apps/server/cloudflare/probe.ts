@@ -24,7 +24,7 @@ export async function runProbe(env: Cloudflare.Env, html: string) {
   }
   if (!(await reserveProbe(env.POSTPLAN_DB))) {
     return Response.json(
-      { ok: false, error: "Experiment lifetime budget exhausted" },
+      { ok: false, error: "Experiment storage stopped or lifetime budget exhausted" },
       { status: 429 },
     );
   }

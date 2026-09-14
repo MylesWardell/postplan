@@ -40,6 +40,8 @@ Keep the Worker on Free and the R2 bucket private with Standard storage. Do not 
 
 The budget fails closed when D1 fails or the counter is exhausted. Deleting/resetting the database removes this protection, so never reset it remotely just to rerun tests. A failed delete can leave an object; verify bucket emptiness afterward. Disable workers.dev and preview URLs after testing and retain that setting in the remote source configuration.
 
+The [GitHub usage guard](../../../scripts/cloudflare/README.md) adds hourly account usage checks and a manual kill switch. It persists a D1 stop flag checked by probe reservations, disables public access and never automatically restores service. Scheduling starts only after merge to `master`.
+
 ## Results: 14 September 2026
 
 - Nine workerd tests passed: gateway normalization, D1 rollback and conditional writes, R2 round trip, limiter concurrency/isolation/eviction/alarms, authentication/crypto, and concurrent lifetime budget exhaustion.
