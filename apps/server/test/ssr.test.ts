@@ -361,23 +361,23 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       hostname: "127.0.0.1",
       port: 0,
       async fetch(req) {
-        const path = new URL(req.url).pathname;
-        if (path === "/.well-known/openid-configuration")
+        const requestPath = new URL(req.url).pathname;
+        if (requestPath === "/.well-known/openid-configuration")
           return Response.json({ issuer: config.shooBaseUrl });
-        if (path === "/.well-known/jwks.json") return Response.json({ keys: [jwk] });
-        if (path === "/token" && req.method === "POST") {
+        if (requestPath === "/.well-known/jwks.json") return Response.json({ keys: [jwk] });
+        if (requestPath === "/token" && req.method === "POST") {
           exchanges++;
           const form = await req.formData();
           assert.equal(form.get("code"), "valid-code");
           assert.equal(form.get("code_verifier"), "verifier");
           assert.equal(form.get("redirect_uri"), base + "/auth/callback");
-          const token = await new SignJWT({ pairwise_sub: "iso-user", email: "iso@example.com" })
+          const idToken = await new SignJWT({ pairwise_sub: "iso-user", email: "iso@example.com" })
             .setProtectedHeader({ alg: "ES256", kid: "test-key" })
             .setIssuer(config.shooBaseUrl)
             .setAudience(`origin:${base}`)
             .setExpirationTime("5m")
             .sign(privateKey);
-          return Response.json({ id_token: token });
+          return Response.json({ id_token: idToken });
         }
         return new Response(null, { status: 404 });
       },
