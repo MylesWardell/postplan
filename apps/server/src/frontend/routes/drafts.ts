@@ -1,5 +1,5 @@
-import { findPublicDraftVersion } from "../routers/draft-store.js";
-import type { ServerDependencies } from "./context.js";
+import { findPublicDraftVersion } from "../../routers/draft-store.js";
+import type { ServerDependencies } from "../../context.js";
 
 export async function draftResponse(
   req: Request,

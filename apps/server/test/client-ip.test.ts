@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { clientIp } from "../src/http/client-ip.js";
+import { clientIp } from "../src/lib/client-ip.js";
 import { config } from "../src/config.js";
 test("ALB ignores forged X-Real-IP and prepended forwarding entries", () => {
   const previous = { ...config };

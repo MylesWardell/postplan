@@ -21,10 +21,9 @@ import { createDatabase } from "./db/client.js";
 import { seedAccounts } from "./routers/account-store.js";
 import { router } from "./routers/index.js";
 import { config } from "./config.js";
-import { createContextFactory } from "./http/context.js";
-import type { ServerDependencies } from "./http/context.js";
-
-import { onlyApplication } from "./http/response.js";
+import { createContextFactory } from "./context.js";
+import type { ServerDependencies } from "./context.js";
+import { onlyApplication } from "./lib/host-guard.js";
 import { createFrontend } from "./frontend/index.js";
 import { notFoundResponse } from "./frontend/pages.js";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
@@ -80,9 +79,7 @@ export function createServerOptions(deps: ServerDependencies) {
     return onlyApplication(request, async () => {
       const { response } = await openapiHandler.handle(request, {
         prefix: "/api",
-        context: {
-          resolveContext: () => context(request, false, server.requestIP(request)?.address ?? null),
-        },
+        context: context(request, server.requestIP(request)?.address ?? null, false),
       });
       return response ?? notFoundResponse();
     });

@@ -1,17 +1,27 @@
-import type { ContextFactory, ServerDependencies } from "../http/context.js";
-import { draftResponse } from "../http/drafts.js";
-import { webResponse } from "../http/web.js";
-import { hostDraftId, respond } from "../http/response.js";
-import { notFoundResponse } from "./pages.js";
+import type { ContextFactory, ServerDependencies } from "../context.js";
+import { hostDraftId } from "../lib/host-guard.js";
+import { respond } from "../lib/respond.js";
+import { draftResponse } from "./routes/drafts.js";
+import { webResponse } from "./routes/web.js";
+import { messageResponse, notFoundResponse } from "./pages.js";
 
 export function createFrontend(deps: ServerDependencies, context: ContextFactory) {
   return (request: Request, peerIp: string | null) =>
-    respond(async () => {
-      const draftId = hostDraftId(request);
-      return (
-        (await draftResponse(request, deps, draftId)) ??
-        (!draftId ? await webResponse(request, deps.db, context, peerIp) : undefined) ??
-        notFoundResponse()
-      );
-    });
+    respond(
+      async () => {
+        const draftId = hostDraftId(request);
+        return (
+          (await draftResponse(request, deps, draftId)) ??
+          (!draftId ? await webResponse(request, deps.db, context, peerIp) : undefined) ??
+          notFoundResponse()
+        );
+      },
+      // Page routes render HTML errors rather than oRPC JSON.
+      (failure, status) =>
+        messageResponse(
+          "Request could not be completed",
+          status >= 500 ? "Please try again in a moment." : failure.message,
+          status,
+        ),
+    );
 }

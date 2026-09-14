@@ -1,4 +1,4 @@
-import { createContextFactory } from "../src/http/context.js";
+import { createContextFactory } from "../src/context.js";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
@@ -16,10 +16,12 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
     await seedAccounts(db, "concurrency-key");
     const context = createContextFactory({ db, putHtml: async () => {}, getHtml: async () => "" });
     const caller = createCaller(
-      await context(
+      context(
         new Request("https://plans.example.com", {
           headers: { authorization: "Bearer concurrency-key" },
         }),
+        null,
+        false,
       ),
     );
     const html = "<!doctype html><title>Concurrent</title><p>Versions</p>";

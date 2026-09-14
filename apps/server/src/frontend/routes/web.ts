@@ -1,20 +1,22 @@
-import { ORPCError, toORPCError, COMMON_ERROR_STATUS_MAP } from "@orpc/server";
-import { config } from "../config.js";
-import { findOrCreateAccountForIdentity } from "../routers/account-store.js";
-import type { Database } from "../db/client.js";
-import { createCaller } from "../client.js";
-import type { ContextFactory } from "./context.js";
+import { ORPCError } from "@orpc/server";
+import { config } from "../../config.js";
+import { findOrCreateAccountForIdentity } from "../../routers/account-store.js";
+import type { Database } from "../../db/client.js";
+import { createCaller } from "../../client.js";
+import type { ContextFactory } from "../../context.js";
 import { parseFormData, getIssueMessage } from "@orpc/openapi/helpers";
-import { getHomeUrl } from "./public-url.js";
-import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "../auth/shoo.js";
+import { getHomeUrl } from "../../lib/public-url.js";
+import { toHttpError } from "../../lib/respond.js";
+import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "../../auth/shoo.js";
 import {
+  assertApplicationOrigin,
   clearAuthStateCookie,
   clearSessionCookie,
   createAuthStateCookie,
   createSessionCookie,
   readAuthState,
   readSession,
-} from "../auth/session.js";
+} from "../../auth/session.js";
 import {
   homeResponse,
   signInResponse,
@@ -22,7 +24,7 @@ import {
   dashboardResponse,
   detailResponse,
   keysResponse,
-} from "../frontend/pages.js";
+} from "../pages.js";
 
 function redirect(path: string, cookies: string[] = []): Response {
   const headers = new Headers({ Location: path });
@@ -60,7 +62,9 @@ export async function webResponse(
   const session = readSession(req);
   if (!session) return signInResponse(safeNextPath(path));
   try {
-    const caller = createCaller(await context(req, true, peerIp));
+    // Checked up front so routes that never reach a procedure (sign-out) stay CSRF-safe.
+    assertApplicationOrigin(req);
+    const caller = createCaller(context(req, peerIp, true));
     if (req.method === "POST" && path === "/auth/sign-out")
       return redirect("/", [clearSessionCookie()]);
     if (req.method === "GET" && path === "/dashboard")
@@ -118,10 +122,7 @@ export async function webResponse(
       }
     }
   } catch (error) {
-    const failure = toORPCError(error);
-    const status =
-      COMMON_ERROR_STATUS_MAP[failure.code as keyof typeof COMMON_ERROR_STATUS_MAP] ?? 500;
-    if (status >= 500) console.error(error);
+    const { failure, status } = toHttpError(error);
     return messageResponse(
       "Request could not be completed",
       status >= 500
