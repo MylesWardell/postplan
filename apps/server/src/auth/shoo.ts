@@ -81,7 +81,8 @@ export async function exchangeCode({
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok) {
-    throw new Error(`shoo token exchange failed: ${body.error || response.status}`);
+    const detail = typeof body.error === "string" ? body.error : response.status;
+    throw new Error(`shoo token exchange failed: ${detail}`);
   }
   if (typeof body.id_token !== "string") {
     throw new Error("shoo token exchange returned no id_token.");

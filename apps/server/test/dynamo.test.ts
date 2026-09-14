@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { test, expect } from "bun:test";
 import { createContextFactory } from "#context";
 import { createCaller } from "#client";
@@ -63,7 +64,7 @@ test.skipIf(!dynamoEndpoint)(
         context(new Request("https://plans.example.com"), "127.0.0.2", false),
       );
       const html = "<!doctype html><title>Dynamo</title><p>Hello</p>";
-      await expect(anonymous.drafts.upload({ html })).rejects.toThrow("API key");
+      await assert.rejects(anonymous.drafts.upload({ html }), /API key/);
       const { body: first } = await caller.drafts.upload({ html });
       expect(first.ok).toBe(true);
       const id = first.draftId;
@@ -120,7 +121,7 @@ test.skipIf(!dynamoEndpoint)(
       days = 1;
       expect((await findDynamoPublicVersion(db, id)).draft).toBeNull();
       expect((await caller.drafts.list()).drafts).toHaveLength(0);
-      await expect(caller.drafts.upload({ html, draftId: id })).rejects.toThrow("not found");
+      await assert.rejects(caller.drafts.upload({ html, draftId: id }), /not found/);
       days = 0;
       expect((await findDynamoPublicVersion(db, id)).draft).not.toBeNull();
       days = 1;
@@ -156,7 +157,7 @@ test.skipIf(!dynamoEndpoint)(
       expect((await findDynamoPublicVersion(db, id)).draft).toBeNull();
       now += 86400_000;
       failDelete = true;
-      await expect(cleanupPlans(db, storage)).rejects.toThrow("Injected");
+      await assert.rejects(cleanupPlans(db, storage), /Injected/);
       expect((await db.get<DynamoPlan>(db.tables.plans, { draftId: id }))?.state).toBe("DELETING");
       failDelete = false;
       await cleanupPlans(db, storage);
@@ -218,14 +219,10 @@ test.skipIf(!dynamoEndpoint)(
       const html = "<!doctype html><title>Intent</title><p>Hello</p>";
       const { body: first } = await caller.drafts.upload({ html });
       mode = "fail";
-      await expect(caller.drafts.upload({ html, draftId: first.draftId })).rejects.toThrow(
-        "Injected",
-      );
+      await assert.rejects(caller.drafts.upload({ html, draftId: first.draftId }), /Injected/);
       mode = "late";
-      await expect(caller.drafts.upload({ html, draftId: first.draftId })).rejects.toThrow(
-        "not found",
-      );
-      await expect(caller.drafts.upload({ html })).rejects.toThrow("not found");
+      await assert.rejects(caller.drafts.upload({ html, draftId: first.draftId }), /not found/);
+      await assert.rejects(caller.drafts.upload({ html }), /not found/);
       expect(objects.size).toBe(3);
       now += 86400_000;
       const storage = {

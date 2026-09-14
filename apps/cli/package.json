@@ -14,7 +14,6 @@
   "type": "module",
   "scripts": {
     "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json && tsdown",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/test/*.test.js",
     "prepack": "bun run build"
   },
@@ -22,8 +21,8 @@
     "@orpc/client": "2.0.0-beta.35",
     "@orpc/contract": "2.0.0-beta.35",
     "@orpc/openapi": "2.0.0-beta.35",
-    "commander": "^14.0.0",
-    "zod": "^4.6.4"
+    "commander": "^15.0.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@postplan/api": "workspace:*"

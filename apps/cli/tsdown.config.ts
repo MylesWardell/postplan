@@ -5,7 +5,7 @@ export default defineConfig({
   outDir: "bin",
   format: "esm",
   platform: "node",
-  target: "node22",
+  target: "node26",
   fixedExtension: false,
   dts: false,
   sourcemap: true,

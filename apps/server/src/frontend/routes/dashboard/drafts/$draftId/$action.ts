@@ -16,7 +16,7 @@ export const Route = createFileRoute("/dashboard/drafts/$draftId/$action")({
       ANY: () => notFoundResponse(),
       POST: ({ request, context, params: { draftId, action } }) =>
         webAction(async () => {
-          const { caller } = await authenticatedContext(request, context);
+          const { caller } = authenticatedContext(request, context);
           const form = parseFormData(await request.formData());
           switch (action) {
             case "update":
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/dashboard/drafts/$draftId/$action")({
               await caller.drafts.delete({ draftId });
               return redirect("/dashboard");
             default:
-              throw notFoundResponse();
+              throw notFoundResponse() as unknown as Error;
           }
           return redirect(`/dashboard/drafts/${draftId}?saved=1`);
         }),

@@ -23,7 +23,7 @@ export function requireConfiguredSignIn() {
       "Sign-in unavailable",
       "Web sign-in has not been configured for this deployment.",
       503,
-    );
+    ) as unknown as Error;
   }
 }
 export function authenticatedContext(request: Request, context: AppRequestContext) {

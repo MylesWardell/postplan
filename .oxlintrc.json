@@ -5,8 +5,13 @@
   "categories": {
     "correctness": "error"
   },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
   "rules": {
     "typescript/no-explicit-any": "error",
+    "typescript/no-unsafe-type-assertion": "off",
     "eslint/curly": ["error", "all"],
     "@tanstack/router/create-route-property-order": "error",
     "@tanstack/router/route-param-names": "error"

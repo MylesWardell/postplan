@@ -8,7 +8,7 @@ export async function testDatabase() {
     const fixture = await dynamoFixture();
     return {
       ...fixture,
-      async createAccount(id: string, name: string) {
+      async createAccount(this: void, id: string, name: string) {
         await fixture.db.put(fixture.db.tables.identity, {
           pk: `ACCOUNT#${id}`,
           sk: "META",
@@ -26,7 +26,7 @@ export async function testDatabase() {
     close: async () => {
       client.close();
     },
-    async createAccount(id: string, name: string) {
+    async createAccount(this: void, id: string, name: string) {
       await db.insert(accounts).values({ id, name });
     },
   };

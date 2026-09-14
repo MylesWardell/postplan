@@ -3,7 +3,7 @@ import type { AppRequestContext } from "../context.server";
 
 export const requestContext = createMiddleware().server<AppRequestContext>(({ context, next }) =>
   // Carry the host's request context through Start's middleware and server-function type inference.
-  next({ context: context as unknown as AppRequestContext }),
+  next({ context: context }),
 );
 
 // Per-request nonce: the router stamps it on SSR <script> tags, the header allows exactly those.

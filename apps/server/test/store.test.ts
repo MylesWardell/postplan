@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { expect, test } from "bun:test";
 import type { Store } from "@postplan/store";
 import { testDatabase } from "./database-fixture";
@@ -18,13 +19,14 @@ async function exerciseStore(store: Store) {
     await store.accounts.revokeApiKey({ accountId: owner!.accountId, id: key.apiKey.id }),
   ).toBe(true);
   expect(await store.accounts.findApiKey({ token: key.token })).toBeNull();
-  await expect(
+  await assert.rejects(
     store.drafts.update({
       accountId: owner!.accountId,
       draftId: "missing",
       values: { title: "Updated" },
     }),
-  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    { code: "NOT_FOUND" },
+  );
   const limit = {
     namespace: "contract",
     key: "same-user",
@@ -34,7 +36,7 @@ async function exerciseStore(store: Store) {
   expect((await store.rateLimit(limit)).success).toBe(true);
   expect((await store.rateLimit(limit)).success).toBe(false);
   expect((await store.rateLimit({ ...limit, key: "another-user" })).success).toBe(true);
-  await expect(store.rateLimit({ ...limit, weight: -1 })).rejects.toMatchObject({
+  await assert.rejects(store.rateLimit({ ...limit, weight: -1 }), {
     code: "BAD_REQUEST",
   });
 }

@@ -8,7 +8,7 @@ import fs from "node:fs";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-test("CLI displays the oRPC error message and upload validation details", async () => {
+void test("CLI displays the oRPC error message and upload validation details", async () => {
   const directory = fs.mkdtempSync(join(tmpdir(), "postplan-cli-"));
   const file = join(directory, "invalid.html");
   fs.writeFileSync(file, "<form>" + "x".repeat(2000) + "</form>");
@@ -54,7 +54,7 @@ test("CLI displays the oRPC error message and upload validation details", async 
   }
 });
 
-test("compiled CLI resolves package version and exposes commands", () => {
+void test("compiled CLI resolves package version and exposes commands", () => {
   const cli = fileURLToPath(new URL("../../bin/postplan.js", import.meta.url));
   const pkg = JSON.parse(
     fs.readFileSync(new URL("../../package.json", import.meta.url), "utf8"),

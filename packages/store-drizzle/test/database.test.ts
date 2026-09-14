@@ -65,8 +65,8 @@ test("SQLite survives reopen and rolls back a failed transaction", async () => {
 test("migrations, bootstrap keys, revocation and identity updates use SQLite semantics", async () => {
   const { db, client } = createDatabase(":memory:");
   try {
-    await migrateDatabase(db);
-    await migrateDatabase(db);
+    migrateDatabase(db);
+    migrateDatabase(db);
     await seedAccounts(db, "bootstrap-test");
     await seedAccounts(db, "bootstrap-test");
     assert.equal((await findApiKeyByToken(db, "bootstrap-test"))?.accountId, "acct_bootstrap");
@@ -90,6 +90,6 @@ test("migrations, bootstrap keys, revocation and identity updates use SQLite sem
       .where(eq(schema.identities.accountId, first.accountId));
     assert.equal(identity?.piiSubject, "stable");
   } finally {
-    await client.close();
+    client.close();
   }
 });

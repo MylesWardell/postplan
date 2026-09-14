@@ -9,7 +9,7 @@ import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "@postplan/store
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function seedAccounts(db: Database, bootstrapKey?: string): Promise<void> {
-  await db.transaction((tx) => {
+  db.transaction((tx) => {
     for (const [auth, token] of [
       [publicUploadAuth, "postplan-public-upload-sentinel"],
       ...(bootstrapKey

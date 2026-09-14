@@ -85,7 +85,7 @@ export async function dynamoFixture(now: () => number = Date.now, retention?: ()
   return {
     db,
     store: createDynamoStore(db).store,
-    async close() {
+    async close(this: void) {
       try {
         for (const name of created) {
           await client.send(new DeleteTableCommand({ TableName: name }));

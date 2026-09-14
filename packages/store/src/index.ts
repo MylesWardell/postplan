@@ -37,5 +37,5 @@ export const storeContract = {
 export type Store = RouterContractClient<typeof storeContract>;
 export interface StoreConnection {
   store: Store;
-  close(): void;
+  close: () => void;
 }

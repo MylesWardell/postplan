@@ -10,7 +10,7 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
   const { db, client } = createDatabase(":memory:");
   const { store } = createDrizzleStore(db);
   try {
-    await migrateDatabase(db);
+    migrateDatabase(db);
     await seedAccounts(store, "concurrency-key");
     const context = createContextFactory({
       store,

@@ -1,6 +1,7 @@
 *
 !package.json
 !bun.lock
+!.gitignore
 !tsconfig.base.json
 !turbo.json
 !.oxlintrc.json

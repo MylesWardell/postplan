@@ -165,11 +165,11 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       get(path).then((response) => response.text()),
       get("/cli/auth").then((response) => response.text()),
     ]);
-    assert.match(concurrentPages[0]!, /Project roadmap/);
-    assert.doesNotMatch(concurrentPages[1]!, /Project roadmap/);
-    assert.match(concurrentPages[1]!, /Your next idea starts here/);
-    assert.match(concurrentPages[2]!, /Version history/);
-    assert.match(concurrentPages[3]!, /Create a key/);
+    assert.match(concurrentPages[0], /Project roadmap/);
+    assert.doesNotMatch(concurrentPages[1], /Project roadmap/);
+    assert.match(concurrentPages[1], /Your next idea starts here/);
+    assert.match(concurrentPages[2], /Version history/);
+    assert.match(concurrentPages[3], /Create a key/);
     const serverBundle = await Bun.file(
       new URL("../dist/server/server.js", import.meta.url),
     ).text();

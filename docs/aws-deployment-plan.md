@@ -32,7 +32,7 @@ Keep port 3000 inaccessible externally. Configure TLS for apex and wildcard host
 3. Stop the app and take a consistent backup for updates. Run `bun apps/server/dist/src/db/migrate.js` from `/app` in the release image with the same data mount and environment. Run one migration process, then start exactly one server container. Bind port 3000 to loopback and configure automatic restart. Never keep SQLite only in the container layer.
 4. Verify `/healthz`, `/api/spec.json`, bearer key revocation, SSR sign-in/forms, uploads, version history, ownership, disable/delete and byte-exact public HTML. Confirm draft hosts cannot reach dashboard or API routes. Test real S3 and restart persistence before opening traffic.
 
-Bun 1.3.14 runs the app; Node builds tooling and runs the portable CLI. Keep all oRPC 2.0.0-beta.35 dependencies aligned. CI has no deployment step.
+Bun 1.4.2 runs the app; Node builds tooling and runs the portable CLI. Keep all oRPC 2.0.0-beta.35 dependencies aligned. CI has no deployment step.
 
 ## Recovery
 
