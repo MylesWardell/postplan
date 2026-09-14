@@ -12,7 +12,7 @@ COPY package.json bun.lock ./
 COPY apps/server/package.json ./apps/server/package.json
 COPY apps/cli/package.json ./apps/cli/package.json
 COPY packages/api/package.json ./packages/api/package.json
-RUN bun install --production --frozen-lockfile
+RUN bun install --production --frozen-lockfile --ignore-scripts
 
 FROM bun AS runtime
 WORKDIR /app

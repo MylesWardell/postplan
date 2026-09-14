@@ -1,0 +1,70 @@
+# Architecture and API
+
+## Application structure
+
+`packages/api` defines the oRPC contract, including HTTP routes, status codes, schemas, and client types. `apps/server/src/routers` implements that contract with Drizzle and SQLite. Keep every oRPC package on the pinned `2.0.0-beta.35` generation and review upgrades with the contract and transport tests.
+
+TanStack Start owns file routing, SSR, hydration, and server functions. Routes and their data functions live in `apps/server/src/frontend/routes`. Server-side functions call oRPC directly; browser navigation uses Start's generated endpoints.
+
+```text
+apps/server/src/
+  index.ts          Bun host and static assets
+  server.ts         TanStack Start entry and request dependencies
+  context.ts        Database and storage context
+  orpc.ts           Contract implementation and middleware
+  routers/          Account, draft, and API-key procedures
+  client.ts         Direct server-side caller for SSR
+  db/               Drizzle schema, connection, and migrations
+  lib/              HTML policy and public URL helpers
+  frontend/         Router, page routes, layouts, and styles
+  instrumentation.ts Optional OTLP tracing
+```
+
+The root route owns the document shell. A fresh router is created for each SSR request, with authentication stored in router context. Protected loaders and form actions also verify the session on the server. Application hydration scripts receive a per-response CSP nonce.
+
+## HTTP API
+
+The API is mounted at `/api`; `/api/spec.json` serves the generated OpenAPI document and `/api` serves the interactive reference. Draft subdomains cannot access application or API routes.
+
+| Router    | Procedures                                                          |
+| --------- | ------------------------------------------------------------------- |
+| `account` | `me`                                                                |
+| `drafts`  | `list`, `detail`, `upload`, `update`, `disable`, `enable`, `delete` |
+| `apiKeys` | `list`, `create`, `revoke`                                          |
+
+Protected procedures derive ownership from a bearer key or verified browser session. They do not accept an account ID from the client. Session mutations require the application's exact Origin, and invalid bearer keys fail instead of falling back to anonymous access.
+
+The server uses oRPC's standard error shape: `code`, `message`, and optional `data`. Uploads return 201 for a new draft, 200 for a new version, and 422 when HTML validation fails. REST dates use ISO strings.
+
+```ts
+import { createORPCClient } from "@orpc/client";
+import { OpenAPILink } from "@orpc/openapi/fetch";
+import { contract, type ApiClient } from "@postplan/api";
+
+const api = createORPCClient<ApiClient>(
+  new OpenAPILink(contract, {
+    origin: "http://localhost:3000",
+    url: "/api",
+    headers: { authorization: `Bearer ${token}` },
+  }),
+);
+
+const { drafts } = await api.drafts.list();
+```
+
+Draft updates store HTML before opening a synchronous SQLite immediate transaction. The transaction allocates a unique increasing version number and writes the database records. A database failure after storage succeeds can leave an unreferenced object for later cleanup.
+
+## HTML policy and serving
+
+The server validates every upload. It permits inline classic scripts but rejects external and module scripts, inline event handlers, JavaScript URLs, forms, frames, embeds, and meta refresh. Stored drafts are then served byte for byte without browser detection or wrapper markup.
+
+Draft responses include `X-Postplan-Draft-Id` and `X-Postplan-Draft-Version`. Their Content Security Policy blocks script execution, network connections, and form submission when a person opens a draft in a browser. The policy does not alter the HTML returned to command-line tools or agents.
+
+The upload response includes `publicUrl` and `rawUrl`. The `/raw` routes are aliases for the same bytes:
+
+- `https://<draft-id>.postplan.dev/`
+- `https://<draft-id>.postplan.dev/v/<n>/raw`
+- `https://postplan.dev/d/<draft-id>/raw`
+- `https://postplan.dev/d/<draft-id>/v/<n>/raw`
+
+Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to export traces. `OTEL_SERVICE_NAME` defaults to `postplan`.

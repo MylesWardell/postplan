@@ -7,6 +7,8 @@
   ],
   "type": "module",
   "scripts": {
+    "postinstall": "bun scripts/setup/link-skills.ts",
+    "link-skills": "bun scripts/setup/link-skills.ts",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",

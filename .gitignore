@@ -10,3 +10,6 @@ data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Recreated by scripts/setup/link-skills.ts, points at .agents/skills.
+.claude/skills
