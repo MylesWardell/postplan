@@ -1,4 +1,4 @@
-import { getOnly } from "#frontend/methods";
+import { getOnly } from "#frontend/middleware/methods";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Layout } from "#frontend/layout";
 
