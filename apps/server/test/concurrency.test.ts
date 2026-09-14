@@ -32,7 +32,7 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
       Array.from({ length: 6 }, () => caller.drafts.upload({ html, draftId: first.draftId })),
     );
     assert.deepEqual(
-      versions.map((version) => version.body.versionNumber).sort((a, b) => a - b),
+      versions.map((version) => version.body.versionNumber).toSorted((a, b) => a - b),
       [2, 3, 4, 5, 6, 7],
     );
     assert.equal(

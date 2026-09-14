@@ -1,12 +1,11 @@
 import { postOnly } from "#frontend/middleware/methods";
-import { notFoundResponse } from "#frontend/response.server";
+import { notFoundResponse, page } from "#frontend/response.server";
 import { authenticated } from "#frontend/middleware/authenticated";
 import { createFileRoute } from "@tanstack/react-router";
 import { parseFormData } from "@orpc/openapi/helpers";
 import { KeysPage } from "#frontend/routes/cli/auth/index";
 import { authenticatedContext } from "#frontend/context.server";
 import { webAction } from "#frontend/web";
-import { page } from "#frontend/response.server";
 
 export const Route = createFileRoute("/cli/auth/keys/")({
   server: {
