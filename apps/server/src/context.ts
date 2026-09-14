@@ -1,4 +1,5 @@
-import type { ApiKeyAuth, Database } from "@postplan/database";
+import type { ApiKeyAuth } from "./routers/account-store.js";
+import type { Database } from "./db/client.js";
 
 export interface ApiContext {
   db: Database;

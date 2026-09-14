@@ -14,8 +14,8 @@
     "format:check": "oxfmt --check .",
     "check": "pnpm format:check && pnpm lint && turbo run typecheck test",
     "pack:cli": "turbo run build --filter=postplan... && pnpm --dir apps/cli pack --pack-destination ../../dist",
-    "db:generate": "pnpm --filter @postplan/database db:generate",
-    "db:migrate": "pnpm --filter @postplan/database build && node --env-file-if-exists=.env packages/database/dist/src/migrate.js"
+    "db:generate": "pnpm --filter @postplan/server db:generate",
+    "db:migrate": "pnpm --filter @postplan/server build && bun apps/server/dist/src/db/migrate.js"
   },
   "devDependencies": {
     "@types/node": "^22.20.2",

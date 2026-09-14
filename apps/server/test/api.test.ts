@@ -5,10 +5,12 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import { accounts, createApiKey, schema, seedAccounts } from "@postplan/database";
+import { RPCLink } from "@orpc/client/websocket";
+import { accounts } from "../src/db/schema.js";
+import { createApiKey, seedAccounts } from "../src/routers/account-store.js";
+import * as schema from "../src/db/schema.js";
 import type { ApiClient } from "@postplan/api";
-import { createApp } from "../src/index.js";
+import { createServerOptions } from "../src/index.js";
 import { config } from "../src/config.js";
 import { createSessionCookie } from "../src/auth/session.js";
 
@@ -19,12 +21,12 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
   const originalConfig = { ...config };
   let failStorage = false;
   await migrate(db, {
-    migrationsFolder: fileURLToPath(new URL("../../../packages/database/drizzle", import.meta.url)),
+    migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
   });
   await seedAccounts(db, "owner-key");
   await db.insert(accounts).values({ id: "other", name: "Other" });
   const otherKey = await createApiKey(db, "other", "other-key");
-  const app = createApp({
+  const options = createServerOptions({
     db,
     putHtml: async (key, html) => {
       if (failStorage) throw new Error("Storage unavailable");
@@ -39,18 +41,36 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
-    fetch: (req) => app(req, "127.0.0.1"),
+    ...options,
   });
   try {
     const base = server.url.origin;
     config.publicBaseUrl = base;
     config.sessionSecret = "test-session-secret";
-    const client = (token?: string, headers: Record<string, string> = {}) =>
+    const sockets: WebSocket[] = [];
+    const client = (
+      token?: string,
+      headers: Record<string, string> = {},
+      callHeaders: Record<string, string> = {},
+    ) =>
       createORPCClient<ApiClient>(
         new RPCLink({
-          origin: base,
-          url: "/rpc",
-          headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
+          connect: () =>
+            new Promise<WebSocket>((resolve, reject) => {
+              const Socket = WebSocket as unknown as new (
+                url: string,
+                options: Bun.WebSocketOptions,
+              ) => WebSocket;
+              const ws = new Socket(base.replace("http", "ws") + "/ws/rpc", { headers });
+              sockets.push(ws);
+              ws.addEventListener("open", () => resolve(ws), { once: true });
+              ws.addEventListener(
+                "error",
+                () => reject(new Error("WebSocket connection rejected")),
+                { once: true },
+              );
+            }),
+          headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...callHeaders },
         }),
       );
     const owner = client("owner-key");
@@ -105,19 +125,16 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
       email: null,
       pictureUrl: null,
     }).split(";")[0]!;
+    await assert.rejects(client(undefined, {}, { cookie, origin: base }).drafts.list(), /Sign in/);
     const session = client(undefined, { cookie, origin: base });
     await session.drafts.update({ draftId, description: "From frontend" });
     assert.equal((await session.drafts.detail({ draftId })).draft.description, "From frontend");
-    await assert.rejects(
-      client(undefined, { cookie, origin: "https://evil.example" }).drafts.delete({
-        draftId,
-      }),
-      /application origin/,
-    );
-    await assert.rejects(
-      client(undefined, { cookie }).drafts.delete({ draftId }),
-      /application origin/,
-    );
+    for (const headers of [
+      new Headers({ cookie, origin: "https://evil.example" }),
+      new Headers({ cookie }),
+    ]) {
+      assert.equal((await fetch(`${base}/ws/rpc`, { headers })).status, 403);
+    }
     await assert.rejects(
       client("invalid", { cookie, origin: base }).drafts.list(),
       /Invalid API key/,
@@ -132,7 +149,10 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     assert.equal((await owner.drafts.detail({ draftId })).versions.length, before);
     const key = await owner.apiKeys.create({ name: "temporary" });
     await assert.rejects(other.apiKeys.revoke({ apiKeyId: key.apiKey.id }), /API key not found/);
+    const existingConnection = client(key.token);
+    await existingConnection.account.me();
     await owner.apiKeys.revoke({ apiKeyId: key.apiKey.id });
+    await assert.rejects(existingConnection.account.me(), /Invalid API key/);
     await assert.rejects(client(key.token).account.me(), /Invalid API key/);
     for (let i = 0; i < 9; i++) await owner.apiKeys.create({ name: "Rate test" });
     await assert.rejects(owner.apiKeys.create({ name: "Over limit" }), /Rate limit exceeded/);
@@ -149,6 +169,7 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     await owner.drafts.delete({ draftId });
     assert.equal((await fetch(upload.publicUrl)).status, 404);
     assert.equal((await owner.drafts.list()).drafts.length, 0);
+    for (const ws of sockets) ws.close();
   } finally {
     Object.assign(config, originalConfig);
     await server.stop(true);

@@ -10,12 +10,10 @@ apps/
   server/          Bun host: Preact SSR, oRPC implementation, OAuth and S3
 packages/
   api/             oRPC contract: HTTP routes, input/output schemas and client types
-  core/            Shared HTML policy and public URL construction
-  database/        Drizzle schema, PostgreSQL access and versioned migrations
 scripts/           Workspace build helpers
 ```
 
-`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/routers` implements it using Drizzle-backed services; the OpenAPI handler exposes the contract at `/api`, and the RPC handler at `/rpc`. Preact pages in `apps/server/src/views` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
+`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/routers` implements it using Drizzle-backed domain procedures; the OpenAPI handler exposes the contract at `/api`, and the WebSocket RPC handler at `/ws/rpc`. Preact pages in `apps/server/src/frontend` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
 
 The server follows the [Bun playground's router composition](https://github.com/middleapi/orpc/blob/main/playgrounds/bun/src/routers/index.ts):
 
@@ -30,8 +28,10 @@ apps/server/src/
     draft.ts        Named draft procedures
     api-key.ts      Named API-key procedures
   client.ts         Direct server-side caller for SSR
-  services/         Drizzle-backed business operations
-  views/            Preact SSR pages and shared Layout
+  db/               Drizzle connection, table schema and migration runner
+  lib/              HTML policy and public URL helpers
+  frontend/         Preact SSR pages and shared Layout
+  instrumentation.ts Optional OTLP tracing
 ```
 
 Schemas and HTTP route metadata stay in the exported `contract` from `packages/api`; server procedures only implement it. `index.ts` starts Bun when executed directly, while tests import its request handler without starting infrastructure.
@@ -55,7 +55,7 @@ bun --env-file=.env apps/server/dist/src/index.js
 
 For development, build once, then run `pnpm --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `pnpm build` to refresh their exports. Startup seeds account/key records but does not run DDL.
 
-`pnpm check` covers formatting, lint, strict types, and tests. Tests include embedded PostgreSQL migration and HTTP/oRPC and SSR form integration checks, without AWS access. Use `pnpm format`, `pnpm lint:fix`, and `pnpm db:generate` while editing. See [database migration guidance](packages/database/README.md).
+`pnpm check` covers formatting, lint, strict types, and tests. Tests include embedded PostgreSQL migration and HTTP/oRPC and SSR form integration checks, without AWS access. Use `pnpm format`, `pnpm lint:fix`, and `pnpm db:generate` while editing. See [database migration guidance](apps/server/DATABASE.md).
 
 Build the portable CLI tarball with `pnpm pack:cli`. The executable is `apps/cli/bin/postplan.js`. This fork is not published to the package registry; the published package in the examples below remains upstream. See [CLI development](apps/cli/README.md).
 
@@ -77,7 +77,7 @@ Draft updates lock the owned draft row before allocating a version, preserving u
 
 ```ts
 import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
+import { RPCLink } from "@orpc/client/websocket";
 import type { ApiClient } from "@postplan/api";
 
 const api = createORPCClient<ApiClient>(
@@ -89,6 +89,14 @@ const api = createORPCClient<ApiClient>(
 );
 const { drafts } = await api.drafts.list();
 ```
+
+The native Bun `routes` map mounts the SSR frontend at `/*`, OpenAPI at `/api` and `/api/*`, and a WebSocket upgrade handler at `/ws/rpc`. Its `message` and `close` callbacks delegate to oRPC. Each WebSocket call revalidates its bearer key or the socket's signed session; message headers cannot forge cookies or browser Origin.
+
+The OpenAPI handler includes `CORSHandlerPlugin`, `EvlogHandlerPlugin`, `SmartCoercionHandlerPlugin`, and `OpenAPIReferenceHandlerPlugin`, using `ZodToJsonSchemaConverter`. Visit `/api` for the interactive reference and `/api/spec.json` for the contract-generated specification. REST uses bearer authentication; CORS permits bearer clients without credentialed cookies. The WebSocket handler also uses Evlog. Bun development mode enables HMR and browser console forwarding; SSR pages need no browser bundle.
+
+`instrumentation.ts` follows the example's NodeSDK, auto-instrumentation and oRPC instrumentation setup. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to your collector's trace endpoint to enable export; `OTEL_SERVICE_NAME` defaults to `postplan`. The app does not assume the example's local Jaeger collector. The playground's sample planet/file/message domains and fake authentication are replaced by real draft/account procedures, Drizzle persistence and signed sessions.
+
+HTML validation is authoritative on the server. The CLI uploads the file and reports the server's validation errors; it no longer bundles a second copy of the policy.
 
 The shared Preact `Layout` supplies navigation and styling. The dashboard supports search, status filters, title/description edits, version history, public access controls, and confirmed deletion. `/cli/auth` creates named keys, shows each token once, and revokes keys.
 

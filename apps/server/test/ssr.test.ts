@@ -1,11 +1,14 @@
+import { boundedRequest } from "../src/http/body.js";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { accounts, schema, seedAccounts } from "@postplan/database";
-import { createApp } from "../src/index.js";
+import { accounts } from "../src/db/schema.js";
+import * as schema from "../src/db/schema.js";
+import { seedAccounts } from "../src/routers/account-store.js";
+import { createServerOptions } from "../src/index.js";
 import { config } from "../src/config.js";
 import { createAuthStateCookie, createSessionCookie } from "../src/auth/session.js";
 
@@ -13,25 +16,37 @@ import { createAuthStateCookie, createSessionCookie } from "../src/auth/session.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
   const postgres = new PGlite();
   const db = drizzle(postgres, { schema });
+  let server: ReturnType<typeof Bun.serve> | undefined;
   const original = { ...config };
   try {
     await migrate(db, {
-      migrationsFolder: fileURLToPath(
-        new URL("../../../packages/database/drizzle", import.meta.url),
-      ),
+      migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
     });
     await seedAccounts(db, "ssr-owner-key");
     await db.insert(accounts).values({ id: "visitor", name: "Visitor" });
     config.publicBaseUrl = "https://*.plans.example.com";
     config.sessionSecret = "ssr-test-secret";
     const objects = new Map<string, string>();
-    const app = createApp({
+    const options = createServerOptions({
       db,
       putHtml: async (key, html) => {
         objects.set(key, html);
       },
       getHtml: async (key) => objects.get(key)!,
     });
+    server = Bun.serve({ hostname: "127.0.0.1", port: 0, ...options });
+    const local = server.url.origin;
+    const app = async (request: Request) => {
+      const url = new URL(request.url);
+      const headers = new Headers(request.headers);
+      headers.set("host", url.host);
+      return fetch(local + url.pathname + url.search, {
+        method: request.method,
+        headers,
+        redirect: "manual",
+        ...(request.body ? { body: await request.arrayBuffer() } : {}),
+      });
+    };
     const base = "https://plans.example.com";
     const cookie = createSessionCookie({ accountId: "acct_bootstrap", accountName: "Owner" }).split(
       ";",
@@ -62,6 +77,33 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
           ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         }),
       );
+    const docs = await get("/api");
+    assert.equal(docs.status, 200);
+    assert.match(await docs.text(), /scalar/i);
+    const specResponse = await get("/api/spec.json");
+    assert.equal(specResponse.status, 200);
+    const spec = (await specResponse.json()) as {
+      paths: Record<
+        string,
+        Record<string, { responses: Record<string, unknown>; security?: unknown }>
+      >;
+    };
+    assert.ok(spec.paths["/drafts/{draftId}"]?.patch);
+    assert.ok(spec.paths["/uploads"]?.post?.responses["201"]);
+    assert.ok(spec.paths["/uploads"]?.post?.responses["422"]);
+    assert.ok(spec.paths["/me"]?.get?.security);
+    const preflight = await app(
+      new Request(base + "/api/drafts", {
+        method: "OPTIONS",
+        headers: {
+          origin: "https://client.example",
+          "access-control-request-method": "GET",
+          "access-control-request-headers": "authorization,content-type,standard-server",
+        },
+      }),
+    );
+    assert.equal(preflight.status, 204);
+    assert.match(preflight.headers.get("access-control-allow-headers") ?? "", /authorization/i);
     assert.match(await (await get("/dashboard", "")).text(), /Continue with Shoo/);
     assert.match(await (await get("/dashboard")).text(), /Your next idea starts here/);
     const html = "<!doctype html><title>Project roadmap</title><p>First version</p>";
@@ -133,10 +175,15 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       }),
     );
     assert.equal(malformed.status, 400);
-    const oversize = await app(
-      new Request(base + "/api/uploads", { method: "POST", body: "x".repeat(2 * 1024 * 1024 + 1) }),
+    await assert.rejects(
+      boundedRequest(
+        new Request(base + "/api/uploads", {
+          method: "POST",
+          body: "x".repeat(2 * 1024 * 1024 + 1),
+        }),
+      ),
+      { code: "PAYLOAD_TOO_LARGE" },
     );
-    assert.equal(oversize.status, 413);
     const minted = await post("/cli/auth/keys", { name: "Work laptop" });
     assert.equal(minted.status, 200);
     const keyPage = await minted.text();
@@ -179,6 +226,7 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.match(signOut.headers.get("set-cookie")!, /Max-Age=0/);
   } finally {
     Object.assign(config, original);
+    await server?.stop(true);
     await postgres.close();
   }
 }, 30_000);

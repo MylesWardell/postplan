@@ -1,19 +1,19 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "bun:test";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq } from "drizzle-orm";
-import * as schema from "../src/schema.js";
+import * as schema from "../../src/db/schema.js";
 import {
   createApiKey,
   findApiKeyByToken,
   findOrCreateAccountForIdentity,
   revokeApiKey,
   seedAccounts,
-} from "../src/accounts.js";
+} from "../../src/routers/account-store.js";
 
 test("migrations, bootstrap keys, revocation and identity updates use PostgreSQL semantics", async () => {
   const client = new PGlite();

@@ -8,7 +8,6 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { Command } from "commander";
-import { validateHtml } from "@postplan/core";
 
 interface CliConfig {
   apiUrl?: string;
@@ -173,12 +172,6 @@ program
       }
 
       const html = fs.readFileSync(resolvedFile, "utf8");
-      const validation = validateHtml(html);
-
-      if (!validation.ok) {
-        throw new CliError(`HTML failed Postplan validation:\n- ${validation.errors.join("\n- ")}`);
-      }
-
       const drafts = readDrafts();
       const knownDraft = drafts.files?.[resolvedFile];
       const draftId = options.new ? null : options.draft || knownDraft?.draftId || null;

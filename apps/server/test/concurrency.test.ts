@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { createDatabase } from "../src/db/client.js";
 import {
-  createDatabase,
   findApiKeyByToken,
   findOrCreateAccountForIdentity,
   seedAccounts,
-} from "@postplan/database";
+} from "../src/routers/account-store.js";
 import { createCaller } from "../src/client.js";
 
 (process.env.TEST_DATABASE_URL ? test : test.skip)(
@@ -19,9 +19,7 @@ import { createCaller } from "../src/client.js";
     });
     try {
       await migrate(db, {
-        migrationsFolder: fileURLToPath(
-          new URL("../../../packages/database/drizzle", import.meta.url),
-        ),
+        migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
       });
       await seedAccounts(db, "concurrency-key");
       const caller = createCaller({

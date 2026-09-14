@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
-import { findApiKeyByToken } from "@postplan/database";
-import type { Database } from "@postplan/database";
+import { findApiKeyByToken } from "../routers/account-store.js";
+import type { Database } from "../db/client.js";
 import type { ApiContext } from "../context.js";
 import { config } from "../config.js";
 import { clientIp } from "./client-ip.js";

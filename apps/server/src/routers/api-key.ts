@@ -3,7 +3,7 @@ import {
   createApiKey as insertApiKey,
   listAccountApiKeys,
   revokeApiKey as revokeAccountApiKey,
-} from "@postplan/database";
+} from "./account-store.js";
 import { protectedOS } from "../orpc.js";
 
 export const listApiKeys = protectedOS.apiKeys.list.handler(({ context: ctx }) =>

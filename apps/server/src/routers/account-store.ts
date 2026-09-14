@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
-import type { Database } from "./client.js";
-import { accounts, apiKeys, identities } from "./schema.js";
+import type { Database } from "../db/client.js";
+import { accounts, apiKeys, identities } from "../db/schema.js";
 
 export interface ApiKeyAuth {
   id: string;

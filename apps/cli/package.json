@@ -19,10 +19,6 @@
     "prepack": "pnpm build"
   },
   "dependencies": {
-    "commander": "^14.0.0",
-    "parse5": "^7.3.0"
-  },
-  "devDependencies": {
-    "@postplan/core": "workspace:*"
+    "commander": "^14.0.0"
   }
 }

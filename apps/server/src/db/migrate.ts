@@ -14,7 +14,7 @@ try {
     await client.query("SELECT pg_advisory_lock($1)", [7_406_311_021]);
     try {
       await migrate(drizzle(client), {
-        migrationsFolder: fileURLToPath(new URL("../../drizzle", import.meta.url)),
+        migrationsFolder: fileURLToPath(new URL("../../../drizzle", import.meta.url)),
       });
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [7_406_311_021]);

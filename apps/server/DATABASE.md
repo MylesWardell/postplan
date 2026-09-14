@@ -1,6 +1,6 @@
 # Database
 
-`src/schema.ts` is the source of truth for PostgreSQL tables and inferred row types. Application queries use Drizzle; the `pg` driver is confined to connection setup and the migration lock.
+`src/db/schema.ts` is the source of truth for PostgreSQL tables and inferred row types. Application queries use Drizzle; the `pg` driver is confined to connection setup and the migration lock.
 
 From the repository root:
 

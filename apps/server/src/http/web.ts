@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { config } from "../config.js";
-import { findOrCreateAccountForIdentity } from "@postplan/database";
-import type { Database } from "@postplan/database";
+import { findOrCreateAccountForIdentity } from "../routers/account-store.js";
+import type { Database } from "../db/client.js";
 import { createCaller } from "../client.js";
 import type { ContextFactory } from "./context.js";
 import { formBody } from "./body.js";
@@ -23,7 +23,7 @@ import {
   dashboardResponse,
   detailResponse,
   keysResponse,
-} from "../views/pages.js";
+} from "../frontend/pages.js";
 
 function redirect(path: string, cookies: string[] = []): Response {
   const headers = new Headers({ Location: path });

@@ -2,10 +2,11 @@ import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
-import { drafts, draftVersions, uploadEvents, publicUploadAuth } from "@postplan/database";
-import type { Database } from "@postplan/database";
-import { validateHtml } from "@postplan/core";
-import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/core/public-url";
+import { drafts, draftVersions, uploadEvents } from "../db/schema.js";
+import { publicUploadAuth } from "./account-store.js";
+import type { Database } from "../db/client.js";
+import { validateHtml } from "../lib/html-policy.js";
+import { getDraftPublicUrl, getDraftRawUrl } from "../lib/public-url.js";
 import type { ApiContext } from "../context.js";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);

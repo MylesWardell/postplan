@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import { databasePoolConfig } from "../src/config.js";
+import { test } from "bun:test";
+import { databasePoolConfig } from "../../src/db/config.js";
 
 test("rejects URL options that would replace certificate verification", () => {
   for (const option of [
