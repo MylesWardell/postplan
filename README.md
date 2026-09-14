@@ -50,10 +50,10 @@ Copy `.env.example` to `.env` and configure S3-compatible storage and `DATABASE_
 
 ```sh
 bun run db:migrate
-bun --env-file=.env apps/server/dist/src/index.js
+bun run start
 ```
 
-For development, build once, then run `bun run --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `bun run build` to refresh their exports. Startup seeds account/key records but does not run DDL.
+For development, use an absolute `DATABASE_PATH` in the shell so migrations and watch mode share the same file. Build once, then run `bun run --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `bun run build` to refresh their exports. Startup seeds account/key records but does not run DDL.
 
 `bun run check` covers formatting, lint, strict types, and tests. Tests include native SQLite migration and HTTP/oRPC and SSR form integration checks, without AWS access. Use `bun run format`, `bun run lint:fix`, and `bun run db:generate` while editing. See [database migration guidance](apps/server/DATABASE.md).
 
