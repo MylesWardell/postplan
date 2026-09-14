@@ -1,7 +1,7 @@
 import type { RateLimiter } from "@orpc/ratelimit";
-import type { ApiKeyAuth } from "./routers/account-store.js";
-import type { Database } from "./db/client.js";
-import { createRateLimiters } from "./lib/rate-limiters.js";
+import type { ApiKeyAuth } from "#routers/account-store";
+import type { Database } from "#db/client";
+import { createRateLimiters } from "#lib/rate-limiters";
 
 export interface ServerDependencies {
   db: Database;

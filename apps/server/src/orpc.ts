@@ -3,10 +3,10 @@ import { implement, ORPCError } from "@orpc/server";
 import { contract } from "@postplan/api";
 import type { BaseContext } from "./context.js";
 import { config } from "./config.js";
-import { clientIp } from "./lib/client-ip.js";
-import { getRequestBaseUrl } from "./lib/public-url.js";
-import { assertApplicationOrigin, readSession } from "./auth/session.js";
-import { findApiKeyByToken } from "./routers/account-store.js";
+import { clientIp } from "#lib/client-ip";
+import { getRequestBaseUrl } from "#lib/public-url";
+import { assertApplicationOrigin, readSession } from "#auth/session";
+import { findApiKeyByToken } from "#routers/account-store";
 
 export const publicOS = implement(contract)
   .$context<ResponseHeadersHandlerPluginContext & BaseContext>()

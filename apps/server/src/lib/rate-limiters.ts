@@ -1,6 +1,6 @@
 import { MemoryRateLimiter } from "@orpc/ratelimit/memory";
-import { config } from "../config.js";
-import type { RateLimiters } from "../context.js";
+import { config } from "#config";
+import type { RateLimiters } from "#context";
 
 // One set per server instance, so separate servers (and tests) don't share buckets.
 export function createRateLimiters(): RateLimiters {

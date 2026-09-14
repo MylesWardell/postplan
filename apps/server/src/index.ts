@@ -17,16 +17,16 @@ import { SmartCoercionHandlerPlugin } from "@orpc/json-schema";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
 import { contract } from "@postplan/api";
 import { sql } from "drizzle-orm";
-import { createDatabase } from "./db/client.js";
-import { seedAccounts } from "./routers/account-store.js";
-import { router } from "./routers/index.js";
+import { createDatabase } from "#db/client";
+import { seedAccounts } from "#routers/account-store";
+import { router } from "#routers/index";
 import { config } from "./config.js";
 import { createContextFactory } from "./context.js";
 import type { ServerDependencies } from "./context.js";
-import { onlyApplication } from "./lib/host-guard.js";
-import { createFrontend } from "./frontend/index.js";
-import { notFoundResponse } from "./frontend/pages.js";
-import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
+import { onlyApplication } from "#lib/host-guard";
+import { createFrontend } from "#frontend/index";
+import { notFoundResponse } from "#frontend/pages";
+import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#storage/s3";
 
 export function createServerOptions(deps: ServerDependencies) {
   const context = createContextFactory(deps);

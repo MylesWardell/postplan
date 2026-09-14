@@ -1,11 +1,11 @@
-import { createContextFactory } from "../src/context.js";
+import { createContextFactory } from "#context";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { createDatabase } from "../src/db/client.js";
-import { findOrCreateAccountForIdentity, seedAccounts } from "../src/routers/account-store.js";
-import { createCaller } from "../src/client.js";
+import { createDatabase } from "#db/client";
+import { findOrCreateAccountForIdentity, seedAccounts } from "#routers/account-store";
+import { createCaller } from "#client";
 
 test("concurrent requests serialize SQLite draft versions and first logins", async () => {
   const { db, client } = createDatabase(":memory:");

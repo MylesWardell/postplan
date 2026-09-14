@@ -1,6 +1,6 @@
-import type { ContextFactory, ServerDependencies } from "../context.js";
-import { hostDraftId } from "../lib/host-guard.js";
-import { respond } from "../lib/respond.js";
+import type { ContextFactory, ServerDependencies } from "#context";
+import { hostDraftId } from "#lib/host-guard";
+import { respond } from "#lib/respond";
 import { draftResponse } from "./routes/drafts.js";
 import { webResponse } from "./routes/web.js";
 import { messageResponse, notFoundResponse } from "./pages.js";

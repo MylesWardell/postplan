@@ -1,6 +1,6 @@
 import proxyaddr from "proxy-addr";
-import { config } from "../config.js";
-import type { TrustProxySetting } from "../config.js";
+import { config } from "#config";
+import type { TrustProxySetting } from "#config";
 
 type TrustFn = (address: string, index: number) => boolean;
 let compiled: { setting: TrustProxySetting; trust: TrustFn } | undefined;

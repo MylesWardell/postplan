@@ -1,4 +1,4 @@
-import { createDatabase } from "../../src/db/client.js";
+import { createDatabase } from "#db/client";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -7,14 +7,14 @@ import { test } from "bun:test";
 import { fileURLToPath } from "node:url";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { eq } from "drizzle-orm";
-import * as schema from "../../src/db/schema.js";
+import * as schema from "#db/schema";
 import {
   createApiKey,
   findApiKeyByToken,
   findOrCreateAccountForIdentity,
   revokeApiKey,
   seedAccounts,
-} from "../../src/routers/account-store.js";
+} from "#routers/account-store";
 
 test("SQLite survives reopen and rolls back a failed transaction", async () => {
   const directory = mkdtempSync(join(tmpdir(), "postplan-sqlite-"));

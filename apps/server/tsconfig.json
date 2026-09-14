@@ -6,7 +6,9 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": ["bun"]
+    "types": ["bun"],
+    // Resolve package.json "imports" aliases to src/*.ts; runtime without it uses dist.
+    "customConditions": ["source"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts"]
 }

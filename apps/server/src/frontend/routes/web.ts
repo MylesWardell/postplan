@@ -1,13 +1,13 @@
 import { ORPCError } from "@orpc/server";
-import { config } from "../../config.js";
-import { findOrCreateAccountForIdentity } from "../../routers/account-store.js";
-import type { Database } from "../../db/client.js";
-import { createCaller } from "../../client.js";
-import type { ContextFactory } from "../../context.js";
+import { config } from "#config";
+import { findOrCreateAccountForIdentity } from "#routers/account-store";
+import type { Database } from "#db/client";
+import { createCaller } from "#client";
+import type { ContextFactory } from "#context";
 import { parseFormData, getIssueMessage } from "@orpc/openapi/helpers";
-import { getHomeUrl } from "../../lib/public-url.js";
-import { toHttpError } from "../../lib/respond.js";
-import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "../../auth/shoo.js";
+import { getHomeUrl } from "#lib/public-url";
+import { toHttpError } from "#lib/respond";
+import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "#auth/shoo";
 import {
   assertApplicationOrigin,
   clearAuthStateCookie,
@@ -16,7 +16,7 @@ import {
   createSessionCookie,
   readAuthState,
   readSession,
-} from "../../auth/session.js";
+} from "#auth/session";
 import {
   homeResponse,
   signInResponse,
@@ -24,7 +24,7 @@ import {
   dashboardResponse,
   detailResponse,
   keysResponse,
-} from "../pages.js";
+} from "#frontend/pages";
 
 function redirect(path: string, cookies: string[] = []): Response {
   const headers = new Headers({ Location: path });

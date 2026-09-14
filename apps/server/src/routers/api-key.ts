@@ -5,7 +5,7 @@ import {
   listAccountApiKeys,
   revokeApiKey as revokeAccountApiKey,
 } from "./account-store.js";
-import { protectedOS } from "../orpc.js";
+import { protectedOS } from "#orpc";
 
 export const listApiKeys = protectedOS.apiKeys.list.handler(({ context: ctx }) =>
   listAccountApiKeys(ctx.db, ctx.account.accountId),
