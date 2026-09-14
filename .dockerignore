@@ -1,0 +1,10 @@
+*
+!package.json
+!pnpm-lock.yaml
+!tsconfig.json
+!src/
+!src/**
+!bin/
+!bin/**
+!test/
+!test/**

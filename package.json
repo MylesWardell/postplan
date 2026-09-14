@@ -10,6 +10,7 @@
     "dist/bin/",
     "dist/src/",
     "skills/",
+    "docs/",
     "README.md"
   ],
   "type": "module",
