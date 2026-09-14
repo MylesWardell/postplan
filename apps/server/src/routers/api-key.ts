@@ -4,7 +4,7 @@ import {
   createApiKey as insertApiKey,
   listAccountApiKeys,
   revokeApiKey as revokeAccountApiKey,
-} from "./account-store.js";
+} from "./account-store";
 import { protectedOS } from "#orpc";
 
 export const listApiKeys = protectedOS.apiKeys.list.handler(({ context: ctx }) =>

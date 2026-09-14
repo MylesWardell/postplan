@@ -1,6 +1,6 @@
 import { getIssueMessage } from "@orpc/openapi/helpers";
 import { toHttpError } from "#lib/respond";
-import { messageResponse } from "./response.server.js";
+import { messageResponse } from "./response.server";
 
 // Page and form handlers render failures as HTML; thrown Responses pass through.
 export async function webAction(action: () => Response | Promise<Response>): Promise<Response> {

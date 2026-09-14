@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import { config } from "#config";
 import { getHomeUrl, getRequestBaseUrl } from "#lib/public-url";
-import type { Session } from "./types.js";
+import type { Session } from "./types";
 
 export const SESSION_COOKIE = "postplan_session";
 export const AUTH_STATE_COOKIE = "postplan_auth_state";

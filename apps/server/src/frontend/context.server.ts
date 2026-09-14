@@ -4,7 +4,7 @@ import { config } from "#config";
 import { createCaller } from "#client";
 import type { ContextFactory, ServerDependencies } from "#context";
 import type { createApiHandler } from "#api";
-import { messageResponse } from "./response.server.js";
+import { messageResponse } from "./response.server";
 
 export interface AppRequestContext {
   deps: ServerDependencies;

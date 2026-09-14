@@ -2,7 +2,7 @@ import { Database as SQLite } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import * as schema from "./schema.js";
+import * as schema from "./schema";
 
 export function createDatabase(filename = process.env.DATABASE_PATH || "data/postplan.sqlite") {
   if (filename !== ":memory:") {

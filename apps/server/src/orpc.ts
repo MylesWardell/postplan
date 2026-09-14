@@ -1,8 +1,8 @@
 import type { ResponseHeadersHandlerPluginContext } from "@orpc/server/plugins";
 import { implement, ORPCError } from "@orpc/server";
 import { contract } from "@postplan/api";
-import type { BaseContext } from "./context.js";
-import { config } from "./config.js";
+import type { BaseContext } from "./context";
+import { config } from "./config";
 import { clientIp } from "#lib/client-ip";
 import { getRequestBaseUrl } from "#lib/public-url";
 import { assertApplicationOrigin, readSession } from "#auth/session";

@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { ApiConnection } from "./api.js";
-import { CliError } from "./errors.js";
+import type { ApiConnection } from "./api";
+import { CliError } from "./errors";
 
 interface CliConfig {
   apiUrl?: string;

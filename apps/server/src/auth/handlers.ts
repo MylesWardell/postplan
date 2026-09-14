@@ -4,13 +4,13 @@ import { findOrCreateAccountForIdentity } from "#routers/account-store";
 import { getHomeUrl } from "#lib/public-url";
 import { redirect } from "#lib/redirect";
 import { messageResponse } from "#frontend/response.server";
-import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "./shoo.js";
+import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "./shoo";
 import {
   clearAuthStateCookie,
   createAuthStateCookie,
   createSessionCookie,
   readAuthState,
-} from "./session.js";
+} from "./session";
 
 export function signIn(req: Request): Response {
   const { verifier, challenge, state } = buildPkce();

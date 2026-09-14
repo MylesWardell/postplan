@@ -1,12 +1,12 @@
-import { shutdownInstrumentation } from "./instrumentation.js";
+import { shutdownInstrumentation } from "./instrumentation";
 import { serve } from "bun";
 import type { Server } from "bun";
 import { fileURLToPath } from "node:url";
 import { createDatabase } from "#db/client";
 import { seedAccounts } from "#routers/account-store";
-import { config } from "./config.js";
-import type { ServerDependencies } from "./context.js";
-import type { createApplication } from "./server.js";
+import { config } from "./config";
+import type { ServerDependencies } from "./context";
+import type { createApplication } from "./server";
 import { onlyApplication } from "#lib/host-guard";
 import { notFoundResponse } from "#frontend/response.server";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";

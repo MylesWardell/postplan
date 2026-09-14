@@ -1,6 +1,6 @@
 import { ratelimit } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
-import { publicUploadAuth } from "./account-store.js";
+import { publicUploadAuth } from "./account-store";
 import { publicOS, protectedOS } from "#orpc";
 import {
   cleanText,

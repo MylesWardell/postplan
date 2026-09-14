@@ -3,7 +3,7 @@ import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import { drafts, draftVersions, uploadEvents } from "#db/schema";
-import { publicUploadAuth } from "./account-store.js";
+import { publicUploadAuth } from "./account-store";
 import type { Database } from "#db/client";
 import { validateHtml } from "#lib/html-policy";
 import { getDraftPublicUrl, getDraftRawUrl } from "#lib/public-url";

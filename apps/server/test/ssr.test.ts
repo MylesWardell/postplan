@@ -7,7 +7,7 @@ import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { accounts } from "#db/schema";
 import { seedAccounts } from "#routers/account-store";
-import { createServerOptions } from "./start-server.js";
+import { createServerOptions } from "./start-server";
 import { config } from "#config";
 import {
   createAuthStateCookie,

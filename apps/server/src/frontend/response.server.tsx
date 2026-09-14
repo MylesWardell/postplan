@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from "react";
-import { Document, Layout } from "./layout.js";
+import { Document, Layout } from "./layout";
 import { renderToStaticMarkup } from "react-dom/server";
 
 export function page(element: ReactNode, status = 200): Response {
