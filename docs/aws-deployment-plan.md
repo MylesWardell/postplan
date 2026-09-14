@@ -1,6 +1,6 @@
 # AWS deployment plan
 
-Planning only. Nothing has been provisioned or deployed.
+The recommended deployment is now the [Terraform serverless plan](aws-serverless-terraform-plan.md), with configurable retention. The EC2 design below is retained as an alternative for running the existing SQLite application unchanged. Planning only; nothing has been provisioned or deployed.
 
 ## Minimal architecture
 
