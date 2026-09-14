@@ -1,3 +1,4 @@
+import { MemoryRateLimiter } from "@orpc/ratelimit/memory";
 import { ORPCError } from "@orpc/server";
 import { findApiKeyByToken } from "../routers/account-store.js";
 import type { Database } from "../db/client.js";
@@ -14,45 +15,19 @@ export interface ServerDependencies {
 }
 
 export function createContextFactory(deps: ServerDependencies) {
-  const buckets = new Map<string, { count: number; resetAt: number }>();
-  const limits = {
-    "upload-ip": {
-      max: Number(process.env.UPLOAD_IP_RATE_LIMIT_MAX || 60),
+  const rateLimiters = {
+    "upload-ip": new MemoryRateLimiter({
+      maxRequests: Number(process.env.UPLOAD_IP_RATE_LIMIT_MAX || 60),
       window: Number(process.env.UPLOAD_IP_RATE_LIMIT_WINDOW_MS || 60_000),
-    },
-    "upload-key": {
-      max: Number(process.env.UPLOAD_RATE_LIMIT_MAX || 30),
+    }),
+    "upload-key": new MemoryRateLimiter({
+      maxRequests: Number(process.env.UPLOAD_RATE_LIMIT_MAX || 30),
       window: Number(process.env.UPLOAD_RATE_LIMIT_WINDOW_MS || 60_000),
-    },
-    "key-mint": {
-      max: Number(process.env.KEY_MINT_RATE_LIMIT_MAX || 10),
+    }),
+    "key-mint": new MemoryRateLimiter({
+      maxRequests: Number(process.env.KEY_MINT_RATE_LIMIT_MAX || 10),
       window: Number(process.env.KEY_MINT_RATE_LIMIT_WINDOW_MS || 3_600_000),
-    },
-  };
-  let nextSweep = 0;
-  const limit: ApiContext["limit"] = (kind, identity) => {
-    const now = Date.now();
-    if (now >= nextSweep) {
-      for (const [key, bucket] of buckets) if (bucket.resetAt <= now) buckets.delete(key);
-      nextSweep = now + 60_000;
-    }
-    const key = `${kind}:${identity}`;
-    const rule = limits[kind];
-    let bucket = buckets.get(key);
-    if (!bucket || bucket.resetAt <= now) {
-      // Bound memory even when many unique identities arrive in one window.
-      if (buckets.size >= 100_000)
-        throw new ORPCError("TOO_MANY_REQUESTS", {
-          message: "Rate limiter capacity reached.",
-        });
-      bucket = { count: 0, resetAt: now + rule.window };
-      buckets.set(key, bucket);
-    }
-    if (++bucket.count > rule.max)
-      throw new ORPCError("TOO_MANY_REQUESTS", {
-        message: "Rate limit exceeded.",
-        cause: { retryAfter: Math.ceil((bucket.resetAt - now) / 1000) },
-      });
+    }),
   };
   return async function createContext(
     req: Request,
@@ -89,7 +64,7 @@ export function createContextFactory(deps: ServerDependencies) {
       requestId: req.headers.get(config.requestIdHeader)?.slice(0, 255) ?? null,
       maxHtmlBytes: config.maxHtmlBytes,
       putHtml: deps.putHtml,
-      limit,
+      rateLimiters,
     };
   };
 }

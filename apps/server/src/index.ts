@@ -1,3 +1,4 @@
+import { RateLimitHandlerPlugin } from "@orpc/ratelimit";
 import { shutdownInstrumentation } from "./instrumentation.js";
 import { serve } from "bun";
 import type { Server } from "bun";
@@ -40,6 +41,7 @@ export function createServerOptions(deps: ServerDependencies) {
       new RequestCompressionHandlerPlugin(),
       new RequestLimitHandlerPlugin({ maxBodySize: 2 * 1024 * 1024 }),
       new ResponseHeadersHandlerPlugin(),
+      new RateLimitHandlerPlugin(),
       new ResponseCompressionHandlerPlugin(),
       new CORSHandlerPlugin({
         allowHeaders: [
@@ -49,7 +51,15 @@ export function createServerOptions(deps: ServerDependencies) {
           "Content-Encoding",
           "Authorization",
         ],
-        exposeHeaders: ["Content-Disposition", "Standard-Server", "Retry-After", "X-Request-Id"],
+        exposeHeaders: [
+          "Content-Disposition",
+          "Standard-Server",
+          "Retry-After",
+          "X-Request-Id",
+          "RateLimit-Limit",
+          "RateLimit-Remaining",
+          "RateLimit-Reset",
+        ],
       }),
       new EvlogHandlerPlugin({ logAbort: true }),
       new SmartCoercionHandlerPlugin({ converters: [zodConverter] }),
@@ -68,11 +78,10 @@ export function createServerOptions(deps: ServerDependencies) {
   });
   function handleOpenAPIRequest(request: Request, server: Server<undefined>) {
     return onlyApplication(request, async () => {
-      const req = request;
-      const { response } = await openapiHandler.handle(req, {
+      const { response } = await openapiHandler.handle(request, {
         prefix: "/api",
         context: {
-          resolveContext: () => context(req, false, server.requestIP(request)?.address ?? null),
+          resolveContext: () => context(request, false, server.requestIP(request)?.address ?? null),
         },
       });
       return response ?? notFoundResponse();

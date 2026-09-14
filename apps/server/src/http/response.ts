@@ -20,7 +20,6 @@ export async function respond(action: () => Promise<Response> | Response): Promi
     if (status >= 500) console.error(error);
     response = Response.json(failure.toJSON(), { status });
   }
-  if (response.status === 429) response.headers.set("Retry-After", "60");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Cache-Control", "no-store");
   response.headers.set("Referrer-Policy", "same-origin");

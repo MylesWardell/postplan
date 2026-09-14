@@ -1,3 +1,4 @@
+import { ratelimit } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
 import { publicUploadAuth } from "./account-store.js";
 import { publicOS, protectedOS } from "../orpc.js";
@@ -42,10 +43,20 @@ export const enableDraft = protectedOS.drafts.enable.handler(({ context: ctx, in
     disabled_reason: null,
   }),
 );
-export const uploadDraft = publicOS.drafts.upload.handler(
-  async ({ context: ctx, input, errors }) => {
-    ctx.limit("upload-ip", ctx.sourceIp || "anonymous");
-    ctx.limit("upload-key", ctx.apiKey?.id ?? publicUploadAuth.id);
+export const uploadDraft = publicOS.drafts.upload
+  .use(
+    ratelimit({
+      limiter: ({ context }) => context.rateLimiters["upload-ip"],
+      key: ({ context }) => context.sourceIp || "anonymous",
+    }),
+  )
+  .use(
+    ratelimit({
+      limiter: ({ context }) => context.rateLimiters["upload-key"],
+      key: ({ context }) => context.apiKey?.id ?? publicUploadAuth.id,
+    }),
+  )
+  .handler(async ({ context: ctx, input, errors }) => {
     if (ctx.session && !ctx.apiKey)
       throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
     const result = await persistUpload(ctx, input);
@@ -55,5 +66,4 @@ export const uploadDraft = publicOS.drafts.upload.handler(
         data: result,
       });
     return { status: result.versionNumber === 1 ? (201 as const) : (200 as const), body: result };
-  },
-);
+  });

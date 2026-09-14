@@ -11,8 +11,10 @@ import { fileURLToPath } from "node:url";
 test("CLI displays the oRPC error message and upload validation details", async () => {
   const directory = fs.mkdtempSync(join(tmpdir(), "postplan-cli-"));
   const file = join(directory, "invalid.html");
-  fs.writeFileSync(file, "<form></form>");
+  fs.writeFileSync(file, "<form>" + "x".repeat(2000) + "</form>");
+  let encoding: string | undefined;
   const server = createServer((req, res) => {
+    encoding = req.headers["content-encoding"];
     req.resume();
     res.writeHead(422, { "content-type": "application/json" });
     res.end(
@@ -44,6 +46,7 @@ test("CLI displays the oRPC error message and upload validation details", async 
         return true;
       },
     );
+    assert.equal(encoding, "gzip");
   } finally {
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));

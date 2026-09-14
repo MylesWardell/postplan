@@ -132,16 +132,23 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     await assert.rejects(revokedClient.account.me(), /Invalid API key/);
     await assert.rejects(client(key.token).account.me(), /Invalid API key/);
     for (let i = 0; i < 9; i++) await owner.apiKeys.create({ name: "Rate test" });
-    await assert.rejects(owner.apiKeys.create({ name: "Over limit" }), /Rate limit exceeded/);
-    assert.equal(
-      (
-        await fetch(`${base}/api/api-keys`, {
-          method: "POST",
-          headers: { authorization: "Bearer owner-key", "content-type": "application/json" },
-          body: "{}",
-        })
-      ).status,
-      429,
+    await assert.rejects(owner.apiKeys.create({ name: "Over limit" }), {
+      code: "TOO_MANY_REQUESTS",
+    });
+    const limited = await fetch(`${base}/api/api-keys`, {
+      method: "POST",
+      headers: { authorization: "Bearer owner-key", "content-type": "application/json" },
+      body: "{}",
+    });
+    assert.equal(limited.status, 429);
+    assert.equal(limited.headers.get("ratelimit-limit"), "10");
+    assert.equal(limited.headers.get("ratelimit-remaining"), "0");
+    const reset = Number(limited.headers.get("ratelimit-reset"));
+    assert.ok(reset > Date.now());
+    assert.ok(
+      Math.abs(
+        Number(limited.headers.get("retry-after")) - Math.ceil((reset - Date.now()) / 1000),
+      ) <= 1,
     );
     await owner.drafts.delete({ draftId });
     assert.equal((await fetch(upload.publicUrl)).status, 404);

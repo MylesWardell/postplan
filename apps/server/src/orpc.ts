@@ -8,13 +8,7 @@ export const publicOS = implement(contract)
   .use(async ({ context, next }) => {
     const resolved = await context.resolveContext();
     if (resolved.requestId) context.resHeaders?.set("X-Request-Id", resolved.requestId);
-    try {
-      return await next({ context: resolved });
-    } catch (error) {
-      if (error instanceof ORPCError && error.code === "TOO_MANY_REQUESTS")
-        context.resHeaders?.set("Retry-After", "60");
-      throw error;
-    }
+    return next({ context: resolved });
   });
 export const protectedOS = publicOS.use(({ context, next }) => {
   const account = context.apiKey

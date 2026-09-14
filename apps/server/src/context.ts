@@ -1,3 +1,4 @@
+import type { RateLimiter } from "@orpc/ratelimit";
 import type { ApiKeyAuth } from "./routers/account-store.js";
 import type { Database } from "./db/client.js";
 
@@ -12,5 +13,5 @@ export interface ApiContext {
   requestId: string | null;
   maxHtmlBytes: number;
   putHtml: (key: string, html: string) => Promise<void>;
-  limit: (kind: "upload-ip" | "upload-key" | "key-mint", identity: string) => void;
+  rateLimiters: Record<"upload-ip" | "upload-key" | "key-mint", RateLimiter>;
 }

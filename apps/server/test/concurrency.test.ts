@@ -1,13 +1,10 @@
+import { createContextFactory } from "../src/http/context.js";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { createDatabase } from "../src/db/client.js";
-import {
-  findApiKeyByToken,
-  findOrCreateAccountForIdentity,
-  seedAccounts,
-} from "../src/routers/account-store.js";
+import { findOrCreateAccountForIdentity, seedAccounts } from "../src/routers/account-store.js";
 import { createCaller } from "../src/client.js";
 
 test("concurrent requests serialize SQLite draft versions and first logins", async () => {
@@ -17,19 +14,14 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
       migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
     });
     await seedAccounts(db, "concurrency-key");
-    const caller = createCaller({
-      db,
-      apiKey: await findApiKeyByToken(db, "concurrency-key"),
-      session: null,
-      requestBaseUrl: "https://plans.example.com",
-      publicBaseUrl: undefined,
-      sourceIp: null,
-      userAgent: null,
-      requestId: null,
-      maxHtmlBytes: 524288,
-      putHtml: async () => {},
-      limit: () => {},
-    });
+    const context = createContextFactory({ db, putHtml: async () => {}, getHtml: async () => "" });
+    const caller = createCaller(
+      await context(
+        new Request("https://plans.example.com", {
+          headers: { authorization: "Bearer concurrency-key" },
+        }),
+      ),
+    );
     const html = "<!doctype html><title>Concurrent</title><p>Versions</p>";
     const { body: first } = await caller.drafts.upload({ html });
     assert.ok(first.ok);
