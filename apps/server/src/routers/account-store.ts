@@ -2,6 +2,15 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import type { Database } from "#db/client";
 import { accounts, apiKeys, identities } from "#db/schema";
+import { isDynamoDatabase } from "#db/dynamo";
+import {
+  seedDynamoAccounts,
+  findDynamoApiKey,
+  createDynamoApiKey,
+  revokeDynamoApiKey,
+  listDynamoApiKeys,
+  findDynamoIdentity,
+} from "#db/dynamo-accounts";
 
 export interface ApiKeyAuth {
   id: string;
@@ -18,6 +27,9 @@ export const publicUploadAuth: ApiKeyAuth = {
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function seedAccounts(db: Database, bootstrapKey?: string): Promise<void> {
+  if (isDynamoDatabase(db)) {
+    return seedDynamoAccounts(db, bootstrapKey);
+  }
   await db.transaction((tx) => {
     for (const [auth, token] of [
       [publicUploadAuth, "postplan-public-upload-sentinel"],
@@ -56,6 +68,9 @@ export async function seedAccounts(db: Database, bootstrapKey?: string): Promise
 }
 
 export async function findApiKeyByToken(db: Database, token: string): Promise<ApiKeyAuth | null> {
+  if (isDynamoDatabase(db)) {
+    return findDynamoApiKey(db, token);
+  }
   const [key] = await db
     .select({
       id: apiKeys.id,
@@ -81,12 +96,18 @@ export async function findApiKeyByToken(db: Database, token: string): Promise<Ap
 }
 
 export async function createApiKey(db: Database, accountId: string, name: string) {
+  if (isDynamoDatabase(db)) {
+    return createDynamoApiKey(db, accountId, name);
+  }
   const token = `pp_${randomUUID().replaceAll("-", "")}${randomUUID().replaceAll("-", "")}`;
   const id = randomUUID();
   await db.insert(apiKeys).values({ id, accountId: accountId, name, keyHash: hash(token) });
   return { ok: true as const, apiKey: { id, name }, token };
 }
 export async function revokeApiKey(db: Database, accountId: string, id: string) {
+  if (isDynamoDatabase(db)) {
+    return revokeDynamoApiKey(db, accountId, id);
+  }
   const rows = await db
     .update(apiKeys)
     .set({ revokedAt: new Date() })
@@ -95,6 +116,9 @@ export async function revokeApiKey(db: Database, accountId: string, id: string) 
   return rows.length > 0;
 }
 export function listAccountApiKeys(db: Database, accountId: string) {
+  if (isDynamoDatabase(db)) {
+    return listDynamoApiKeys(db, accountId);
+  }
   return db
     .select({
       id: apiKeys.id,
@@ -130,6 +154,9 @@ export async function findOrCreateAccountForIdentity(
   db: Database,
   { provider, subject, profile = {} }: IdentityInput,
 ): Promise<IdentityAccount> {
+  if (isDynamoDatabase(db)) {
+    return findDynamoIdentity(db, { provider, subject, profile });
+  }
   return db.transaction(
     (tx) => {
       const [existing] = tx

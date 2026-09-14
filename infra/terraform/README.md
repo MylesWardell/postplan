@@ -5,7 +5,7 @@ Two independent roots provision the [serverless design](../../docs/aws-serverles
 - `bootstrap/`: versioned state bucket, immutable ECR repositories and a GitHub OIDC image-publishing role.
 - `app/`: HTTP API and regional HTTPS domains, app/cleanup Lambdas and aliases, four DynamoDB tables, private HTML storage, disabled-by-default cleanup schedule, failure queue, logs, alarms and an account-wide budget.
 
-**The current Bun/SQLite server is not compatible with this deployment yet.** Supply separately built, tested Lambda-compatible app and cleanup images by digest. This change implements infrastructure, not the DynamoDB persistence adapter, retention worker, private-upload enforcement or secret-loading runtime. Do not deploy the current Docker image as a substitute. No placeholder Lambda code is installed.
+Build the `lambda-app` and `lambda-cleanup` Docker targets and supply their ECR image digests. The server selects DynamoDB when all four table names are set; the default `runtime` image also supports SQLite. DynamoDB persistence, retention cleanup, private-upload enforcement and SSM secret loading are implemented. AWS deployment acceptance is still required before enabling cleanup or opening traffic.
 
 ## Validate without AWS
 
@@ -67,7 +67,7 @@ The generated execute-api endpoint is disabled; test through the configured HTTP
 
 Both functions receive `PLAN_RETENTION_DAYS`, `AWS_S3_BUCKET_NAME` and `POSTPLAN_IDENTITY_TABLE`, `POSTPLAN_PLANS_TABLE`, `POSTPLAN_RECORDS_TABLE`, `POSTPLAN_RATE_LIMITS_TABLE`. Lambda supplies `AWS_REGION`; do not set reserved AWS environment variables.
 
-The app must load `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` (and optional `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN`) before initializing configuration/authentication. It must enforce `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS=false`, existing `POSTPLAN_ALLOWED_LOGIN_DOMAINS`, domain/origin checks, and trusted API Gateway client-IP extraction. These are contracts for the pending runtime implementation, not claims about current code.
+The launcher loads `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` (and optional `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN`) before initializing configuration/authentication. The app enforces `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS=false`, `POSTPLAN_ALLOWED_LOGIN_DOMAINS`, domain/origin checks, and trusted API Gateway client-IP extraction when `POSTPLAN_API_GATEWAY=true`. Run `bun apps/server/dist/src/db/bootstrap.js` once with deployment credentials and the configured table names to seed an optional administrator key; cold starts do not seed DynamoDB.
 
 App images must include the Lambda Web Adapter, listen on port 3000, and support buffered API Gateway v2 requests. Built assets remain inside the image. Cleanup images implement the Lambda runtime protocol directly; they do not run an HTTP server. Both are Linux x86_64, use temporary storage only, and must support their configured timeouts.
 
@@ -78,13 +78,13 @@ App images must include the Lambda Web Adapter, listen on port 3000, and support
 | Records  | `draftId` (S), `sk` (S) | None                                           | None                                 |
 | Limits   | `pk` (S)                | None                                           | `ttlAt`                              |
 
-The app must enforce uniqueness/ownership via conditional transactions and use consistent base-table reads for revocation/expiry. Indexes are eventual. It must never assign `ttlAt` to active plans. HTML uses immutable objects under `drafts/<id>/`; the bucket has no object-age expiration rule or S3 versioning.
+The app enforces uniqueness/ownership via conditional transactions and uses consistent base-table reads for revocation/expiry. Indexes are eventual. It never assigns `ttlAt` to active plans. HTML uses immutable objects under `drafts/<id>/`; the bucket has no object-age expiration rule or S3 versioning. SQLite remains available for local deployments; existing SQLite data requires a separate migration before cutover. See [database configuration](../../apps/server/DATABASE.md).
 
 ## Retention operations
 
 Set `plan_retention_days` in tfvars (or `TF_VAR_plan_retention_days`) to configure `PLAN_RETENTION_DAYS` identically on both functions: default 90, 0 disables automatic expiry. Values are whole nonnegative days with a safe-arithmetic ceiling. The application computes age from the last successful upload and applies changes to existing plans.
 
-The cleanup contract is defined in the [retention plan](../../docs/aws-serverless-terraform-plan.md#cleanup-protocol). It claims stale plans conditionally, waits 24 hours, deletes S3 and child records with retries, then sets a seven-day tombstone TTL. The worker must page through results, preserve failed work, reconcile upload intents/orphans and emit `OldestPendingAgeSeconds` (zero when idle) without dimensions to `Postplan/<name>` after every successful run. The overdue alarm treats missing metrics as failure when cleanup is enabled.
+The cleanup contract is defined in the [retention plan](../../docs/aws-serverless-terraform-plan.md#cleanup-protocol). It claims stale plans conditionally, waits 24 hours, deletes S3 and child records with retries, then sets a seven-day tombstone TTL. The worker pages through results, preserves failed work, reconciles upload intents/orphans and emits `OldestPendingAgeSeconds` (zero when idle) without dimensions to `Postplan/<name>` after every successful run. The overdue alarm treats missing metrics as failure when cleanup is enabled.
 
 Before enabling `cleanup_enabled`, verify the real worker against disposable records, partial failures and its failure destination. Scheduler delivery failures and asynchronous worker failures go to the failure queue; retain/replay messages and inspect durable database work records. The queue retains messages for 14 days, so it is not the only retry ledger.
 

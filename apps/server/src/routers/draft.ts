@@ -2,6 +2,7 @@ import { ratelimit } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
 import { publicUploadAuth } from "./account-store";
 import { publicOS, protectedOS } from "#orpc";
+import { config } from "#config";
 import {
   cleanText,
   getAccountDraftWithVersions,
@@ -59,6 +60,9 @@ export const uploadDraft = publicOS.drafts.upload
     }),
   )
   .handler(async ({ context: ctx, input, errors }) => {
+    if (!config.allowAnonymousUploads && !ctx.apiKey) {
+      throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
+    }
     if (ctx.session && !ctx.apiKey) {
       throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
     }

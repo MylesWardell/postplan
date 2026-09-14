@@ -34,7 +34,7 @@ export interface ApiContext extends BaseContext {
 }
 
 export function createContextFactory(deps: ServerDependencies) {
-  const rateLimiters = createRateLimiters();
+  const rateLimiters = createRateLimiters(deps.db);
   return (request: Request, peerIp: string | null, allowSession: boolean): BaseContext => ({
     db: deps.db,
     putHtml: deps.putHtml,

@@ -28,6 +28,7 @@ export async function draftResponse(
   }
   return new Response(req.method === "HEAD" ? null : await deps.getHtml(version.objectKey), {
     headers: {
+      "Cache-Control": "no-store",
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy":
         "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",

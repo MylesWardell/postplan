@@ -7,7 +7,8 @@ import { draftResponse } from "#frontend/drafts";
 import { notFoundResponse } from "#frontend/response.server";
 import { hostDraftId } from "#lib/host-guard";
 import { respond } from "#lib/respond";
-import { createDatabase } from "#db/client";
+import { createRuntimeDatabase } from "#db/client";
+import { isDynamoDatabase } from "#db/dynamo";
 import { seedAccounts } from "#routers/account-store";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";
 
@@ -35,8 +36,10 @@ export default {
   async fetch(request: Request) {
     application ??= (async () => {
       assertStorageConfigured();
-      const { db } = createDatabase(config.databasePath);
-      await seedAccounts(db, config.bootstrapApiKey);
+      const { db } = createRuntimeDatabase();
+      if (!isDynamoDatabase(db)) {
+        await seedAccounts(db, config.bootstrapApiKey);
+      }
       return createApplication({ db, putHtml: putHtmlObject, getHtml: getHtmlObject });
     })();
     return (await application)(request);

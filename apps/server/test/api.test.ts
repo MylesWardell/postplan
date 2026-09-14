@@ -1,11 +1,8 @@
-import { createDatabase } from "#db/client";
+import { testDatabase } from "./database-fixture";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { ORPCError, createORPCClient } from "@orpc/client";
 import { OpenAPILink } from "@orpc/openapi/fetch";
-import { accounts } from "#db/schema";
 import { createApiKey, seedAccounts } from "#routers/account-store";
 import { contract, type ApiClient } from "@postplan/api";
 import { createServerOptions } from "./start-server";
@@ -13,15 +10,12 @@ import { config } from "#config";
 import { createSessionCookie } from "#auth/session";
 
 test("oRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
-  const { db, client: sqlite } = createDatabase(":memory:");
+  const { db, close, createAccount } = await testDatabase();
   const objects = new Map<string, string>();
   const originalConfig = { ...config };
   let failStorage = false;
-  await migrate(db, {
-    migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
-  });
   await seedAccounts(db, "owner-key");
-  await db.insert(accounts).values({ id: "other", name: "Other" });
+  await createAccount("other", "Other");
   const otherKey = await createApiKey(db, "other", "other-key");
   const options = createServerOptions({
     db,
@@ -162,6 +156,6 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
   } finally {
     Object.assign(config, originalConfig);
     await server.stop(true);
-    sqlite.close();
+    await close();
   }
 }, 30_000);

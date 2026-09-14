@@ -1,6 +1,6 @@
 # Terraform serverless deployment plan
 
-Deployment design for three developers publishing at most one plan each per hour. The [Terraform infrastructure and runbook](../infra/terraform/README.md) now implement the resources below. The DynamoDB application migration and cleanup executable remain prerequisites; nothing has been deployed to AWS. The [EC2 alternative](aws-deployment-plan.md) remains available for the existing SQLite application.
+Deployment design for three developers publishing at most one plan each per hour. The [Terraform infrastructure and runbook](../infra/terraform/README.md), DynamoDB application adapter and cleanup executable are implemented. Nothing has been deployed to AWS; the live acceptance checks below remain required. The [EC2 alternative](aws-deployment-plan.md) remains available with the SQLite backend.
 
 ## Architecture and cost
 

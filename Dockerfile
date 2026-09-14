@@ -14,7 +14,7 @@ COPY apps/cli/package.json ./apps/cli/package.json
 COPY packages/api/package.json ./packages/api/package.json
 RUN bun install --production --frozen-lockfile
 
-FROM bun AS runtime
+FROM bun AS app-base
 WORKDIR /app
 ENV NODE_ENV=production DATABASE_PATH=/data/postplan.sqlite
 COPY --from=dependencies /app /app
@@ -25,4 +25,13 @@ RUN mkdir /data && chown bun:bun /data
 RUN bun -e "await import('./apps/server/dist/src/index.js')"
 USER bun
 EXPOSE 3000
-CMD ["bun", "apps/server/dist/src/index.js"]
+CMD ["bun", "apps/server/dist/src/launch.js"]
+
+FROM app-base AS lambda-app
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.1 /lambda-adapter /opt/extensions/lambda-adapter
+ENV AWS_LWA_PORT=3000 AWS_LWA_READINESS_CHECK_PATH=/healthz AWS_LWA_INVOKE_MODE=buffered
+
+FROM app-base AS lambda-cleanup
+CMD ["bun", "apps/server/dist/src/cleanup.js"]
+
+FROM app-base AS runtime

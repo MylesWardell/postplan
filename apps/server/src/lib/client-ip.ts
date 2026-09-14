@@ -24,6 +24,9 @@ function trustFor(setting: TrustProxySetting): TrustFn {
 // Walk from the socket toward the client, stopping at the first untrusted hop.
 // ALB appends the observed client to XFF; its X-Real-IP is not authoritative.
 export function clientIp(req: Request, peerIp: string | null): string | null {
+  if (config.apiGateway) {
+    return peerIp;
+  }
   if (config.clientIpSource === "x-real-ip") {
     const realIp = req.headers.get("x-real-ip")?.trim();
     if (realIp) {

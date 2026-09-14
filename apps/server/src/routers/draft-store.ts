@@ -8,6 +8,14 @@ import type { Database } from "#db/client";
 import { validateHtml } from "#lib/html-policy";
 import { getDraftPublicUrl, getDraftRawUrl } from "#lib/public-url";
 import type { ApiContext } from "#context";
+import { isDynamoDatabase } from "#db/dynamo";
+import {
+  listDynamoDrafts,
+  getDynamoDraft,
+  findDynamoPublicVersion,
+  updateDynamoDraft,
+  uploadDynamoDraft,
+} from "#db/dynamo-drafts";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 export function cleanText(value: unknown, maxLength = 255): string | null {
@@ -26,6 +34,9 @@ const urls = (draftId: string, context: UrlContext) => ({
 });
 
 export async function listAccountDrafts(db: Database, accountId: string, context: UrlContext) {
+  if (isDynamoDatabase(db)) {
+    return listDynamoDrafts(db, accountId, context);
+  }
   const counts = db
     .select({ draftId: draftVersions.draftId, versionCount: count().as("version_count") })
     .from(draftVersions)
@@ -66,6 +77,9 @@ export async function getAccountDraftWithVersions(
   draftId: string,
   context: UrlContext,
 ) {
+  if (isDynamoDatabase(db)) {
+    return getDynamoDraft(db, accountId, draftId, context);
+  }
   const [draft] = await db
     .select()
     .from(drafts)
@@ -108,6 +122,9 @@ export async function findPublicDraftVersion(
   draftId: string,
   versionNumber?: number,
 ) {
+  if (isDynamoDatabase(db)) {
+    return findDynamoPublicVersion(db, draftId, versionNumber);
+  }
   const [row] = await db
     .select({ draft: drafts, version: draftVersions })
     .from(drafts)
@@ -136,6 +153,9 @@ export async function updateOwnedDraft(
     >
   >,
 ) {
+  if (isDynamoDatabase(db)) {
+    return updateDynamoDraft(db, accountId, draftId, values);
+  }
   const [draft] = await db
     .update(drafts)
     .set({ ...values, updatedAt: new Date() })
@@ -155,6 +175,9 @@ export interface UploadInput {
   metadata?: Record<string, unknown>;
 }
 export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
+  if (isDynamoDatabase(ctx.db)) {
+    return uploadDynamoDraft(ctx.db, ctx, input);
+  }
   const validation = validateHtml(input.html, { maxBytes: ctx.maxHtmlBytes });
   if (!validation.ok || typeof input.html !== "string") {
     return { ok: false as const, errors: validation.errors, warnings: validation.warnings };

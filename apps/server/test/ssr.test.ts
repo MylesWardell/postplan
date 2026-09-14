@@ -1,11 +1,8 @@
-import { createDatabase } from "#db/client";
+import { testDatabase } from "./database-fixture";
 import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { accounts } from "#db/schema";
 import { seedAccounts } from "#routers/account-store";
 import { createServerOptions } from "./start-server";
 import { config } from "#config";
@@ -19,16 +16,13 @@ import { resetShooCaches } from "#auth/shoo";
 
 // Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
-  const { db, client: sqlite } = createDatabase(":memory:");
+  const { db, close, createAccount } = await testDatabase();
   let server: ReturnType<typeof Bun.serve> | undefined;
   let shoo: ReturnType<typeof Bun.serve> | undefined;
   const original = { ...config };
   try {
-    await migrate(db, {
-      migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
-    });
     await seedAccounts(db, "ssr-owner-key");
-    await db.insert(accounts).values({ id: "visitor", name: "Visitor" });
+    await createAccount("visitor", "Visitor");
     config.publicBaseUrl = "https://*.plans.example.com";
     config.sessionSecret = "ssr-test-secret";
     const objects = new Map<string, string>();
@@ -438,6 +432,6 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     resetShooCaches();
     await shoo?.stop(true);
     await server?.stop(true);
-    sqlite.close();
+    await close();
   }
 }, 30_000);
