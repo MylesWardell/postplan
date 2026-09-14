@@ -5,6 +5,9 @@
     "": {
       "name": "postplan-workspace",
       "devDependencies": {
+        "@postplan/store": "workspace:*",
+        "@postplan/store-drizzle": "workspace:*",
+        "@postplan/store-dynamodb": "workspace:*",
         "@tanstack/eslint-plugin-router": "^1.162.0",
         "@types/bun": "1.4.2",
         "@types/node": "^26.5.1",
@@ -14,6 +17,19 @@
         "tsdown": "0.23.0",
         "turbo": "2.10.12",
         "typescript": "^7.0.2",
+      },
+    },
+    "apps/cleanup": {
+      "name": "@postplan/cleanup",
+      "version": "0.0.4",
+      "dependencies": {
+        "@aws-sdk/client-cloudwatch": "^3.1131.0",
+        "@aws-sdk/client-s3": "^3.1131.0",
+        "@postplan/store": "workspace:*",
+        "@postplan/store-dynamodb": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.2",
       },
     },
     "apps/cli": {
@@ -37,7 +53,6 @@
       "name": "@postplan/server",
       "version": "0.0.4",
       "dependencies": {
-        "@aws-sdk/client-cloudwatch": "^3.1131.0",
         "@aws-sdk/client-s3": "^3.1131.0",
         "@aws-sdk/client-ssm": "^3.1131.0",
         "@opentelemetry/auto-instrumentations-node": "^0.80.0",
@@ -611,6 +626,8 @@
     "@pkgjs/parseargs": ["@pkgjs/parseargs@0.11.0", "", {}, "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg=="],
 
     "@postplan/api": ["@postplan/api@workspace:packages/api"],
+
+    "@postplan/cleanup": ["@postplan/cleanup@workspace:apps/cleanup"],
 
     "@postplan/server": ["@postplan/server@workspace:apps/server"],
 

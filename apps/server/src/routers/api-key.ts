@@ -1,14 +1,9 @@
 import { ratelimit } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
-import {
-  createApiKey as insertApiKey,
-  listAccountApiKeys,
-  revokeApiKey as revokeAccountApiKey,
-} from "./account-store";
 import { protectedOS } from "#orpc";
 
 export const listApiKeys = protectedOS.apiKeys.list.handler(({ context: ctx }) =>
-  listAccountApiKeys(ctx.store, ctx.account.accountId),
+  ctx.store.accounts.listApiKeys({ accountId: ctx.account.accountId }),
 );
 export const createApiKey = protectedOS.apiKeys.create
   .use(
@@ -18,10 +13,18 @@ export const createApiKey = protectedOS.apiKeys.create
     }),
   )
   .handler(({ context: ctx, input }) => {
-    return insertApiKey(ctx.store, ctx.account.accountId, input.name || "CLI API Key");
+    return ctx.store.accounts.createApiKey({
+      accountId: ctx.account.accountId,
+      name: input.name || "CLI API Key",
+    });
   });
 export const revokeApiKey = protectedOS.apiKeys.revoke.handler(async ({ context: ctx, input }) => {
-  if (!(await revokeAccountApiKey(ctx.store, ctx.account.accountId, input.apiKeyId))) {
+  if (
+    !(await ctx.store.accounts.revokeApiKey({
+      accountId: ctx.account.accountId,
+      id: input.apiKeyId,
+    }))
+  ) {
     throw new ORPCError("NOT_FOUND", { message: "API key not found." });
   }
   return { ok: true };

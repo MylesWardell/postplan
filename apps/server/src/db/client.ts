@@ -20,7 +20,7 @@ export function createRuntimeStore(): StoreConnection {
   return createDrizzleStore(db, () => client.close());
 }
 
-export function createRuntimeDynamoDatabase() {
+function createRuntimeDynamoDatabase() {
   const names = [
     "POSTPLAN_IDENTITY_TABLE",
     "POSTPLAN_PLANS_TABLE",

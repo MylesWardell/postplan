@@ -1,6 +1,6 @@
 import { isIP } from "node:net";
 import { config } from "#config";
-import { getHomeUrl } from "./public-url";
+import { getHomeUrl } from "@postplan/store/public-url";
 
 export function gatewayRequest(request: Request): { request: Request; peerIp: string | null } {
   if (!config.apiGateway) {

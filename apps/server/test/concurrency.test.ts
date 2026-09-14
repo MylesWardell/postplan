@@ -1,17 +1,13 @@
 import { createContextFactory } from "#context";
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { migrateDatabase } from "@postplan/store-drizzle/migrate";
-import { createDatabase, createDrizzleStore } from "@postplan/store-drizzle";
-import { findOrCreateAccountForIdentity, seedAccounts } from "#routers/account-store";
+import { createTestStore } from "@postplan/store/testing";
 import { createCaller } from "#client";
 
-test("concurrent requests serialize SQLite draft versions and first logins", async () => {
-  const { db, client } = createDatabase(":memory:");
-  const { store } = createDrizzleStore(db);
+test("concurrent requests serialize draft versions and first logins", async () => {
+  const { store, close } = await createTestStore();
   try {
-    migrateDatabase(db);
-    await seedAccounts(store, "concurrency-key");
+    await store.accounts.seed({ bootstrapKey: "concurrency-key" });
     const context = createContextFactory({
       store,
       putHtml: async () => {},
@@ -50,11 +46,11 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
     );
     const identities = await Promise.all(
       Array.from({ length: 4 }, () =>
-        findOrCreateAccountForIdentity(store, { provider: "test", subject: "concurrent-user" }),
+        store.accounts.findOrCreateIdentity({ provider: "test", subject: "concurrent-user" }),
       ),
     );
     assert.equal(new Set(identities.map((identity) => identity.accountId)).size, 1);
   } finally {
-    client.close();
+    await close();
   }
 });

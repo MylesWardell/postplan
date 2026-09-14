@@ -17,16 +17,6 @@ test("AWS startup decrypts SSM secrets and preserves session credentials for S3"
           Parameter: { Type: "SecureString", Value: "test-decrypted-secret" },
         });
       }
-      if (request.method === "GET") {
-        return new Response(
-          '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated><Version><Key>drafts/test/versions/file.html</Key><VersionId>null</VersionId></Version></ListVersionsResult>',
-        );
-      }
-      if (request.method === "POST") {
-        return new Response(
-          '<DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Error><Key>drafts/test/versions/file.html</Key><Code>AccessDenied</Code></Error></DeleteResult>',
-        );
-      }
       return new Response("");
     },
   });
@@ -42,14 +32,6 @@ test("AWS startup decrypts SSM secrets and preserves session credentials for S3"
       if (process.env.POSTPLAN_SESSION_SECRET !== "test-decrypted-secret") throw new Error("Secret not loaded");
       const { putHtmlObject } = await import("./src/lib/s3.ts");
       await putHtmlObject("drafts/test/versions/file.html", "<p>test</p>");
-      const { cleanupStorage } = await import("./src/lib/cleanup-storage.ts");
-      const storage = cleanupStorage();
-      try {
-        await storage.deletePrefix("drafts/test/");
-        throw new Error("Partial deletion was ignored");
-      } catch (error) {
-        if (!error.message.includes("S3 cleanup failed")) throw error;
-      } finally { storage.close(); }
     `,
       ],
       {
@@ -75,7 +57,7 @@ test("AWS startup decrypts SSM secrets and preserves session credentials for S3"
     );
     const stderr = await new Response(process.stderr).text();
     expect(await process.exited, stderr).toBe(0);
-    expect(requests).toHaveLength(4);
+    expect(requests).toHaveLength(2);
     expect(JSON.parse(requests[0]!.body)).toEqual({
       Name: "test-session-secret",
       WithDecryption: true,

@@ -4,7 +4,7 @@
 
 `@postplan/store` defines provider-independent oRPC contracts in `account-store.ts` and `draft-store.ts`, reusing the public API's result schemas. `@postplan/store-drizzle` and `@postplan/store-dynamodb` each implement those contracts and return a `StoreConnection` containing a typed in-process client and a close function. Driver types never enter the application context.
 
-The server selects the provider in `src/db/client.ts`. Routes, authentication, health checks, and rate limiting consume only `Store`. HTML validation, public URL helpers, and domain types live in the shared package; SQLite schema/migrations and DynamoDB cleanup remain with their respective adapters. No store procedures are exposed as HTTP routes.
+The server selects the provider in `src/db/client.ts`. Routes, authentication, health checks, and rate limiting consume only `Store`. HTML validation, public URL helpers, and domain types live in the shared package and are imported directly. SQLite schema/migrations and DynamoDB cleanup belong to their respective adapters. The dedicated `apps/cleanup` executable owns AWS cleanup orchestration and S3 deletion. No store procedures are exposed as HTTP routes.
 
 To add a provider, create a `packages/store-<provider>` workspace, depend on `@postplan/store`, implement both store contracts and the lifecycle/rate-limit procedures with `implement(storeContract)`, and return `createRouterClient(router)` as `Store`. Register its factory at the composition boundary. Run the shared API, SSR, and `store.test.ts` suites against it. Provider-specific operational behavior remains explicit: SQLite seeds on initialization and uses memory limits; DynamoDB requires explicit bootstrap, shares limits in DynamoDB, and implements retention cleanup.
 
@@ -22,7 +22,9 @@ The daily cleanup Lambda claims expired plans conditionally, waits 24 hours for 
 
 Build container targets `lambda-app` and `lambda-cleanup` for Terraform. The default image retains SQLite support. See the [deployment instructions](../../infra/terraform/README.md). No automatic SQLite import is included: an existing installation needs a reviewed migration preserving IDs, key hashes, identities, timestamps, version relationships, and S3 object keys, with writes stopped during cutover.
 
-CI runs the API, dashboard forms, and DynamoDB concurrency/retention tests against DynamoDB Local. To repeat locally, start DynamoDB Local, build the repo, set `POSTPLAN_TEST_DYNAMODB_ENDPOINT=http://127.0.0.1:8000`, and run `bun test --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/dynamo.test.ts ./test/gateway.test.ts ./test/store.test.ts` from `apps/server`. The fixture only accepts loopback endpoints and creates/deletes isolated test tables. Without that variable, existing tests use SQLite and DynamoDB integration tests are skipped.
+Server tests consume an injected `TestStore` and never import a provider. The workspace preloads in `scripts/testing` register the provider factory through `@postplan/store/testing`. `bun run check` uses SQLite for the server suite and runs each package's unit tests. HTML/URL/retention tests live in `packages/store`; transaction, lease, and cleanup tests live in `packages/store-dynamodb`; raw SQLite tests live in `packages/store-drizzle`.
+
+To repeat DynamoDB CI locally, start DynamoDB Local, build the repo, and set `POSTPLAN_TEST_DYNAMODB_ENDPOINT=http://127.0.0.1:8000`. From `apps/server`, run `bun test --preload ../../scripts/testing/dynamodb.ts --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/concurrency.test.ts ./test/store.test.ts`. Then run `bun test ./test` from `packages/store-dynamodb`. Its fixture accepts only loopback endpoints and creates/deletes isolated tables. Provider integration tests are skipped when the endpoint is absent; explicitly selecting the DynamoDB server preload requires a valid endpoint.
 
 ## SQLite
 

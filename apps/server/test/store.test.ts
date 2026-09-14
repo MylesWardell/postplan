@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { expect, test } from "bun:test";
 import type { Store } from "@postplan/store";
-import { testDatabase } from "./database-fixture";
+import { createTestStore } from "@postplan/store/testing";
 
 // This same contract suite runs against either provider, without importing its driver.
 async function exerciseStore(store: Store) {
@@ -42,7 +42,7 @@ async function exerciseStore(store: Store) {
 }
 
 test("store contract preserves dates, ownership, errors, revocation and rate-limit validation", async () => {
-  const { store, close } = await testDatabase();
+  const { store, close } = await createTestStore();
   try {
     await exerciseStore(store);
   } finally {

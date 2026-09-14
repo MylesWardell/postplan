@@ -65,17 +65,15 @@
   },
   "scripts": {
     "build": "bun ../../scripts/clean.ts && bun --bun vite build && tsc -p tsconfig.json",
-    "test": "bun test --conditions=source ./test",
+    "test": "bun test --preload ../../scripts/testing/drizzle.ts --conditions=source ./test",
     "start": "bun dist/src/launch.js",
     "db:bootstrap": "bun dist/src/db/bootstrap.js",
-    "cleanup": "bun dist/src/cleanup.js",
     "dev": "bun --bun vite dev",
     "db:generate": "bun run --filter @postplan/store-drizzle db:generate",
     "db:migrate": "bun dist/src/db/migrate.js",
     "preview": "bun --bun vite preview"
   },
   "dependencies": {
-    "@aws-sdk/client-cloudwatch": "^3.1131.0",
     "@aws-sdk/client-s3": "^3.1131.0",
     "@aws-sdk/client-ssm": "^3.1131.0",
     "@opentelemetry/auto-instrumentations-node": "^0.80.0",

@@ -1,6 +1,6 @@
 import type { RateLimiter } from "@orpc/ratelimit";
-import type { ApiKeyAuth } from "#routers/account-store";
-import type { Store } from "@postplan/store";
+import type { ApiKeyAuth, Store } from "@postplan/store";
+
 import { createRateLimiters } from "#lib/rate-limiters";
 
 export interface ServerDependencies {

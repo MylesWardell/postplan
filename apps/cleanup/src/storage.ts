@@ -5,24 +5,10 @@ import {
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import type { CleanupStorage } from "@postplan/store-dynamodb/cleanup";
-import { config, requireEnv } from "#config";
+import type { S3ClientConfig } from "@aws-sdk/client-s3";
 
-export function cleanupStorage(): CleanupStorage {
-  const bucket = requireEnv("AWS_S3_BUCKET_NAME", config.s3.bucketName);
-  const client = new S3Client({
-    region: config.s3.region,
-    endpoint: config.s3.endpoint,
-    forcePathStyle: config.s3.forcePathStyle,
-    ...(config.s3.accessKeyId && config.s3.secretAccessKey
-      ? {
-          credentials: {
-            accessKeyId: config.s3.accessKeyId,
-            secretAccessKey: config.s3.secretAccessKey,
-            sessionToken: config.s3.sessionToken,
-          },
-        }
-      : {}),
-  });
+export function cleanupStorage(bucket: string, options: S3ClientConfig = {}): CleanupStorage {
+  const client = new S3Client(options);
   async function remove(prefix: string, exact = false) {
     let keyMarker: string | undefined;
     let versionMarker: string | undefined;

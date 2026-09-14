@@ -32,6 +32,7 @@ SQLite startup seeds configured accounts and keys but does not apply schema chan
 
 ```text
 apps/
+  cleanup/         AWS cleanup executable and S3 deletion adapter
   cli/             CLI source, agent skill, and bundled executable
   server/          Bun host, TanStack Start application, OAuth, and storage
 packages/
@@ -39,7 +40,7 @@ packages/
   store/           Internal oRPC store contracts and shared domain helpers
   store-drizzle/   Drizzle/SQLite stores, schema, migrations, and driver tests
   store-dynamodb/  DynamoDB stores, cleanup, and local test fixture
-scripts/           Workspace and setup helpers
+scripts/           Workspace setup and provider-specific test preloads
 ```
 
 Useful commands:

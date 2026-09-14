@@ -1,27 +1,19 @@
 import { ratelimit } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
-import { publicUploadAuth } from "./account-store";
+import { publicUploadAuth, cleanText } from "@postplan/store";
 import { publicOS, protectedOS } from "#orpc";
 import { config } from "#config";
-import {
-  cleanText,
-  getAccountDraftWithVersions,
-  listAccountDrafts,
-  updateOwnedDraft,
-  uploadDraft as persistUpload,
-} from "#routers/draft-store";
 
 export const listDrafts = protectedOS.drafts.list.handler(async ({ context: ctx }) => ({
   ok: true,
-  drafts: await listAccountDrafts(ctx.store, ctx.account.accountId, ctx),
+  drafts: await ctx.store.drafts.list({ accountId: ctx.account.accountId, context: ctx }),
 }));
 export const getDraft = protectedOS.drafts.detail.handler(async ({ context: ctx, input }) => {
-  const result = await getAccountDraftWithVersions(
-    ctx.store,
-    ctx.account.accountId,
-    input.draftId,
-    ctx,
-  );
+  const result = await ctx.store.drafts.detail({
+    accountId: ctx.account.accountId,
+    draftId: input.draftId,
+    context: ctx,
+  });
   if (!result) {
     throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
   }
@@ -29,21 +21,33 @@ export const getDraft = protectedOS.drafts.detail.handler(async ({ context: ctx,
 });
 export const updateDraft = protectedOS.drafts.update.handler(
   ({ context: ctx, input: { draftId, ...values } }) =>
-    updateOwnedDraft(ctx.store, ctx.account.accountId, draftId, values),
+    ctx.store.drafts.update({ accountId: ctx.account.accountId, draftId: draftId, values: values }),
 );
 export const deleteDraft = protectedOS.drafts.delete.handler(({ context: ctx, input }) =>
-  updateOwnedDraft(ctx.store, ctx.account.accountId, input.draftId, { deletedAt: new Date() }),
+  ctx.store.drafts.update({
+    accountId: ctx.account.accountId,
+    draftId: input.draftId,
+    values: { deletedAt: new Date() },
+  }),
 );
 export const disableDraft = protectedOS.drafts.disable.handler(({ context: ctx, input }) =>
-  updateOwnedDraft(ctx.store, ctx.account.accountId, input.draftId, {
-    disabledAt: new Date(),
-    disabledReason: cleanText(input.reason) || "Disabled by owner.",
+  ctx.store.drafts.update({
+    accountId: ctx.account.accountId,
+    draftId: input.draftId,
+    values: {
+      disabledAt: new Date(),
+      disabledReason: cleanText(input.reason) || "Disabled by owner.",
+    },
   }),
 );
 export const enableDraft = protectedOS.drafts.enable.handler(({ context: ctx, input }) =>
-  updateOwnedDraft(ctx.store, ctx.account.accountId, input.draftId, {
-    disabledAt: null,
-    disabledReason: null,
+  ctx.store.drafts.update({
+    accountId: ctx.account.accountId,
+    draftId: input.draftId,
+    values: {
+      disabledAt: null,
+      disabledReason: null,
+    },
   }),
 );
 export const uploadDraft = publicOS.drafts.upload
@@ -66,7 +70,7 @@ export const uploadDraft = publicOS.drafts.upload
     if (ctx.session && !ctx.apiKey) {
       throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
     }
-    const result = await persistUpload(ctx, input);
+    const result = await ctx.store.drafts.upload({ context: ctx, input: input });
     if (!result.ok) {
       throw errors.UNPROCESSABLE_CONTENT({
         message: "HTML validation failed.",

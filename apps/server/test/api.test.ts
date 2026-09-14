@@ -1,22 +1,28 @@
-import { testDatabase } from "./database-fixture";
+import { createTestStore } from "@postplan/store/testing";
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { ORPCError, createORPCClient } from "@orpc/client";
 import { OpenAPILink } from "@orpc/openapi/fetch";
-import { createApiKey, seedAccounts } from "#routers/account-store";
 import { contract, type ApiClient } from "@postplan/api";
 import { createServerOptions } from "./start-server";
 import { config } from "#config";
 import { createSessionCookie } from "#auth/session";
 
 test("oRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
-  const { store, close, createAccount } = await testDatabase();
+  const { store, close } = await createTestStore();
   const objects = new Map<string, string>();
   const originalConfig = { ...config };
   let failStorage = false;
-  await seedAccounts(store, "owner-key");
-  await createAccount("other", "Other");
-  const otherKey = await createApiKey(store, "other", "other-key");
+  await store.accounts.seed({ bootstrapKey: "owner-key" });
+  const otherAccount = await store.accounts.findOrCreateIdentity({
+    provider: "test",
+    subject: "other",
+    profile: { displayName: "Other" },
+  });
+  const otherKey = await store.accounts.createApiKey({
+    accountId: otherAccount.accountId,
+    name: "other-key",
+  });
   const options = createServerOptions({
     store,
     putHtml: async (key, html) => {
@@ -51,9 +57,11 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     const owner = client("owner-key");
     const other = client(otherKey.token);
     const anonymous = client();
-    const html =
-      "<!doctype html><html><head><title>Draft</title></head><body>RÃ©sumÃ©</body></html>";
+    const html = "<!doctype html><html><head><title>Draft</title></head><body>Résumé</body></html>";
     assert.equal((await fetch(`${base}/healthz`)).status, 200);
+    config.allowAnonymousUploads = false;
+    await assert.rejects(anonymous.drafts.upload({ html }), /API key/);
+    config.allowAnonymousUploads = originalConfig.allowAnonymousUploads;
     await assert.rejects(anonymous.drafts.list(), /Sign in/);
     const { body: upload } = await owner.drafts.upload({ html, description: "Original" });
     assert.equal(upload.ok, true);

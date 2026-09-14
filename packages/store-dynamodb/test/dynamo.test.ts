@@ -1,34 +1,11 @@
 import assert from "node:assert/strict";
 import { test, expect } from "bun:test";
-import { createContextFactory } from "#context";
-import { createCaller } from "#client";
-import {
-  seedAccounts,
-  findOrCreateAccountForIdentity,
-  createApiKey,
-  revokeApiKey,
-  findApiKeyByToken,
-} from "#routers/account-store";
 import { findDynamoPublicVersion, claimExpiredPlan } from "@postplan/store-dynamodb/dynamo-drafts";
 import type { DynamoPlan } from "@postplan/store-dynamodb/dynamo-drafts";
 import { DynamoRateLimiter } from "@postplan/store-dynamodb/dynamo-rate-limit";
 import { cleanupPlans } from "@postplan/store-dynamodb/cleanup";
-import { parseRetentionDays, expired } from "#lib/retention";
-import { dynamoFixture, dynamoEndpoint } from "./dynamo-fixture";
-import { config } from "#config";
-
-test("retention accepts configurable whole days and rejects invalid values", () => {
-  expect(parseRetentionDays(undefined)).toBe(90);
-  for (const value of ["0", "30", "365"]) {
-    expect(parseRetentionDays(value)).toBe(Number(value));
-  }
-  for (const value of ["", " ", "-1", "0.5", "NaN", "Infinity", "1e2", "100000001"]) {
-    expect(() => parseRetentionDays(value)).toThrow();
-  }
-  expect(expired(0, 90, 90 * 86400_000 - 1)).toBe(false);
-  expect(expired(0, 90, 90 * 86400_000)).toBe(true);
-  expect(expired(0, 0, 365 * 86400_000)).toBe(false);
-});
+import { dynamoFixture, dynamoEndpoint } from "./fixture";
+import type { Store, UploadContext, UploadInput } from "@postplan/store";
 
 test.skipIf(!dynamoEndpoint)(
   "DynamoDB transactions, revocation, shared limits and retention cleanup",
@@ -40,52 +17,55 @@ test.skipIf(!dynamoEndpoint)(
       () => days,
     );
     const objects = new Map<string, { html: string; modifiedAt: number }>();
-    const previous = config.allowAnonymousUploads;
-    config.allowAnonymousUploads = false;
     try {
-      await seedAccounts(store, "dynamo-owner");
-      const context = createContextFactory({
-        store,
+      await store.accounts.seed({ bootstrapKey: "dynamo-owner" });
+      const context: UploadContext = {
+        apiKey: await store.accounts.findApiKey({ token: "dynamo-owner" }),
         putHtml: async (key, html) => {
           objects.set(key, { html, modifiedAt: now });
         },
-        getHtml: async (key) => objects.get(key)!.html,
-      });
-      const caller = createCaller(
-        context(
-          new Request("https://plans.example.com", {
-            headers: { authorization: "Bearer dynamo-owner" },
-          }),
-          "127.0.0.1",
-          false,
-        ),
-      );
-      const anonymous = createCaller(
-        context(new Request("https://plans.example.com"), "127.0.0.2", false),
-      );
+        requestBaseUrl: "https://plans.example.com",
+        sourceIp: "127.0.0.1",
+        userAgent: null,
+        requestId: null,
+        maxHtmlBytes: 512 * 1024,
+      };
+      const upload = uploader(store, context);
       const html = "<!doctype html><title>Dynamo</title><p>Hello</p>";
-      await assert.rejects(anonymous.drafts.upload({ html }), /API key/);
-      const { body: first } = await caller.drafts.upload({ html });
+      const first = await upload({ html });
       expect(first.ok).toBe(true);
       const id = first.draftId;
       const concurrent = await Promise.all(
-        Array.from({ length: 6 }, () => caller.drafts.upload({ html, draftId: id })),
+        Array.from({ length: 6 }, () => upload({ html, draftId: id })),
       );
-      expect(concurrent.map((x) => x.body.versionNumber).toSorted((a, b) => a - b)).toEqual([
+      expect(concurrent.map((x) => x.versionNumber).toSorted((a, b) => a - b)).toEqual([
         2, 3, 4, 5, 6, 7,
       ]);
-      expect((await caller.drafts.detail({ draftId: id })).versions[0]?.versionNumber).toBe(7);
-      expect((await caller.drafts.list()).drafts[0]?.latestVersionNumber).toBe(7);
+      expect(
+        (await store.drafts.detail({ accountId: "acct_bootstrap", draftId: id, context }))!
+          .versions[0]?.versionNumber,
+      ).toBe(7);
+      expect(
+        (await store.drafts.list({ accountId: "acct_bootstrap", context }))[0]?.latestVersionNumber,
+      ).toBe(7);
       const identities = await Promise.all(
         Array.from({ length: 4 }, () =>
-          findOrCreateAccountForIdentity(store, { provider: "test", subject: "same-user" }),
+          store.accounts.findOrCreateIdentity({ provider: "test", subject: "same-user" }),
         ),
       );
       expect(new Set(identities.map((x) => x.accountId)).size).toBe(1);
-      const other = await createApiKey(store, identities[0]!.accountId, "other");
-      expect(await findApiKeyByToken(store, other.token)).not.toBeNull();
-      expect(await revokeApiKey(store, identities[0]!.accountId, other.apiKey.id)).toBe(true);
-      expect(await findApiKeyByToken(store, other.token)).toBeNull();
+      const other = await store.accounts.createApiKey({
+        accountId: identities[0]!.accountId,
+        name: "other",
+      });
+      expect(await store.accounts.findApiKey({ token: other.token })).not.toBeNull();
+      expect(
+        await store.accounts.revokeApiKey({
+          accountId: identities[0]!.accountId,
+          id: other.apiKey.id,
+        }),
+      ).toBe(true);
+      expect(await store.accounts.findApiKey({ token: other.token })).toBeNull();
 
       const limiterA = new DynamoRateLimiter(db, "test", { maxRequests: 3, window: 1000 });
       const limiterB = new DynamoRateLimiter(db, "test", { maxRequests: 3, window: 1000 });
@@ -97,9 +77,9 @@ test.skipIf(!dynamoEndpoint)(
       expect((await limiterA.limit("same")).success).toBe(true);
 
       now += 89 * 86400_000;
-      await caller.drafts.upload({ html, draftId: id });
-      await caller.drafts.upload({ html, draftId: id });
-      await caller.drafts.upload({ html, draftId: id });
+      await upload({ html, draftId: id });
+      await upload({ html, draftId: id });
+      await upload({ html, draftId: id });
       expect(
         await db.query({
           TableName: db.tables.records,
@@ -120,8 +100,8 @@ test.skipIf(!dynamoEndpoint)(
       expect((await findDynamoPublicVersion(db, id, 1)).version?.versionNumber).toBe(1);
       days = 1;
       expect((await findDynamoPublicVersion(db, id)).draft).toBeNull();
-      expect((await caller.drafts.list()).drafts).toHaveLength(0);
-      await assert.rejects(caller.drafts.upload({ html, draftId: id }), /not found/);
+      expect(await store.drafts.list({ accountId: "acct_bootstrap", context })).toHaveLength(0);
+      await assert.rejects(upload({ html, draftId: id }), /not found/);
       days = 0;
       expect((await findDynamoPublicVersion(db, id)).draft).not.toBeNull();
       days = 1;
@@ -175,7 +155,6 @@ test.skipIf(!dynamoEndpoint)(
       await cleanupPlans(db, storage);
       expect((await db.get<DynamoPlan>(db.tables.plans, { draftId: id }))?.ttlAt).toBeDefined();
     } finally {
-      config.allowAnonymousUploads = previous;
       await close();
     }
   },
@@ -193,9 +172,9 @@ test.skipIf(!dynamoEndpoint)(
     const objects = new Map<string, number>();
     let mode: "ok" | "fail" | "late" = "ok";
     try {
-      await seedAccounts(store, "intent-owner");
-      const context = createContextFactory({
-        store,
+      await store.accounts.seed({ bootstrapKey: "intent-owner" });
+      const upload = uploader(store, {
+        apiKey: await store.accounts.findApiKey({ token: "intent-owner" }),
         putHtml: async (key) => {
           if (mode === "fail") {
             throw new Error("Injected upload failure");
@@ -205,24 +184,19 @@ test.skipIf(!dynamoEndpoint)(
             now += 301_000;
           }
         },
-        getHtml: async () => "html",
+        requestBaseUrl: "https://plans.example.com",
+        sourceIp: "127.0.0.1",
+        userAgent: null,
+        requestId: null,
+        maxHtmlBytes: 512 * 1024,
       });
-      const caller = createCaller(
-        context(
-          new Request("https://plans.example.com", {
-            headers: { authorization: "Bearer intent-owner" },
-          }),
-          "127.0.0.1",
-          false,
-        ),
-      );
       const html = "<!doctype html><title>Intent</title><p>Hello</p>";
-      const { body: first } = await caller.drafts.upload({ html });
+      const first = await upload({ html });
       mode = "fail";
-      await assert.rejects(caller.drafts.upload({ html, draftId: first.draftId }), /Injected/);
+      await assert.rejects(upload({ html, draftId: first.draftId }), /Injected/);
       mode = "late";
-      await assert.rejects(caller.drafts.upload({ html, draftId: first.draftId }), /not found/);
-      await assert.rejects(caller.drafts.upload({ html }), /not found/);
+      await assert.rejects(upload({ html, draftId: first.draftId }), /not found/);
+      await assert.rejects(upload({ html }), /not found/);
       expect(objects.size).toBe(3);
       now += 86400_000;
       const storage = {
@@ -260,3 +234,11 @@ test.skipIf(!dynamoEndpoint)(
   },
   30_000,
 );
+
+function uploader(store: Store, context: UploadContext) {
+  return async (input: UploadInput) => {
+    const result = await store.drafts.upload({ context, input });
+    assert.ok(result.ok);
+    return result;
+  };
+}

@@ -1,9 +1,8 @@
-import { testDatabase } from "./database-fixture";
+import { createTestStore } from "@postplan/store/testing";
 import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { seedAccounts } from "#routers/account-store";
 import { createServerOptions } from "./start-server";
 import { config } from "#config";
 import {
@@ -16,13 +15,17 @@ import { resetShooCaches } from "#auth/shoo";
 
 // Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
-  const { store, close, createAccount } = await testDatabase();
+  const { store, close } = await createTestStore();
   let server: ReturnType<typeof Bun.serve> | undefined;
   let shoo: ReturnType<typeof Bun.serve> | undefined;
   const original = { ...config };
   try {
-    await seedAccounts(store, "ssr-owner-key");
-    await createAccount("visitor", "Visitor");
+    await store.accounts.seed({ bootstrapKey: "ssr-owner-key" });
+    const visitor = await store.accounts.findOrCreateIdentity({
+      provider: "test",
+      subject: "visitor",
+      profile: { displayName: "Visitor" },
+    });
     config.publicBaseUrl = "https://*.plans.example.com";
     config.sessionSecret = "ssr-test-secret";
     const objects = new Map<string, string>();
@@ -50,9 +53,10 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     const cookie = createSessionCookie({ accountId: "acct_bootstrap", accountName: "Owner" }).split(
       ";",
     )[0]!;
-    const otherCookie = createSessionCookie({ accountId: "visitor", accountName: "Visitor" }).split(
-      ";",
-    )[0]!;
+    const otherCookie = createSessionCookie({
+      accountId: visitor.accountId,
+      accountName: visitor.accountName,
+    }).split(";")[0]!;
     const get = (path: string, sessionCookie = cookie) =>
       app(new Request(base + path, { headers: { cookie: sessionCookie } }));
     const post = (

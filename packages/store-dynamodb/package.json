@@ -23,7 +23,8 @@
     }
   },
   "scripts": {
-    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json"
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "test": "bun test ./test"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1131.0",

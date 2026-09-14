@@ -1,7 +1,6 @@
 import { config } from "#config";
 import type { Store } from "@postplan/store";
-import { findOrCreateAccountForIdentity } from "#routers/account-store";
-import { getHomeUrl } from "#lib/public-url";
+import { getHomeUrl } from "@postplan/store/public-url";
 import { redirect } from "#lib/redirect";
 import { messageResponse } from "#frontend/response.server";
 import { isLoginAllowed } from "./login-access";
@@ -75,7 +74,7 @@ async function authCallback(req: Request, store: Store): Promise<Response> {
       403,
     );
   }
-  const account = await findOrCreateAccountForIdentity(store, {
+  const account = await store.accounts.findOrCreateIdentity({
     provider: "shoo",
     subject: claims.pairwise_sub,
     profile: {

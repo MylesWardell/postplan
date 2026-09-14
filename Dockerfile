@@ -10,6 +10,7 @@ FROM bun AS dependencies
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY apps/server/package.json ./apps/server/package.json
+COPY apps/cleanup/package.json ./apps/cleanup/package.json
 COPY apps/cli/package.json ./apps/cli/package.json
 COPY packages/api/package.json ./packages/api/package.json
 COPY packages/store/package.json ./packages/store/package.json
@@ -38,6 +39,7 @@ COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.1 /lambda-adapter /opt
 ENV AWS_LWA_PORT=3000 AWS_LWA_READINESS_CHECK_PATH=/healthz AWS_LWA_INVOKE_MODE=buffered
 
 FROM app-base AS lambda-cleanup
-CMD ["bun", "apps/server/dist/src/cleanup.js"]
+COPY --from=build /workspace/apps/cleanup/dist/src ./apps/cleanup/dist/src
+CMD ["bun", "apps/cleanup/dist/src/index.js"]
 
 FROM app-base AS runtime

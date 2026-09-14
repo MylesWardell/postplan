@@ -1,4 +1,4 @@
-import { parseRetentionDays } from "./lib/retention";
+import { parseRetentionDays } from "@postplan/store/retention";
 
 export type TrustProxySetting = boolean | number | string;
 export type ClientIpSource = "x-real-ip" | "req-ip";

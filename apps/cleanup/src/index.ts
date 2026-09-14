@@ -1,11 +1,30 @@
 import { CloudWatchClient, PutMetricDataCommand } from "@aws-sdk/client-cloudwatch";
-import { createRuntimeDynamoDatabase } from "./db/client";
+import { createDynamoDatabase } from "@postplan/store-dynamodb";
+import { parseRetentionDays } from "@postplan/store/retention";
 import { cleanupPlans } from "@postplan/store-dynamodb/cleanup";
-import { cleanupStorage } from "./lib/cleanup-storage";
+import { cleanupStorage } from "./storage";
 
 export async function handler() {
-  const db = createRuntimeDynamoDatabase();
-  const storage = cleanupStorage();
+  const db = createDynamoDatabase(
+    {
+      identity: required("POSTPLAN_IDENTITY_TABLE"),
+      plans: required("POSTPLAN_PLANS_TABLE"),
+      records: required("POSTPLAN_RECORDS_TABLE"),
+      limits: required("POSTPLAN_RATE_LIMITS_TABLE"),
+    },
+    {
+      region: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION,
+      endpoint: process.env.POSTPLAN_DYNAMODB_ENDPOINT,
+      retentionDays: () => parseRetentionDays(process.env.PLAN_RETENTION_DAYS),
+    },
+  );
+  const endpoint = process.env.AWS_ENDPOINT_URL || process.env.S3_ENDPOINT;
+  const storage = cleanupStorage(required("AWS_S3_BUCKET_NAME"), {
+    region: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION,
+    endpoint,
+    forcePathStyle:
+      (process.env.AWS_S3_FORCE_PATH_STYLE || (endpoint ? "true" : "false")) !== "false",
+  });
   try {
     const result = await cleanupPlans(db, storage);
     const namespace = process.env.CLEANUP_METRIC_NAMESPACE;
@@ -71,4 +90,12 @@ if (import.meta.main) {
       }
     }
   }
+}
+
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value?.trim()) {
+    throw new Error(`Missing ${name}`);
+  }
+  return value;
 }

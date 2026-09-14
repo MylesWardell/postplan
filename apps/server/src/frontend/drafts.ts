@@ -1,4 +1,3 @@
-import { findPublicDraftVersion } from "#routers/draft-store";
 import type { ServerDependencies } from "#context";
 
 export async function draftResponse(
@@ -22,7 +21,10 @@ export async function draftResponse(
   if (versionNumber !== undefined && (!Number.isInteger(versionNumber) || versionNumber < 1)) {
     return undefined;
   }
-  const { draft, version } = await findPublicDraftVersion(deps.store, draftId, versionNumber);
+  const { draft, version } = await deps.store.drafts.findPublicVersion({
+    draftId: draftId,
+    versionNumber: versionNumber,
+  });
   if (!draft || !version) {
     return undefined;
   }
