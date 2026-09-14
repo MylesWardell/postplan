@@ -7,6 +7,8 @@ export function runtimeOptions() {
   return {
     plugins: [
       cloudflare({
+        persistState: { path: fileURLToPath(new URL("./.wrangler/state", import.meta.url)) },
+        remoteBindings: false,
         configPath:
           process.env.POSTPLAN_CLOUDFLARE_CONFIG ||
           fileURLToPath(new URL("./wrangler.jsonc", import.meta.url)),

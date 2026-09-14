@@ -1,11 +1,29 @@
 import { createCloudflareStore } from "./database";
 import { createApplication } from "@postplan/server/application";
 import { cloudflareGateway } from "./gateway";
-import { r2Storage } from "./r2";
+import { applicationStorage } from "./application-storage";
+import { boundedBody } from "./body";
 import { authorizedProbe, runProbe } from "./probe";
+import { cleanup } from "./cleanup";
+import { env as bindings } from "cloudflare:workers";
 export { RateLimit } from "./rate-limit";
 
+// Build immutable routers once per isolate; request context is still created
+// inside the application. No I/O or per-request values are retained here.
+const application = createApplication(
+  {
+    store: createCloudflareStore(bindings).store,
+    ...applicationStorage(bindings.POSTPLAN_DB, bindings.HTML_BUCKET),
+  },
+  false,
+);
+
 export default {
+  async scheduled(_event, env) {
+    if (String(env.POSTPLAN_APPLICATION_ENABLED) === "true") {
+      await cleanup(env);
+    }
+  },
   async fetch(incoming, env) {
     let gateway;
     try {
@@ -18,7 +36,8 @@ export default {
       return new Response("Invalid gateway request", { status: 400 });
     }
     const { request, peerIp, draftHost } = gateway;
-    if (draftHost) {
+    const enabled = String(env.POSTPLAN_APPLICATION_ENABLED) === "true";
+    if (draftHost && !enabled) {
       return new Response("Not found", { status: 404 });
     }
     const path = new URL(request.url).pathname;
@@ -29,44 +48,48 @@ export default {
       if (request.method !== "POST") {
         return new Response("Method not allowed", { status: 405 });
       }
-      // Count bytes while reading: Content-Length is not a trustworthy bound.
-      const reader = request.body?.getReader();
-      if (!reader) {
-        return new Response("HTML body required", { status: 400 });
-      }
-      const chunks: Uint8Array[] = [];
-      let size = 0;
-      for (;;) {
-        const part = await reader.read();
-        if (part.done) {
-          break;
-        }
-        size += part.value.byteLength;
-        if (size > 512 * 1024) {
-          await reader.cancel();
-          return new Response("HTML too large", { status: 413 });
-        }
-        chunks.push(part.value);
-      }
-      const bytes = new Uint8Array(size);
-      let offset = 0;
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.length;
+      const bytes = await boundedBody(request, 512 * 1024);
+      if (!bytes) {
+        return new Response("HTML too large", { status: 413 });
       }
       return runProbe(env, new TextDecoder().decode(bytes));
     }
-    if (path.startsWith("/assets/")) {
+    if (!draftHost && path.startsWith("/assets/")) {
       return env.ASSETS.fetch(request);
     }
-    if (!["/", "/healthz", "/api/spec.json"].includes(path)) {
+    if (!enabled && !["/", "/healthz", "/api/spec.json"].includes(path)) {
       return new Response(
         "Cloudflare compatibility experiment: application data routes are not enabled.",
         { status: 503 },
       );
     }
-    const { store } = createCloudflareStore(env);
+    if (enabled) {
+      try {
+        const killed = await env.POSTPLAN_DB.prepare(
+          "SELECT killed FROM usage_guard WHERE id=1",
+        ).first<number>("killed");
+        if (killed === 1) {
+          return new Response("Application stopped", { status: 503 });
+        }
+        // Missing migrations fail closed; bootstrap is an explicit deployment step.
+        if (
+          !(await env.POSTPLAN_DB.prepare("SELECT id FROM application_budget WHERE id=1").first())
+        ) {
+          throw new Error("Missing budget");
+        }
+      } catch {
+        return new Response("Application storage is not initialized", { status: 503 });
+      }
+    }
+    let applicationRequest = request;
+    if (request.body) {
+      const body = await boundedBody(request, 2 * 1024 * 1024);
+      if (!body) {
+        return new Response("Request body too large", { status: 413 });
+      }
+      applicationRequest = new Request(request, { method: request.method, body });
+    }
     // The edge handles compression; workerd otherwise strips the plugin's encoding header.
-    return createApplication({ store, ...r2Storage(env.HTML_BUCKET) }, false)(request, peerIp);
+    return application(applicationRequest, peerIp);
   },
 } satisfies ExportedHandler<Cloudflare.Env>;

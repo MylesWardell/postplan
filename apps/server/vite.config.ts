@@ -23,7 +23,7 @@ export default defineConfig({
     react(),
   ],
   // Bundle package.json "imports" aliases from src rather than tsc's dist output.
-  build: { outDir: runtime.outDir },
+  build: { outDir: runtime.outDir, emptyOutDir: true },
   resolve: {
     alias: { "#config": fileURLToPath(new URL("./src/config.ts", import.meta.url)) },
     conditions: ["source", ...defaultClientConditions],

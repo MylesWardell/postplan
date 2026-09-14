@@ -14,6 +14,9 @@ import {
 import type { UploadContext } from "@postplan/store";
 import migration from "../../store-drizzle/drizzle/0000_same_vulcan.sql?raw";
 import { assertSqliteDatabase } from "../configuration";
+import applicationSchema from "../application-schema.sql?raw";
+import { applicationStorage } from "../application-storage";
+import { cleanup } from "../cleanup";
 
 test("Cloudflare only accepts SQLite", () => {
   expect(() => assertSqliteDatabase(undefined)).not.toThrow();
@@ -30,8 +33,37 @@ beforeEach(async () => {
       .filter((statement) => statement.trim())
       .map((statement) => env.POSTPLAN_DB.prepare(statement)),
   );
+  await env.POSTPLAN_DB.batch(
+    applicationSchema
+      .split(";")
+      .filter((s) => s.trim())
+      .map((s) => env.POSTPLAN_DB.prepare(s)),
+  );
 });
 afterEach(() => reset());
+
+test("expired drafts stop serving before bounded cleanup removes objects and preserves reservations", async () => {
+  const { store, context, db } = await fixture();
+  const storage = applicationStorage(env.POSTPLAN_DB, env.HTML_BUCKET);
+  const result = await store.drafts.upload({
+    context: { ...context, putHtml: (key, html) => storage.putHtml(key, html) },
+    input: { html: "<!doctype html><title>Expiry</title><p>Old</p>" },
+  });
+  if (!result.ok) {
+    throw new Error("Upload failed");
+  }
+  await db.update(draftVersions).set({ createdAt: new Date(Date.now() - 100 * 86400000) });
+  expect((await store.drafts.findPublicVersion({ draftId: result.draftId })).draft).toBeNull();
+  const now = Date.now();
+  await cleanup(env, now);
+  expect((await env.HTML_BUCKET.list()).objects).toHaveLength(1);
+  await cleanup(env, now + 60001);
+  expect((await env.HTML_BUCKET.list()).objects).toHaveLength(0);
+  expect(await db.select().from(draftVersions)).toHaveLength(0);
+  expect(
+    await env.POSTPLAN_DB.prepare("SELECT writes FROM application_budget").first("writes"),
+  ).toBe(1);
+});
 
 async function fixture() {
   const { store } = createCloudflareStore(env);

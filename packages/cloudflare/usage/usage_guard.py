@@ -179,15 +179,21 @@ def metrics_from_response(response):
             metrics[name] = 0
             for group in rows(account, dataset):
                 identity = group["dimensions"][dimension]
-                if not isinstance(identity, str) or not identity or identity in seen:
+                if not isinstance(identity, str) or not identity:
+                    raise GuardError("Duplicate or invalid storage grouping")
+                size = sum(number(group["max"][field]) for field in fields)
+                if dataset == "r2Storage":
+                    storage_class = group["dimensions"]["storageClass"]
+                    if storage_class not in {"Standard", "STANDARD"}:
+                        # Analytics emits an empty InfrequentAccess series even
+                        # for Standard-only buckets. Nonzero usage still stops.
+                        if storage_class == "InfrequentAccess" and size == 0:
+                            continue
+                        raise GuardError("R2 free allowance does not cover this storage class")
+                if identity in seen:
                     raise GuardError("Duplicate or invalid storage grouping")
                 seen.add(identity)
-                if dataset == "r2Storage" and group["dimensions"]["storageClass"] not in {
-                    "Standard",
-                    "STANDARD",
-                }:
-                    raise GuardError("R2 free allowance does not cover this storage class")
-                metrics[name] += sum(number(group["max"][field]) for field in fields)
+                metrics[name] += size
         return metrics
     except (KeyError, TypeError, AttributeError):
         raise GuardError("Malformed analytics response") from None

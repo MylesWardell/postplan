@@ -32,6 +32,24 @@ jobs:
         env:
           EXPERIMENT_TOKEN: local-test-only
       - run: bunx --no-install tsc -p packages/cloudflare/tsconfig.json
+      - name: Exercise the enabled Cloudflare application locally
+        env:
+          EXPERIMENT_TOKEN: local-test-only
+          POSTPLAN_BOOTSTRAP_API_KEY: local-application-test
+        run: |
+          cd packages/cloudflare
+          bun initialize.ts --local
+          node node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --persist-to .wrangler/state --local --port 5173 --var POSTPLAN_APPLICATION_ENABLED:true --var POSTPLAN_SESSION_SECRET:local-session-only > generated/acceptance.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:5173/healthz > /dev/null; then break; fi
+            sleep 1
+          done
+          bun application-check.ts
+          bunx --no-install wrangler d1 execute POSTPLAN_DB --local --persist-to .wrangler/state --command 'INSERT INTO usage_guard VALUES (1,1)' --yes
+          bun initialize.ts --local
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/dashboard)" = 503
       - run: bun run pack:cli
       - run: node apps/cli/bin/postplan.js --help
       - run: docker build --tag postplan:ci .

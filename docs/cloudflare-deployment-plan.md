@@ -1,6 +1,8 @@
 # Cloudflare gateway and hosting plan
 
-Status: bounded runtime experiment and package separation implemented, 14 September 2026. The shared Drizzle store passes local Bun SQLite and D1 tests. The remote experiment remains stopped; full application rollout and sustained free-tier acceptance are still pending. See [runtime validation and operations](../packages/cloudflare/README.md).
+Status: application connector implemented and tested locally, 14 September 2026. Cloudflare serves the shared API/dashboard with D1, bounded R2 storage, initialization, expiry and scheduled cleanup. Runtime selection is `POSTPLAN_RUNTIME=aws|cloudflare`; database selection is `POSTPLAN_DATABASE=sqlite|dynamodb`, with Cloudflare restricted to SQLite. The remote experiment remains stopped. See [runtime validation and operations](../packages/cloudflare/README.md) and the [usage assessment](./cloudflare-usage-assessment.md).
+
+The design below includes rollout requirements beyond the current connector. Recoverable upload intents, automatic orphan reconciliation, backup/restore, deployed identity login and representative CPU acceptance remain pending. Current lifetime reservations keep uncertain writes charged and bound orphan storage without those mechanisms. Cleanup currently handles 25 drafts/versions per invocation, with an opt-in hourly trigger; no remote Cron is active.
 
 ## Decision
 

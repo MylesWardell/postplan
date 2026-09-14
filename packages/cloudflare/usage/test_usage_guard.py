@@ -125,6 +125,20 @@ class FakeClient:
 
 
 class UsageTests(unittest.TestCase):
+    def test_empty_infrequent_access_series_is_not_paid_storage(self):
+        data = sample()
+        groups = data["data"]["viewer"]["accounts"][0]["r2Storage"]
+        groups.append(
+            {
+                "dimensions": {"bucketName": "one", "storageClass": "InfrequentAccess"},
+                "max": {"payloadSize": 0, "metadataSize": 0},
+            }
+        )
+        self.assertEqual(guard.metrics_from_response(data)["r2_storage_peak_bytes_31d"], 330)
+        groups[-1]["max"]["payloadSize"] = 1
+        with self.assertRaises(guard.GuardError):
+            guard.metrics_from_response(data)
+
     def test_units_classes_and_per_resource_peaks(self):
         metrics = guard.metrics_from_response(sample())
         self.assertEqual(metrics["workers_cpu_ms_24h"], 148.418)

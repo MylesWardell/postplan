@@ -1,70 +1,64 @@
-# Cloudflare compatibility experiment
+# Cloudflare application connector
 
-This spike runs the real TanStack Start homepage and oRPC specification on Workers, with D1 health, native R2 storage and a SQLite Durable Object limiter. Account, draft, authentication and upload application routes remain disabled; the shared Drizzle Store now has a locally tested D1 adapter. The existing Bun/AWS entry points keep their default behavior.
+The selectable Worker serves the shared API and TanStack Start dashboard using D1, private R2 Standard storage and a SQLite Durable Object limiter. Application routes are opt-in with `POSTPLAN_APPLICATION_ENABLED=true`; the checked-in configuration keeps them disabled. The existing remote experiment remains stopped.
 
-From the repository root (after `bun install`):
+## Local application
+
+From the repository root, after `bun install`:
 
 ```powershell
 bun run --filter @postplan/cloudflare cf:types
 bunx --no-install turbo run cf:build cf:test --filter=@postplan/cloudflare
 bunx --no-install tsc -p packages/cloudflare/tsconfig.json
-```
-
-Run the built artifact locally from `packages/cloudflare`:
-
-```powershell
+cd packages/cloudflare
 $env:EXPERIMENT_TOKEN = 'local-test-only'
-bunx --no-install wrangler dev --config dist/server/wrangler.json --port 5173 --local
+$env:POSTPLAN_BOOTSTRAP_API_KEY = 'local-application-test'
+bun initialize.ts --local
+bunx --no-install wrangler dev --config dist/server/wrangler.json --persist-to .wrangler/state --port 5173 --local --var POSTPLAN_APPLICATION_ENABLED:true --var POSTPLAN_SESSION_SECRET:local-session-only
 ```
 
-In another terminal, from the root:
+In another terminal, run `bun packages/cloudflare/application-check.ts` from the root. It creates synthetic local plans, verifies authentication, versions, public HTML, dashboard sessions/CSP, key revocation, disable/enable/delete and body limits. It cannot target a remote URL. CI also sets the local stop latch, reruns initialization and verifies that the dashboard remains stopped.
 
-```powershell
-$env:EXPERIMENT_TOKEN = 'local-test-only'
-bun packages/cloudflare/http-check.ts
-```
-
-The HTTP check uses two storage probes. Set `POSTPLAN_EXPERIMENT_URL` to test a deployed instance. The timings it reports are wall time, not CPU time. Vitest resets its isolated storage after each test; local Wrangler storage persists.
+Initialization applies shared Drizzle migrations, creates Cloudflare budget tables and inserts missing initial accounts. Existing keys, consumed budgets and the stop latch are preserved. The optional bootstrap API key is hashed before writing ignored SQL. Do not use the example credentials remotely. Local initialization, Vite development and built-Worker testing share this package's `.wrangler/state`; remote bindings are disabled in the Vite plugin.
 
 ## Runtime boundaries
 
-`POSTPLAN_RUNTIME=cloudflare` selects the Cloudflare Vite plugin and Worker entry; unset or `aws` selects the existing Bun/Lambda build. Other values fail the build. The `cf:build` and `cf:dev` scripts set this variable. `POSTPLAN_DATABASE=sqlite` selects SQLite; Cloudflare rejects every other database selection at build time and at the D1 store boundary. AWS accepts either `sqlite` or `dynamodb`. Both targets share `apps/server/vite.config.ts` and its TanStack/React configuration. Cloudflare output stays in this package's `dist/`; the AWS output stays in `apps/server/dist/`.
+`POSTPLAN_RUNTIME=cloudflare` selects this package's Vite plugin and Worker entry; unset or `aws` selects Bun/Lambda. AWS supports exactly one of `POSTPLAN_DATABASE=sqlite` or `dynamodb`; Cloudflare accepts only `sqlite`, implemented through D1. Unsupported selections fail. Legacy AWS database detection remains available when no database is explicitly selected.
 
-This package owns Wrangler, the Worker gateway, D1 driver, R2 adapter, Durable Object limiter, workerd tests and usage guard. `packages/lambda` owns AWS gateway normalization, S3, Parameter Store secrets and DynamoDB runtime setup. The application consumes injected Store and HTML storage interfaces.
+This package owns the gateway, D1 driver, R2 adapter, Durable Object limiter, initialization, cleanup, tests and usage guard. `packages/lambda` owns AWS adapters. `apps/server` consumes injected Store and HTML storage interfaces. Shared `packages/store-drizzle` queries and migrations do not import Cloudflare; its portable database interface supports asynchronous reads and atomic SQL batches. Bun SQLite uses the explicit `/client` subpath.
 
-`packages/store-drizzle` owns the SQLite schema, migrations and queries without importing Cloudflare. Its portable database interface requires atomic batches and supports asynchronous reads. D1 binding calls stay in `database.ts`; Bun SQLite remains available through the store's explicit `/client` subpath. Both use the same SQL migrations. Migrations and account initialization must be applied before enabling application data routes; this refactor does not enable those routes or reset the remote stop latch.
+Build output stays in `packages/cloudflare/dist` for Cloudflare and `apps/server/dist` for AWS. Each build clears its output to avoid accumulating obsolete Worker chunks. Routers are constructed once per isolate; per-request context remains isolated. Worker response compression is disabled because workerd stripped the oRPC plugin's encoding header in compatibility testing.
 
-## Remote configuration and credentials
+## Storage and retention safeguards
 
-The checked-in Wrangler configuration is local-only: its D1 ID is a placeholder. Create an ignored `generated/wrangler.remote.json` from it, using `main: "../worker.ts"`, the intended Worker name, actual D1/R2 bindings, an exact HTTPS public URL and `EXPERIMENT_LOCAL: "false"`. Select it at build time through `POSTPLAN_CLOUDFLARE_CONFIG=generated/wrangler.remote.json`, then deploy the generated `dist/server/wrangler.json`. Rebuild when configuration changes; deploy-time environment flags do not retarget this artifact.
+Before every application R2 operation, D1 atomically consumes a lifetime reservation:
 
-Root `.env.cloudflare.local` holds CLI-only `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Load those values into the Wrangler process environment without printing them. Do not pass this credential file to Worker secrets or Vite environment loading. Generate a separate random `EXPERIMENT_TOKEN` and pass an ignored file containing only that secret through Wrangler's `--secrets-file` option. Check the final artifact for credentials before upload.
+| Limit                     | Value                          |
+| ------------------------- | ------------------------------ |
+| HTML per version          | 512 KiB UTF-8                  |
+| Request body              | 2 MiB, counted while streaming |
+| Total R2 puts             | 2,000                          |
+| Total reserved HTML bytes | 1 GiB                          |
+| Total R2 gets             | 250,000                        |
 
-Keep the Worker on Free and the R2 bucket private with Standard storage. Do not enable WAF or paid upgrades for this experiment. Check account-wide remaining allowances before remote tests; R2 is usage billed beyond its allowance, and this application's budget cannot constrain unrelated account activity.
+Reservations are never automatically refunded or renewed, including after failed writes, deletion, restarts or initialization. At 100 uploads/month the write allowance lasts about 20 months; failures consume it too. Exhaustion or a stop latch rejects storage access before R2 I/O. Database failures fail closed. These limits cover application access to an exclusive private bucket, not manual writes or other account workloads.
 
-## Bounded storage probes
+The scheduled handler marks up to 25 expired plans and deletes up to 25 versions per invocation. `PLAN_RETENTION_DAYS` defaults to 90; `0` disables expiry. Expired plans stop being publicly readable immediately, independently of cleanup timing. Deleted plans have a 60-second grace period before object removal; tombstones and lifetime reservations remain. Failed database commits can leave orphan objects: they stay charged against the lifetime budget. Automatic orphan reconciliation and recoverable upload intents remain rollout work.
 
-`POST /__experiment/probe` requires the experiment bearer secret and accepts at most 512 KiB. An atomic D1 counter admits at most 20 valid probes over the database's lifetime. Reservations are consumed even if later I/O fails, and do not reset on retry, time boundaries or redeployment. Each admitted probe performs one R2 put, one get and a finally-block delete, plus three limiter calls. At most 10 MiB can be written through this endpoint over its lifetime. Public routes cannot read or write R2.
+No Cron trigger is enabled by default. When activating a reviewed deployment, configure an hourly trigger (`0 * * * *`) for cleanup. The stop latch also prevents scheduled cleanup. The [GitHub usage guard](./usage/README.md) checks account usage hourly and supports a manual kill switch; it latches D1, disables public exposure and removes Cron triggers without automatically restoring service. Its schedule starts after merge to `master`. Analytics and GitHub scheduling can lag, so the cron is not a billing hard cap.
 
-The budget fails closed when D1 fails or the counter is exhausted. Deleting/resetting the database removes this protection, so never reset it remotely just to rerun tests. A failed delete can leave an object; verify bucket emptiness afterward. Disable workers.dev and preview URLs after testing and retain that setting in the remote source configuration.
+The separate authenticated compatibility probe retains its 20 lifetime operations of at most 512 KiB each. Its reservations are additional to the application budget. Failed probe deletes can leave at most 10 MiB. Never reset either ledger to repeat remote tests.
 
-The [GitHub usage guard](./usage/README.md) adds hourly account usage checks and a manual kill switch. It persists a D1 stop flag checked by probe reservations, disables public access and never automatically restores service. Scheduling starts only after merge to `master`.
+## Remote configuration
 
-## Local validation after package separation
+The source Wrangler configuration is local-only, with a placeholder D1 ID. Use an ignored `generated/wrangler.remote.json` with the intended resource identities, `main: "../worker.ts"`, migrations path `../../store-drizzle/drizzle`, exact HTTPS public URL and `EXPERIMENT_LOCAL: "false"`. Select it through `POSTPLAN_CLOUDFLARE_CONFIG`, initialize using `bun initialize.ts --remote`, then build and deploy the generated `dist/server/wrangler.json`. Configuration changes require rebuilding.
 
-Repository checks, both target builds, Cloudflare TypeScript, 15 workerd tests and 14 usage-guard tests pass. D1 tests cover account lifecycle, concurrent first logins without orphan accounts, consecutive draft versions, metadata decoding, ownership/deletion races, rollback and persistent limiter delegation. The built Worker also passes local SSR/CSP, OpenAPI, assets and bounded-upload HTTP checks. No remote deployment or storage probes were performed for this refactor.
+Root `.env.cloudflare.local` contains CLI-only `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Load them into the CLI environment without printing them; never use that file as Worker secrets. Configure independent random Worker secrets for `EXPERIMENT_TOKEN` and `POSTPLAN_SESSION_SECRET`, plus the intended login-domain settings. Supply the bootstrap key only during initialization. Keep secrets out of checked-in vars and command arguments.
 
-## Earlier remote results: 14 September 2026
+Keep Workers Free and R2 private Standard. Do not enable paid WAF or upgrade the plan. Validate account-wide headroom before any remote experiment. Enabling application routes does not clear an existing stop latch; recovery requires a separate deliberate operation after checking usage and exposure settings.
 
-- Nine workerd tests passed: gateway normalization, D1 rollback and conditional writes, R2 round trip, limiter concurrency/isolation/eviction/alarms, authentication/crypto, and concurrent lifetime budget exhaustion.
-- Existing repository `bun run check` passed, including regeneration of ignored Worker types; Cloudflare TypeScript and Vite build passed.
-- Local and remote HTTP checks passed: SSR/CSP, D1 health, parseable OpenAPI JSON, static CSS, disabled data routes, secret rejection, 85-byte and 524,288-byte HTML, and oversized-body rejection.
-- Deployed to the user-created `postplan-clone` Worker; version `5ad9e0e6-c2ca-40a7-a74f-b5ba9be5f6f0`. Packaging: 1,797.74 KiB raw, 405.87 KiB gzip; startup reported 39 ms.
-- Remote probe wall times were 1,680 ms and 868 ms respectively. These are two observations, not latency percentiles or CPU measurements.
-- Remote D1 confirms two consumed reservations and a 16 KiB database. R2 reports zero objects and zero bytes afterward. workers.dev and preview URLs were verified disabled. The empty bucket, small database and Worker remain for later experiments.
+## Validation and remaining acceptance
 
-Application response compression must be disabled on this Worker: local workerd returned gzip OpenAPI bytes without a Content-Encoding header when the oRPC response compression plugin was active. The portable factory retains compression by default for existing runtimes.
+Local repository checks, both runtime builds, Cloudflare TypeScript, 19 workerd tests and 15 usage-guard tests pass. The built Worker passes the application check and persistent-stop check. Tests cover concurrency, rollback, ownership/deletion races, account lifecycle, limiter isolation, budget exhaustion, UTF-8 sizes, expiry and cleanup.
 
-The limiter intentionally starts a fixed window per subject and persists it. The existing in-memory implementation uses a shared process epoch; this boundary difference needs a rollout decision. D1 batches roll back on SQL errors, but a zero-row conditional update does not stop later statements: the adapter uses a NOT NULL constraint on the ownership lookup to abort the entire upload batch if ownership or deletion changes.
-
-Deployed Store behavior, Shoo browser login, wildcard draft hosts, retention, backup/restore, CPU percentiles and sustained account-wide free-tier headroom remain unverified. See the [deployment plan](../../docs/cloudflare-deployment-plan.md).
+Read-only Cloudflare inspection on 14 September 2026 confirmed the remote stop remains latched and the R2 bucket is empty. This application connector has not been deployed. Shoo browser login against the deployed origin, wildcard DNS, backup/restore, and representative remote CPU measurements remain unverified. The small historical CPU sample is insufficient to certify the Workers Free 10 ms limit. See the [usage assessment](../../docs/cloudflare-usage-assessment.md) and [deployment plan](../../docs/cloudflare-deployment-plan.md).
