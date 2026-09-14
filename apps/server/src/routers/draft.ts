@@ -1,14 +1,14 @@
 import { ratelimit } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
 import { publicUploadAuth } from "./account-store.js";
-import { publicOS, protectedOS } from "../orpc.js";
+import { publicOS, protectedOS } from "#orpc";
 import {
   cleanText,
   getAccountDraftWithVersions,
   listAccountDrafts,
   updateOwnedDraft,
   uploadDraft as persistUpload,
-} from "../routers/draft-store.js";
+} from "#routers/draft-store";
 
 export const listDrafts = protectedOS.drafts.list.handler(async ({ context: ctx }) => ({
   ok: true,

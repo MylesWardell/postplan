@@ -199,6 +199,6 @@ The image runs compiled JavaScript with Bun as a non-root user with SQLite on a 
 
 The CLI uses `OpenAPILink` with `RequestValidationLinkPlugin(contract)` and `RequestCompressionLinkPlugin`. Browser SSR forms use `parseFormData` and `getIssueMessage` from oRPC's form helpers. Bun's body limit covers native SSR form requests; API bodies are additionally limited after decompression by oRPC.
 
-Request validation checks contract input, not proxy trust. `http/client-ip.ts` retains trusted-hop resolution for audit and rate-limit keys. Static File serves local directories; it is not enabled because this app has no local asset directory and its drafts require database checks before S3 retrieval.
+Request validation checks contract input, not proxy trust. `lib/client-ip.ts` retains trusted-hop resolution for audit and rate-limit keys. Static File serves local directories; it is not enabled because this app has no local asset directory and its drafts require database checks before S3 retrieval.
 
 Rate limits use oRPC `MemoryRateLimiter` and `ratelimit` middleware, shared across API and SSR calls within the server process. `RateLimitHandlerPlugin` adds quota and retry headers to API responses. Limits reset on process restart; no Redis service is needed for this single-process deployment.

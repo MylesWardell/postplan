@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import { validateHtml } from "../src/lib/html-policy.js";
+import { validateHtml } from "#lib/html-policy";
 
 const page = (body: string, head = "<title>Plan</title>") =>
   `<!doctype html><html><head>${head}</head><body>${body}</body></html>`;

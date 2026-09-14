@@ -1,4 +1,4 @@
-import type { Session } from "../auth/types.js";
+import type { Session } from "#auth/types";
 import { Layout, page } from "./layout.js";
 
 export function homeResponse(session: Session | null): Response {

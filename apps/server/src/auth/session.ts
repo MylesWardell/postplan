@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { config } from "../config.js";
+import { ORPCError } from "@orpc/server";
+import { config } from "#config";
+import { getHomeUrl, getRequestBaseUrl } from "#lib/public-url";
 import type { Session } from "./types.js";
 
 export const SESSION_COOKIE = "postplan_session";
@@ -87,6 +89,22 @@ export function readSession(req: Request): Session | null {
   if (!token) return null;
   const payload = verifyToken(token, config.sessionSecret);
   return payload?.accountId ? (payload as unknown as Session) : null;
+}
+
+// Cookie-authenticated requests must target the application host, and
+// state-changing ones must originate from it (CSRF guard).
+export function assertApplicationOrigin(req: Request): void {
+  const home = new URL(
+    getHomeUrl({ publicBaseUrl: config.publicBaseUrl, requestBaseUrl: getRequestBaseUrl(req) }),
+  );
+  if (
+    new URL(req.url).hostname !== home.hostname ||
+    (req.method !== "GET" && req.headers.get("origin") !== home.origin)
+  ) {
+    throw new ORPCError("FORBIDDEN", {
+      message: "Session requests must use the application origin.",
+    });
+  }
 }
 
 export function readAuthState(req: Request): AuthState | null {

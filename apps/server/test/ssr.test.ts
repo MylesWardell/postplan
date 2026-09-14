@@ -1,14 +1,14 @@
-import { createDatabase } from "../src/db/client.js";
+import { createDatabase } from "#db/client";
 import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { accounts } from "../src/db/schema.js";
-import { seedAccounts } from "../src/routers/account-store.js";
-import { createServerOptions } from "../src/index.js";
-import { config } from "../src/config.js";
-import { createAuthStateCookie, createSessionCookie } from "../src/auth/session.js";
+import { accounts } from "#db/schema";
+import { seedAccounts } from "#routers/account-store";
+import { createServerOptions } from "#index";
+import { config } from "#config";
+import { createAuthStateCookie, createSessionCookie } from "#auth/session";
 
 // Exercise rendered pages and native forms against SQLite, without S3 or OAuth calls.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
