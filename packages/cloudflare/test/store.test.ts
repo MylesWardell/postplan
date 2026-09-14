@@ -13,6 +13,15 @@ import {
 } from "@postplan/store-drizzle/schema";
 import type { UploadContext } from "@postplan/store";
 import migration from "../../store-drizzle/drizzle/0000_same_vulcan.sql?raw";
+import { assertSqliteDatabase } from "../configuration";
+
+test("Cloudflare only accepts SQLite", () => {
+  expect(() => assertSqliteDatabase(undefined)).not.toThrow();
+  expect(() => assertSqliteDatabase("sqlite")).not.toThrow();
+  for (const selected of ["dynamodb", "sqlite,dynamodb", "", "postgres"]) {
+    expect(() => assertSqliteDatabase(selected)).toThrow("must be sqlite");
+  }
+});
 
 beforeEach(async () => {
   await env.POSTPLAN_DB.batch(

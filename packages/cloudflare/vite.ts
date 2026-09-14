@@ -1,7 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { assertSqliteDatabase } from "./configuration";
 
 export function runtimeOptions() {
+  assertSqliteDatabase(process.env.POSTPLAN_DATABASE);
   return {
     plugins: [
       cloudflare({

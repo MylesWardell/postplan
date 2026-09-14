@@ -10,7 +10,8 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "bun test ./test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",

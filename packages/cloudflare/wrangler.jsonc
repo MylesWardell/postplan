@@ -11,6 +11,7 @@
     "run_worker_first": true,
   },
   "vars": {
+    "POSTPLAN_DATABASE": "sqlite",
     "POSTPLAN_PUBLIC_BASE_URL": "http://localhost:5173",
     "EXPERIMENT_LOCAL": "true",
     "REQUEST_ID_HEADER": "x-request-id",

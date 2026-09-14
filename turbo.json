@@ -36,7 +36,7 @@
         "$TURBO_ROOT$/scripts/clean.ts",
         "$TURBO_ROOT$/tsconfig.base.json"
       ],
-      "env": ["POSTPLAN_RUNTIME", "POSTPLAN_CLOUDFLARE_CONFIG"],
+      "env": ["POSTPLAN_RUNTIME", "POSTPLAN_DATABASE", "POSTPLAN_CLOUDFLARE_CONFIG"],
       "outputs": ["dist/**", "bin/**"]
     },
     "test": {
@@ -54,7 +54,7 @@
     },
     "cf:build": {
       "dependsOn": ["^build"],
-      "env": ["POSTPLAN_CLOUDFLARE_CONFIG"],
+      "env": ["POSTPLAN_DATABASE", "POSTPLAN_CLOUDFLARE_CONFIG"],
       "cache": false
     },
     "cf:test": {

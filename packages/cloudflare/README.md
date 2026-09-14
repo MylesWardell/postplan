@@ -28,7 +28,7 @@ The HTTP check uses two storage probes. Set `POSTPLAN_EXPERIMENT_URL` to test a 
 
 ## Runtime boundaries
 
-`POSTPLAN_RUNTIME=cloudflare` selects the Cloudflare Vite plugin and Worker entry; unset or `aws` selects the existing Bun/Lambda build. Other values fail the build. The `cf:build` and `cf:dev` scripts set this variable. Both targets share `apps/server/vite.config.ts` and its TanStack/React configuration. Cloudflare output stays in this package's `dist/`; the AWS output stays in `apps/server/dist/`.
+`POSTPLAN_RUNTIME=cloudflare` selects the Cloudflare Vite plugin and Worker entry; unset or `aws` selects the existing Bun/Lambda build. Other values fail the build. The `cf:build` and `cf:dev` scripts set this variable. `POSTPLAN_DATABASE=sqlite` selects SQLite; Cloudflare rejects every other database selection at build time and at the D1 store boundary. AWS accepts either `sqlite` or `dynamodb`. Both targets share `apps/server/vite.config.ts` and its TanStack/React configuration. Cloudflare output stays in this package's `dist/`; the AWS output stays in `apps/server/dist/`.
 
 This package owns Wrangler, the Worker gateway, D1 driver, R2 adapter, Durable Object limiter, workerd tests and usage guard. `packages/lambda` owns AWS gateway normalization, S3, Parameter Store secrets and DynamoDB runtime setup. The application consumes injected Store and HTML storage interfaces.
 
@@ -52,7 +52,7 @@ The [GitHub usage guard](./usage/README.md) adds hourly account usage checks and
 
 ## Local validation after package separation
 
-Repository checks, both target builds, Cloudflare TypeScript, 14 workerd tests and 14 usage-guard tests pass. D1 tests cover account lifecycle, concurrent first logins without orphan accounts, consecutive draft versions, metadata decoding, ownership/deletion races, rollback and persistent limiter delegation. The built Worker also passes local SSR/CSP, OpenAPI, assets and bounded-upload HTTP checks. No remote deployment or storage probes were performed for this refactor.
+Repository checks, both target builds, Cloudflare TypeScript, 15 workerd tests and 14 usage-guard tests pass. D1 tests cover account lifecycle, concurrent first logins without orphan accounts, consecutive draft versions, metadata decoding, ownership/deletion races, rollback and persistent limiter delegation. The built Worker also passes local SSR/CSP, OpenAPI, assets and bounded-upload HTTP checks. No remote deployment or storage probes were performed for this refactor.
 
 ## Earlier remote results: 14 September 2026
 
