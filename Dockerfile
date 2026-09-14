@@ -1,19 +1,10 @@
-FROM node:22-bookworm-slim AS base
-WORKDIR /app
+FROM node:22-bookworm-slim AS build
+WORKDIR /workspace
 RUN npm install --global pnpm@11.22.0
-
-FROM base AS build
-COPY package.json pnpm-lock.yaml ./
+COPY . .
 RUN pnpm install --frozen-lockfile
-COPY tsconfig.json ./
-COPY src ./src
-COPY bin ./bin
-COPY test ./test
-RUN pnpm test
-
-FROM base AS dependencies
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm check
+RUN pnpm --filter @postplan/server deploy --prod --legacy /out
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
@@ -22,9 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && mkdir -p /app/certs \
     && curl --fail --silent --show-error https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /app/certs/rds-global-bundle.pem \
     && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY package.json ./
-COPY --from=build /app/dist/src ./dist/src
+COPY --from=build /out /app
+RUN node --input-type=module -e "await import('./dist/src/app.js')"
 USER node
 EXPOSE 3000
 CMD ["node", "--enable-source-maps", "dist/src/server.js"]

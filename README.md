@@ -2,9 +2,25 @@
 
 Postplan is a small service and CLI for publishing static HTML drafts from agents.
 
+## Workspace
+
+```text
+apps/
+  cli/             CLI source, agent skill, tsdown output in bin/
+  frontend/        Typed client boundary for the future draft-management UI
+  server/          Express host: tRPC/REST transports, OAuth, HTML views and S3
+packages/
+  api/             tRPC procedures and draft services
+  core/            Shared HTML policy and public URL construction
+  database/        Drizzle schema, PostgreSQL access and versioned migrations
+scripts/           Workspace build helpers
+```
+
+The API package exports its router type for browser consumers. Business operations live in tRPC procedures and shared services; HTTP handlers contain no database queries. Drizzle keeps existing table/column names and supplies inferred row types. The server-rendered dashboard remains available until the frontend application is built.
+
 ## Development
 
-The service, CLI and tests use strict TypeScript with Node ESM. Use Node 22.20+ and the pinned pnpm version in `package.json`.
+Use Node 22.20+ and pnpm 11.22.0. Turborepo builds dependencies before their consumers. oxfmt and oxlint run across the workspace; tsdown bundles the CLI.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -12,17 +28,34 @@ pnpm check
 pnpm build
 ```
 
-`pnpm check` runs oxfmt, oxlint, TypeScript checking and the compiled Node test suite. Use `pnpm format` to format and `pnpm lint:fix` for lint fixes. Configuration follows the [Oxc documentation](https://oxc.rs/docs/guide/usage/linter/config).
-
-Copy `.env.example` to `.env`, configure an existing PostgreSQL database and S3-compatible bucket, then start locally:
+Copy `.env.example` to `.env` and configure PostgreSQL and S3-compatible storage. Apply reviewed migrations before starting the service:
 
 ```sh
-node --env-file=.env --enable-source-maps dist/src/server.js
+pnpm db:migrate
+node --env-file=.env --enable-source-maps apps/server/dist/src/server.js
 ```
 
-For development, run `pnpm build:watch` in one terminal and `node --env-file=.env --watch-path=dist dist/src/server.js` in another. `pnpm start` uses environment variables supplied by the shell or container; it does not load `.env` automatically. Startup creates the database schema and optional bootstrap key.
+For development, build once and run `node --env-file=.env --import tsx --watch apps/server/src/server.ts`. `pnpm dev` uses environment variables already set in the shell. Shared package changes need `pnpm build` to refresh their exports. Startup seeds account/key records but does not run DDL.
 
-Build the CLI package with `pnpm pack --pack-destination dist`. This fork is not published to the package registry: use `node dist/bin/postplan.js` locally or install the generated tarball with pnpm. The published `postplan` package below remains upstream.
+`pnpm check` covers formatting, lint, strict types, and tests. Tests include embedded PostgreSQL migration and HTTP/tRPC integration checks, without AWS access. Use `pnpm format`, `pnpm lint:fix`, and `pnpm db:generate` while editing. See [database migration guidance](packages/database/README.md).
+
+Build the portable CLI tarball with `pnpm pack:cli`. The executable is `apps/cli/bin/postplan.js`. This fork is not published to the package registry; the published package in the examples below remains upstream. See [CLI development](apps/cli/README.md).
+
+## Typed API
+
+The server mounts tRPC at `/trpc`, using the [Express adapter](https://trpc.io/docs/server/adapters/express). The REST endpoints remain compatibility adapters to the same procedures.
+
+| Router    | Procedures                                                          |
+| --------- | ------------------------------------------------------------------- |
+| `account` | `me`                                                                |
+| `drafts`  | `list`, `detail`, `upload`, `update`, `disable`, `enable`, `delete` |
+| `apiKeys` | `list`, `create`, `revoke`                                          |
+
+Protected procedures derive ownership from the bearer API key or verified session, never an input account ID. Browser session mutations require the application's exact Origin. tRPC is unavailable on draft subdomains. Batch requests are disabled; rate limits run per procedure and are shared with the REST and dashboard adapters. Invalid bearer keys are rejected rather than falling back to anonymous uploads.
+
+Draft updates lock the owned draft row before allocating a version, preserving unique monotonically increasing version numbers across concurrent uploads. Database writes roll back on storage failure; if S3 succeeds and the later transaction fails, the unreferenced object may remain for later cleanup.
+
+[Frontend preparation](apps/frontend/README.md) includes a typed client and the intended same-origin deployment. It does not yet include a management UI.
 
 ## CLI
 

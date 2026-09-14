@@ -23,19 +23,19 @@ The ECS task role needs `s3:GetObject` and `s3:PutObject` only on `arn:aws:s3:::
 
 ## Runtime configuration
 
-| Variable                                   | AWS value                                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `NODE_ENV`, `PORT`                         | `production`, `3000`                                                                                               |
-| `DATABASE_URL`                             | Secrets Manager; RDS hostname, URL-encoded credentials, dedicated user with current startup-schema DDL permissions |
-| `DATABASE_SSL_CA_FILE`                     | `/app/certs/rds-global-bundle.pem`, included in Docker image                                                       |
-| `AWS_S3_BUCKET_NAME`, `AWS_DEFAULT_REGION` | Private bucket and selected region                                                                                 |
-| `POSTPLAN_BOOTSTRAP_API_KEY`               | Random secret identical across tasks                                                                               |
-| `POSTPLAN_PUBLIC_BASE_URL`                 | `https://*.plans.example.com` for subdomains or `https://plans.example.com` for path-based drafts                  |
-| `POSTPLAN_SESSION_SECRET`                  | Optional strong random secret shared by tasks; required for dashboard sign-in                                      |
-| `SHOO_BASE_URL`                            | Optional broker override; default `https://shoo.dev`                                                               |
-| `TRUST_PROXY`, `CLIENT_IP_SOURCE`          | `1`, `req-ip` for client → ALB → task                                                                              |
-| `REQUEST_ID_HEADER`                        | `x-amzn-trace-id`, for correlation rather than authentication                                                      |
-| `SHUTDOWN_GRACE_MS`                        | `20000`; initially ECS `stopTimeout: 30` and ALB deregistration delay 20 seconds                                   |
+| Variable                                   | AWS value                                                                                                                                |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`, `PORT`                         | `production`, `3000`                                                                                                                     |
+| `DATABASE_URL`                             | Secrets Manager; RDS hostname, URL-encoded credentials, dedicated runtime user with DML permissions; separate DDL-capable migration role |
+| `DATABASE_SSL_CA_FILE`                     | `/app/certs/rds-global-bundle.pem`, included in Docker image                                                                             |
+| `AWS_S3_BUCKET_NAME`, `AWS_DEFAULT_REGION` | Private bucket and selected region                                                                                                       |
+| `POSTPLAN_BOOTSTRAP_API_KEY`               | Random secret identical across tasks                                                                                                     |
+| `POSTPLAN_PUBLIC_BASE_URL`                 | `https://*.plans.example.com` for subdomains or `https://plans.example.com` for path-based drafts                                        |
+| `POSTPLAN_SESSION_SECRET`                  | Optional strong random secret shared by tasks; required for dashboard sign-in                                                            |
+| `SHOO_BASE_URL`                            | Optional broker override; default `https://shoo.dev`                                                                                     |
+| `TRUST_PROXY`, `CLIENT_IP_SOURCE`          | `1`, `req-ip` for client → ALB → task                                                                                                    |
+| `REQUEST_ID_HEADER`                        | `x-amzn-trace-id`, for correlation rather than authentication                                                                            |
+| `SHUTDOWN_GRACE_MS`                        | `20000`; initially ECS `stopTimeout: 30` and ALB deregistration delay 20 seconds                                                         |
 
 Leave endpoint overrides, static AWS keys and path-style overrides unset for native S3. The SDK obtains temporary task-role credentials.
 
@@ -47,10 +47,10 @@ Secret rotation requires new tasks; [ECS does not refresh injected values automa
 
 ## Delivery stages
 
-1. **Local validation:** `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm pack --pack-destination dist`, then `docker build --tag postplan:local .`. CI performs these without AWS access. Pin the reviewed base image by digest and retain scanning/SBOM results before production.
+1. **Local validation:** `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm pack:cli`, then `docker build --tag postplan:local .`. CI performs these without AWS access. Pin the reviewed base image by digest and retain scanning/SBOM results before production.
 2. **Infrastructure preparation:** create Terraform/CDK in the chosen infrastructure repository for the resources above, with separate staging/production state and deletion safeguards. Review its plan and cost estimate before any apply. No apply is part of this change.
 3. **Delivery pipeline:** use short-lived CI OIDC credentials scoped to the environment, ECR repository, ECS service and exact `iam:PassRole` roles. Build once, scan, push and promote the same digest. Production deployment remains separately authorised. Checked-in CI validates and builds only.
-4. **Staging, when authorised:** start one task against an empty database/bucket. Target type `ip`, port 3000, health path `/healthz`, expected 200, initial startup grace 120 seconds. Health checks cover PostgreSQL, not S3. Exercise two simultaneous starts: an advisory lock serialises current idempotent schema DDL. Future destructive changes need versioned expand/contract migrations.
+4. **Staging, when authorised:** start one task against an empty database/bucket. Target type `ip`, port 3000, health path `/healthz`, expected 200, initial startup grace 120 seconds. Health checks cover PostgreSQL, not S3. Run the reviewed Drizzle migrations as a one-off task before starting the service, using the same image and a migration-specific database secret: `node node_modules/@postplan/database/dist/src/migrate.js`. The migration command acquires an advisory lock; startup only seeds accounts and keys. Future destructive changes need expand/contract migrations.
 5. **Acceptance:** run the checklist below with real staging dependencies; tune sizes, timeouts and alarms from measurements.
 6. **Production cutover, after approval:** for an existing installation, freeze old-service writes, back up/restore PostgreSQL, copy all referenced objects with unchanged keys, verify row counts and content hashes, then set DNS/TLS and public URL. Preserve API-key hashes and session secret where appropriate. A domain change can change Shoo pairwise identities: test account continuity and define re-authentication/account-linking before cutover. Deploy the approved digest, rerun acceptance, then reopen writes. Skip migration for an empty installation.
 
@@ -64,7 +64,7 @@ Secret rotation requires new tasks; [ECS does not refresh injected values automa
 - Stop a task under traffic, check draining and availability, then perform a rolling release. Validate task-role access without static keys and no secrets in logs.
 - Restore a backup into a separate staging instance and verify it against retained objects. Do not expire current objects or shorten S3 history below the recovery window.
 
-Uploads remain public and anonymous. In-process rate limits have separate budgets per task and reset on restart. Use WAF for edge-wide IP abuse control; strict per-account quotas require a shared limiter. The limiter retains identity entries in memory, so address bounded cleanup before high-volume public exposure.
+Uploads remain public and anonymous. In-process rate limits have separate budgets per task and reset on restart. Use WAF for edge-wide IP abuse control; strict per-account quotas require a shared limiter. Expired limiter entries are swept and the map has a capacity bound; tune these limits before high-volume public exposure.
 
 ## Rollback and recovery
 
