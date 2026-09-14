@@ -1,3 +1,4 @@
+import "./instrumentation";
 import { createCloudflareStore } from "./database";
 import { createApplication } from "@postplan/server/application";
 import { cloudflareGateway } from "./gateway";

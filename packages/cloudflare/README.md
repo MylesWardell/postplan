@@ -41,6 +41,8 @@ This package owns the gateway, D1 driver, R2 adapter, Durable Object limiter, in
 
 Build output stays in `packages/cloudflare/dist` for Cloudflare and `apps/server/dist` for AWS. Each build clears its output to avoid accumulating obsolete Worker chunks. Routers are constructed once per isolate; per-request context remains isolated. Worker response compression is disabled because workerd stripped the oRPC plugin's encoding header in compatibility testing.
 
+The Worker registers oRPC's experimental `CloudflareTracer` once at module scope. Procedure and middleware spans use Workers Traces with the configured 1% sampling rate; the AWS OpenTelemetry SDK is not loaded. `enable_request_signal` lets oRPC observe client disconnects through the request signal. Keep both the compatibility flag and trace settings in generated remote configurations. Tracing adds diagnostic overhead and does not establish compliance with the Free CPU allowance.
+
 ## Storage and retention safeguards
 
 Before every application R2 operation, D1 atomically consumes a lifetime reservation:
