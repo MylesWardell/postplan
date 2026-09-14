@@ -1,5 +1,7 @@
 # Cloudflare usage assessment
 
+Update: the [bounded remote CPU test](./cloudflare-cpu-test.md) now confirms repeated overages of Workers Free's 10 ms allowance. All eight dashboard renders used 15–38 ms; all nine uploads used 14–132 ms. The volume estimates below still have ample headroom, but the current application is not reliably compatible with the Free CPU allowance. Temporary objects were deleted and the remote stop restored.
+
 Assessed 14 September 2026. At the observed content volume and the owner's estimate of under 100 plan views/day, storage and operation counts should fit the free allowances comfortably. The unresolved constraint is CPU per Worker request, especially server-rendered dashboard and authentication routes. This is a capacity estimate, not a guarantee of a zero bill or deployed acceptance.
 
 ## Evidence and assumptions

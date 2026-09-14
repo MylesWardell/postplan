@@ -1,0 +1,1014 @@
+{
+  "testedAt": "2026-09-14",
+  "commit": "7c81b8cb038ce0cd5e7eab3e3e376a1b8a91ef76",
+  "workerVersion": "f29190e2-2e2b-45f9-942f-0ff4eda7873e",
+  "worker": "postplan-clone",
+  "plan": "Workers Free",
+  "cpuSource": "Cloudflare Workers Observability invocation $workers.cpuTimeMs",
+  "requestCount": 112,
+  "measuredRequests": 96,
+  "thresholdMs": 10,
+  "verdict": "Repeated CPU overages; not reliably within Workers Free CPU allowance",
+  "summary": {
+    "homepage": {
+      "samples": 8,
+      "minMs": 4,
+      "medianMs": 15.0,
+      "maxMs": 50,
+      "over10Ms": 4
+    },
+    "upload-5356": {
+      "samples": 3,
+      "minMs": 14,
+      "medianMs": 48,
+      "maxMs": 54,
+      "over10Ms": 3
+    },
+    "upload-65536": {
+      "samples": 3,
+      "minMs": 33,
+      "medianMs": 34,
+      "maxMs": 70,
+      "over10Ms": 3
+    },
+    "upload-524288": {
+      "samples": 3,
+      "minMs": 65,
+      "medianMs": 122,
+      "maxMs": 132,
+      "over10Ms": 3
+    },
+    "health": {
+      "samples": 7,
+      "minMs": 2,
+      "medianMs": 2,
+      "maxMs": 3,
+      "over10Ms": 0
+    },
+    "api-me": {
+      "samples": 8,
+      "minMs": 4,
+      "medianMs": 7.0,
+      "maxMs": 9,
+      "over10Ms": 0
+    },
+    "api-list-58": {
+      "samples": 8,
+      "minMs": 7,
+      "medianMs": 10.0,
+      "maxMs": 16,
+      "over10Ms": 4
+    },
+    "dashboard-58": {
+      "samples": 8,
+      "minMs": 15,
+      "medianMs": 25.0,
+      "maxMs": 38,
+      "over10Ms": 8
+    },
+    "public-5356": {
+      "samples": 8,
+      "minMs": 3,
+      "medianMs": 4.0,
+      "maxMs": 15,
+      "over10Ms": 1
+    },
+    "public-65536": {
+      "samples": 10,
+      "minMs": 2,
+      "medianMs": 4.0,
+      "maxMs": 6,
+      "over10Ms": 0
+    },
+    "public-524288": {
+      "samples": 10,
+      "minMs": 3,
+      "medianMs": 3.0,
+      "maxMs": 4,
+      "over10Ms": 0
+    },
+    "unauth-upload": {
+      "samples": 3,
+      "minMs": 4,
+      "medianMs": 5,
+      "maxMs": 6,
+      "over10Ms": 0
+    },
+    "dashboard-detail-correct": {
+      "samples": 8,
+      "minMs": 5,
+      "medianMs": 6.5,
+      "maxMs": 11,
+      "over10Ms": 1
+    }
+  },
+  "cleanup": {
+    "r2ObjectsDeletedAndVerifiedAbsent": 9,
+    "activeDrafts": 0,
+    "versionRows": 0,
+    "testApiKeyRevoked": true,
+    "persistentStop": true,
+    "publicAccess": false,
+    "reservedWrites": 9,
+    "reservedReads": 28,
+    "reservedBytes": 1785540
+  },
+  "requests": [
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 44.33
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 22.51
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 22.5
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 25.55
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 22.44
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 37.77
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 21.85
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 20.48
+    },
+    {
+      "case": "upload-5356",
+      "method": "POST",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 39.55
+    },
+    {
+      "case": "ingress-readiness",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 19.46
+    },
+    {
+      "case": "ingress-readiness",
+      "method": "GET",
+      "httpStatus": 503,
+      "cpuMs": 1,
+      "outcome": "ok",
+      "wallMs": 167.95
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 30,
+      "outcome": "ok",
+      "wallMs": 104.75
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok",
+      "wallMs": 87.54
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 24,
+      "outcome": "ok",
+      "wallMs": 220.4
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok",
+      "wallMs": 88.34
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 87.34
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 29,
+      "outcome": "ok",
+      "wallMs": 242.63
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 103.34
+    },
+    {
+      "case": "homepage",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 50,
+      "outcome": "ok",
+      "wallMs": 309.28
+    },
+    {
+      "case": "upload-5356",
+      "method": "POST",
+      "httpStatus": 201,
+      "cpuMs": 48,
+      "outcome": "ok",
+      "wallMs": 1655.97
+    },
+    {
+      "case": "upload-65536",
+      "method": "POST",
+      "httpStatus": 201,
+      "cpuMs": 70,
+      "outcome": "ok",
+      "wallMs": 625.57
+    },
+    {
+      "case": "upload-524288",
+      "method": "POST",
+      "httpStatus": 201,
+      "cpuMs": 132,
+      "outcome": "ok",
+      "wallMs": 1265.5
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 117.34
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 99.74
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 137.58
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 131.58
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 151.51
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 37.8
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 96.17
+    },
+    {
+      "case": "health",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 106.67
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 180.32
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 207.51
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 9,
+      "outcome": "ok",
+      "wallMs": 227.47
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 8,
+      "outcome": "ok",
+      "wallMs": 228.02
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 8,
+      "outcome": "ok",
+      "wallMs": 452.13
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok",
+      "wallMs": 195.48
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok",
+      "wallMs": 181.86
+    },
+    {
+      "case": "api-me",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 179.85
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 16,
+      "outcome": "ok",
+      "wallMs": 268.91
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 11,
+      "outcome": "ok",
+      "wallMs": 296.57
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 12,
+      "outcome": "ok",
+      "wallMs": 231.29
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 11,
+      "outcome": "ok",
+      "wallMs": 226.38
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 8,
+      "outcome": "ok",
+      "wallMs": 203.95
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 9,
+      "outcome": "ok",
+      "wallMs": 232.36
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok",
+      "wallMs": 264.93
+    },
+    {
+      "case": "api-list-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 9,
+      "outcome": "ok",
+      "wallMs": 233.03
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 35,
+      "outcome": "ok",
+      "wallMs": 145.57
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 38,
+      "outcome": "ok",
+      "wallMs": 174.86
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 19,
+      "outcome": "ok",
+      "wallMs": 138.52
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 18,
+      "outcome": "ok",
+      "wallMs": 141.61
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 31,
+      "outcome": "ok",
+      "wallMs": 138.5
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 15,
+      "outcome": "ok",
+      "wallMs": 133.15
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 23,
+      "outcome": "ok",
+      "wallMs": 130.16
+    },
+    {
+      "case": "dashboard-58",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 27,
+      "outcome": "ok",
+      "wallMs": 160.46
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": 8,
+      "outcome": "ok",
+      "wallMs": 165.37
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 87.42
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 80.89
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 65.65
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 80.56
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 89.13
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 89.15
+    },
+    {
+      "case": "dashboard-detail",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 34.76
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 202.54
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok",
+      "wallMs": 192.94
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 15,
+      "outcome": "ok",
+      "wallMs": 219.44
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 22.6
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 174.73
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 166.85
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 188.14
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 215.34
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 22.31
+    },
+    {
+      "case": "public-5356",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 174.64
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 595.96
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 169.24
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 173.99
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 168.4
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 165.23
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok",
+      "wallMs": 217.62
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 206.42
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 162.94
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 186.02
+    },
+    {
+      "case": "public-65536",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok",
+      "wallMs": 162.35
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 229.46
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 213.35
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 195.39
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 200.76
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 198.82
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 196.89
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 185.44
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok",
+      "wallMs": 287.34
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 224.5
+    },
+    {
+      "case": "public-524288",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 249.01
+    },
+    {
+      "case": "upload-5356",
+      "method": "POST",
+      "httpStatus": 200,
+      "cpuMs": 54,
+      "outcome": "ok",
+      "wallMs": 650.88
+    },
+    {
+      "case": "upload-5356",
+      "method": "POST",
+      "httpStatus": 200,
+      "cpuMs": 14,
+      "outcome": "ok",
+      "wallMs": 521.34
+    },
+    {
+      "case": "upload-65536",
+      "method": "POST",
+      "httpStatus": 200,
+      "cpuMs": 34,
+      "outcome": "ok",
+      "wallMs": 595.43
+    },
+    {
+      "case": "upload-65536",
+      "method": "POST",
+      "httpStatus": 200,
+      "cpuMs": 33,
+      "outcome": "ok",
+      "wallMs": 623.75
+    },
+    {
+      "case": "upload-524288",
+      "method": "POST",
+      "httpStatus": 200,
+      "cpuMs": 65,
+      "outcome": "ok",
+      "wallMs": 793.08
+    },
+    {
+      "case": "upload-524288",
+      "method": "POST",
+      "httpStatus": 200,
+      "cpuMs": 122,
+      "outcome": "ok",
+      "wallMs": 856.17
+    },
+    {
+      "case": "unauth-upload",
+      "method": "POST",
+      "httpStatus": 401,
+      "cpuMs": 5,
+      "outcome": "ok",
+      "wallMs": 624.8
+    },
+    {
+      "case": "unauth-upload",
+      "method": "POST",
+      "httpStatus": 401,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 111.73
+    },
+    {
+      "case": "unauth-upload",
+      "method": "POST",
+      "httpStatus": 401,
+      "cpuMs": 4,
+      "outcome": "ok",
+      "wallMs": 107.47
+    },
+    {
+      "case": "ingress-readiness",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 27.97
+    },
+    {
+      "case": "ingress-readiness",
+      "method": "GET",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null,
+      "wallMs": 40.08
+    },
+    {
+      "case": "ingress-readiness",
+      "method": "GET",
+      "httpStatus": 503,
+      "cpuMs": 1,
+      "outcome": "ok",
+      "wallMs": 60.66
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 11,
+      "outcome": "ok",
+      "wallMs": 132.37
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 138.88
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok",
+      "wallMs": 131.68
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 8,
+      "outcome": "ok",
+      "wallMs": 114.9
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 129.65
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok",
+      "wallMs": 108.11
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok",
+      "wallMs": 113.73
+    },
+    {
+      "case": "dashboard-detail-correct",
+      "method": "GET",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok",
+      "wallMs": 128.04
+    }
+  ]
+}

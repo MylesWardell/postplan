@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { assertSqliteDatabase } from "./configuration";
 
@@ -9,9 +10,10 @@ export function runtimeOptions() {
       cloudflare({
         persistState: { path: fileURLToPath(new URL("./.wrangler/state", import.meta.url)) },
         remoteBindings: false,
-        configPath:
-          process.env.POSTPLAN_CLOUDFLARE_CONFIG ||
-          fileURLToPath(new URL("./wrangler.jsonc", import.meta.url)),
+        configPath: resolve(
+          fileURLToPath(new URL("./", import.meta.url)),
+          process.env.POSTPLAN_CLOUDFLARE_CONFIG || "wrangler.jsonc",
+        ),
         viteEnvironment: { name: "ssr" },
       }),
     ],

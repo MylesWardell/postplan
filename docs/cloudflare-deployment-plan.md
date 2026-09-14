@@ -4,6 +4,8 @@ Status: application connector implemented and tested locally, 14 September 2026.
 
 The design below includes rollout requirements beyond the current connector. Recoverable upload intents, automatic orphan reconciliation, backup/restore, deployed identity login and representative CPU acceptance remain pending. Current lifetime reservations keep uncertain writes charged and bound orphan storage without those mechanisms. Cleanup currently handles 25 drafts/versions per invocation, with an opt-in hourly trigger; no remote Cron is active.
 
+CPU release gate: the [bounded remote test](./cloudflare-cpu-test.md) found repeated overages on Workers Free (dashboard 15–38 ms; uploads 14–132 ms). Optimization and retesting are required before claiming reliable Free compatibility. The tested connector is deployed but stopped, with temporary objects removed and test credentials revoked.
+
 ## Decision
 
 Use Workers for the selectable gateway, API and TanStack Start dashboard; D1 for relational application metadata; SQLite-backed Durable Objects scoped to individual rate-limit subjects; private R2 Standard for uploaded HTML; and Workers Static Assets for built frontend files. Keep the existing Bun/SQLite and AWS deployments.
