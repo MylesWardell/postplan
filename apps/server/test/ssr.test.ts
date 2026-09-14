@@ -1,5 +1,6 @@
 import { createTestStore } from "@postplan/store/testing";
 import { gzipSync } from "node:zlib";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { test } from "bun:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
@@ -174,11 +175,17 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.match(concurrentPages[1], /Your next idea starts here/);
     assert.match(concurrentPages[2], /Version history/);
     assert.match(concurrentPages[3], /Create a key/);
-    const serverBundle = await Bun.file(
-      new URL("../dist/server/server.js", import.meta.url),
-    ).text();
+    // Chunk placement and optional property quotes differ between build platforms.
+    const serverDirectory = fileURLToPath(new URL("../dist/server/", import.meta.url));
+    const serverBundle = (
+      await Promise.all(
+        [...new Bun.Glob("**/*.js").scanSync({ cwd: serverDirectory, absolute: true })].map(
+          (file) => Bun.file(file).text(),
+        ),
+      )
+    ).join("\n");
     const functionId = serverBundle.match(
-      /"([a-f0-9]+)":\s*\{\s*functionName: "loadDashboard_createServerFn_handler"/,
+      /["']?([a-f0-9]{64})["']?:\s*\{\s*functionName:\s*["']loadDashboard_createServerFn_handler["']/,
     )?.[1];
     assert.ok(functionId);
     const functionPath = `/_serverFn/${functionId}`;
