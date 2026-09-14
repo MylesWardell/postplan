@@ -36,7 +36,7 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
       [2, 3, 4, 5, 6, 7],
     );
     assert.equal(
-      (await caller.drafts.detail({ draftId: first.draftId })).versions[0]?.version_number,
+      (await caller.drafts.detail({ draftId: first.draftId })).versions[0]?.versionNumber,
       7,
     );
     assert.equal(

@@ -8,6 +8,6 @@ export function createDatabase(filename = process.env.DATABASE_PATH || "data/pos
   if (filename !== ":memory:") mkdirSync(dirname(filename), { recursive: true });
   const client = new SQLite(filename, { create: true });
   client.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
-  return { db: drizzle(client, { schema }), client };
+  return { db: drizzle(client, { schema, casing: "snake_case" }), client };
 }
 export type Database = ReturnType<typeof createDatabase>["db"];

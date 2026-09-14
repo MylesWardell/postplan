@@ -19,13 +19,13 @@ export async function draftResponse(
     return;
   const { draft, version } = await findPublicDraftVersion(deps.db, draftId, versionNumber);
   if (!draft || !version) return;
-  return new Response(req.method === "HEAD" ? null : await deps.getHtml(version.object_key), {
+  return new Response(req.method === "HEAD" ? null : await deps.getHtml(version.objectKey), {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy":
         "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",
       "X-Postplan-Draft-Id": draft.id,
-      "X-Postplan-Draft-Version": String(version.version_number),
+      "X-Postplan-Draft-Version": String(version.versionNumber),
     },
   });
 }

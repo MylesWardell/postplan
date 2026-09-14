@@ -29,18 +29,18 @@ export const updateDraft = protectedOS.drafts.update.handler(
     updateOwnedDraft(ctx.db, ctx.account.accountId, draftId, values),
 );
 export const deleteDraft = protectedOS.drafts.delete.handler(({ context: ctx, input }) =>
-  updateOwnedDraft(ctx.db, ctx.account.accountId, input.draftId, { deleted_at: new Date() }),
+  updateOwnedDraft(ctx.db, ctx.account.accountId, input.draftId, { deletedAt: new Date() }),
 );
 export const disableDraft = protectedOS.drafts.disable.handler(({ context: ctx, input }) =>
   updateOwnedDraft(ctx.db, ctx.account.accountId, input.draftId, {
-    disabled_at: new Date(),
-    disabled_reason: cleanText(input.reason) || "Disabled by owner.",
+    disabledAt: new Date(),
+    disabledReason: cleanText(input.reason) || "Disabled by owner.",
   }),
 );
 export const enableDraft = protectedOS.drafts.enable.handler(({ context: ctx, input }) =>
   updateOwnedDraft(ctx.db, ctx.account.accountId, input.draftId, {
-    disabled_at: null,
-    disabled_reason: null,
+    disabledAt: null,
+    disabledReason: null,
   }),
 );
 export const uploadDraft = publicOS.drafts.upload

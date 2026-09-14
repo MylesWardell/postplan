@@ -42,21 +42,21 @@ export const draftDetail = z.object({
   versions: z.array(
     z.object({
       id: z.string(),
-      version_number: z.number(),
-      created_at: z.date(),
-      git_branch: nullableText,
-      git_commit_sha: nullableText,
-      git_commit_subject: nullableText,
-      git_dirty: z.boolean().nullable(),
-      file_size: z.number(),
+      versionNumber: z.number(),
+      createdAt: z.date(),
+      gitBranch: nullableText,
+      gitCommitSha: nullableText,
+      gitCommitSubject: nullableText,
+      gitDirty: z.boolean().nullable(),
+      fileSize: z.number(),
     }),
   ),
 });
 export const apiKeySummary = z.object({
   id: z.string(),
   name: z.string(),
-  created_at: z.date(),
-  last_used_at: z.date().nullable(),
+  createdAt: z.date(),
+  lastUsedAt: z.date().nullable(),
 });
 
 export type AccountDraft = z.infer<typeof accountDraft>;

@@ -32,8 +32,8 @@ test("SQLite survives reopen and rolls back a failed transaction", async () => {
           .values({
             id: "invalid",
             name: "Invalid",
-            account_id: "missing",
-            key_hash: "hash",
+            accountId: "missing",
+            keyHash: "hash",
           })
           .run();
       }),
@@ -41,7 +41,7 @@ test("SQLite survives reopen and rolls back a failed transaction", async () => {
     connection.client.close();
     connection = createDatabase(filename);
     assert.equal(
-      (await findApiKeyByToken(connection.db, "persistent-key"))?.account_id,
+      (await findApiKeyByToken(connection.db, "persistent-key"))?.accountId,
       "acct_bootstrap",
     );
     assert.equal(
@@ -52,7 +52,7 @@ test("SQLite survives reopen and rolls back a failed transaction", async () => {
         .all().length,
       0,
     );
-    assert.ok(connection.db.select().from(schema.accounts).get()?.created_at instanceof Date);
+    assert.ok(connection.db.select().from(schema.accounts).get()?.createdAt instanceof Date);
     assert.deepEqual(connection.client.query("PRAGMA integrity_check").get(), {
       integrity_check: "ok",
     });
@@ -73,7 +73,7 @@ test("migrations, bootstrap keys, revocation and identity updates use SQLite sem
     await migrate(db, options);
     await seedAccounts(db, "bootstrap-test");
     await seedAccounts(db, "bootstrap-test");
-    assert.equal((await findApiKeyByToken(db, "bootstrap-test"))?.account_id, "acct_bootstrap");
+    assert.equal((await findApiKeyByToken(db, "bootstrap-test"))?.accountId, "acct_bootstrap");
     assert.equal(await findApiKeyByToken(db, "postplan-public-upload-sentinel"), null);
     const key = await createApiKey(db, "acct_bootstrap", "test");
     assert.equal(await revokeApiKey(db, "someone-else", key.apiKey.id), false);
@@ -91,8 +91,8 @@ test("migrations, bootstrap keys, revocation and identity updates use SQLite sem
     const [identity] = await db
       .select()
       .from(schema.identities)
-      .where(eq(schema.identities.account_id, first.accountId));
-    assert.equal(identity?.pii_subject, "stable");
+      .where(eq(schema.identities.accountId, first.accountId));
+    assert.equal(identity?.piiSubject, "stable");
   } finally {
     await client.close();
   }
