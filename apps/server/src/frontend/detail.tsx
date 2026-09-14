@@ -70,24 +70,22 @@ export function detailResponse(
                       <td>
                         <a
                           class="draft-title"
-                          href={`${draft.rawUrl.replace(/\/raw$/, "")}/v/${version.version_number}/raw`}
+                          href={`${draft.rawUrl.replace(/\/raw$/, "")}/v/${version.versionNumber}/raw`}
                         >
-                          v{version.version_number} ↗
+                          v{version.versionNumber} ↗
                         </a>
-                        <span class="repo">{(version.file_size / 1024).toFixed(1)} KB</span>
+                        <span class="repo">{(version.fileSize / 1024).toFixed(1)} KB</span>
                       </td>
                       <td>
-                        <span>
-                          {version.git_commit_subject || version.git_branch || "CLI upload"}
-                        </span>
-                        {version.git_commit_sha && (
+                        <span>{version.gitCommitSubject || version.gitBranch || "CLI upload"}</span>
+                        {version.gitCommitSha && (
                           <div class="repo">
-                            {version.git_commit_sha.slice(0, 7)}
-                            {version.git_dirty ? " · uncommitted changes" : ""}
+                            {version.gitCommitSha.slice(0, 7)}
+                            {version.gitDirty ? " · uncommitted changes" : ""}
                           </div>
                         )}
                       </td>
-                      <td class="nowrap muted">{date(version.created_at)}</td>
+                      <td class="nowrap muted">{date(version.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>

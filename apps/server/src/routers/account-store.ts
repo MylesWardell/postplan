@@ -5,15 +5,15 @@ import { accounts, apiKeys, identities } from "../db/schema.js";
 
 export interface ApiKeyAuth {
   id: string;
-  account_id: string;
+  accountId: string;
   name: string;
-  account_name: string;
+  accountName: string;
 }
 export const publicUploadAuth: ApiKeyAuth = {
   id: "key_public_upload",
-  account_id: "acct_public_upload",
+  accountId: "acct_public_upload",
   name: "Public Uploads",
-  account_name: "Public Uploads",
+  accountName: "Public Uploads",
 };
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
@@ -26,9 +26,9 @@ export async function seedAccounts(db: Database, bootstrapKey?: string): Promise
             [
               {
                 id: "key_bootstrap",
-                account_id: "acct_bootstrap",
+                accountId: "acct_bootstrap",
                 name: "Bootstrap API Key",
-                account_name: "Bootstrap Account",
+                accountName: "Bootstrap Account",
               },
               bootstrapKey,
             ] as const,
@@ -36,19 +36,19 @@ export async function seedAccounts(db: Database, bootstrapKey?: string): Promise
         : []),
     ] as const) {
       tx.insert(accounts)
-        .values({ id: auth.account_id, name: auth.account_name })
-        .onConflictDoUpdate({ target: accounts.id, set: { updated_at: new Date() } })
+        .values({ id: auth.accountId, name: auth.accountName })
+        .onConflictDoUpdate({ target: accounts.id, set: { updatedAt: new Date() } })
         .run();
       tx.insert(apiKeys)
         .values({
           id: auth.id,
-          account_id: auth.account_id,
+          accountId: auth.accountId,
           name: auth.name,
-          key_hash: hash(token),
+          keyHash: hash(token),
         })
         .onConflictDoUpdate({
           target: apiKeys.id,
-          set: { key_hash: hash(token), name: auth.name, revoked_at: null },
+          set: { keyHash: hash(token), name: auth.name, revokedAt: null },
         })
         .run();
     }
@@ -59,36 +59,36 @@ export async function findApiKeyByToken(db: Database, token: string): Promise<Ap
   const [key] = await db
     .select({
       id: apiKeys.id,
-      account_id: apiKeys.account_id,
+      accountId: apiKeys.accountId,
       name: apiKeys.name,
-      account_name: accounts.name,
+      accountName: accounts.name,
     })
     .from(apiKeys)
-    .innerJoin(accounts, eq(accounts.id, apiKeys.account_id))
+    .innerJoin(accounts, eq(accounts.id, apiKeys.accountId))
     .where(
       and(
-        eq(apiKeys.key_hash, hash(token)),
+        eq(apiKeys.keyHash, hash(token)),
         ne(apiKeys.id, publicUploadAuth.id),
-        isNull(apiKeys.revoked_at),
+        isNull(apiKeys.revokedAt),
       ),
     )
     .limit(1);
   if (!key) return null;
-  await db.update(apiKeys).set({ last_used_at: new Date() }).where(eq(apiKeys.id, key.id));
+  await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, key.id));
   return key;
 }
 
 export async function createApiKey(db: Database, accountId: string, name: string) {
   const token = `pp_${randomUUID().replaceAll("-", "")}${randomUUID().replaceAll("-", "")}`;
   const id = randomUUID();
-  await db.insert(apiKeys).values({ id, account_id: accountId, name, key_hash: hash(token) });
+  await db.insert(apiKeys).values({ id, accountId: accountId, name, keyHash: hash(token) });
   return { ok: true as const, apiKey: { id, name }, token };
 }
 export async function revokeApiKey(db: Database, accountId: string, id: string) {
   const rows = await db
     .update(apiKeys)
-    .set({ revoked_at: new Date() })
-    .where(and(eq(apiKeys.id, id), eq(apiKeys.account_id, accountId), isNull(apiKeys.revoked_at)))
+    .set({ revokedAt: new Date() })
+    .where(and(eq(apiKeys.id, id), eq(apiKeys.accountId, accountId), isNull(apiKeys.revokedAt)))
     .returning({ id: apiKeys.id });
   return rows.length > 0;
 }
@@ -97,12 +97,12 @@ export function listAccountApiKeys(db: Database, accountId: string) {
     .select({
       id: apiKeys.id,
       name: apiKeys.name,
-      created_at: apiKeys.created_at,
-      last_used_at: apiKeys.last_used_at,
+      createdAt: apiKeys.createdAt,
+      lastUsedAt: apiKeys.lastUsedAt,
     })
     .from(apiKeys)
-    .where(and(eq(apiKeys.account_id, accountId), isNull(apiKeys.revoked_at)))
-    .orderBy(desc(apiKeys.created_at));
+    .where(and(eq(apiKeys.accountId, accountId), isNull(apiKeys.revokedAt)))
+    .orderBy(desc(apiKeys.createdAt));
 }
 
 export interface IdentityProfile {
@@ -136,29 +136,29 @@ export async function findOrCreateAccountForIdentity(
         .where(and(eq(identities.provider, provider), eq(identities.subject, subject)))
         .limit(1)
         .all();
-      const accountId = existing?.account_id ?? `acct_${randomUUID()}`;
+      const accountId = existing?.accountId ?? `acct_${randomUUID()}`;
       const accountName = profile.displayName || profile.email || `Postplan ${subject.slice(-6)}`;
       const values = {
         email: profile.email ?? null,
-        email_verified: profile.emailVerified ?? null,
-        display_name: profile.displayName ?? null,
-        picture_url: profile.pictureUrl ?? null,
-        pii_subject: profile.piiSubject ?? existing?.pii_subject ?? null,
-        last_login_at: new Date(),
+        emailVerified: profile.emailVerified ?? null,
+        displayName: profile.displayName ?? null,
+        pictureUrl: profile.pictureUrl ?? null,
+        piiSubject: profile.piiSubject ?? existing?.piiSubject ?? null,
+        lastLoginAt: new Date(),
       };
       if (existing) {
         tx.update(identities).set(values).where(eq(identities.id, existing.id)).run();
         tx.update(accounts)
-          .set({ name: accountName, updated_at: new Date() })
+          .set({ name: accountName, updatedAt: new Date() })
           .where(eq(accounts.id, accountId))
           .run();
       } else {
         tx.insert(accounts).values({ id: accountId, name: accountName }).run();
         tx.insert(identities)
-          .values({ id: randomUUID(), account_id: accountId, provider, subject, ...values })
+          .values({ id: randomUUID(), accountId: accountId, provider, subject, ...values })
           .run();
       }
-      return { accountId, accountName, email: values.email, pictureUrl: values.picture_url };
+      return { accountId, accountName, email: values.email, pictureUrl: values.pictureUrl };
     },
     { behavior: "immediate" },
   );
