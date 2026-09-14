@@ -1,7 +1,6 @@
 import { shutdownInstrumentation } from "./instrumentation.js";
 import { serve } from "bun";
-import type { Server, ServerWebSocket } from "bun";
-import { RPCHandler } from "@orpc/server/websocket";
+import type { Server } from "bun";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { OpenAPIReferenceHandlerPlugin } from "@orpc/openapi/plugins";
@@ -18,17 +17,11 @@ import { config } from "./config.js";
 import { createContextFactory } from "./http/context.js";
 import type { ServerDependencies } from "./http/context.js";
 import { maxBodyBytes, boundedRequest } from "./http/body.js";
-import { hostDraftId, applicationOrigin, onlyApplication, respond } from "./http/response.js";
+import { onlyApplication } from "./http/response.js";
 import { createFrontend } from "./frontend/index.js";
 import { notFoundResponse } from "./frontend/pages.js";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
 
-interface SocketData {
-  request: Request;
-  peerIp: string | null;
-}
-
-// Tests and production use the same native Bun routes and WebSocket lifecycle.
 export function createServerOptions(deps: ServerDependencies) {
   const context = createContextFactory(deps);
   const index = createFrontend(deps, context);
@@ -72,11 +65,7 @@ export function createServerOptions(deps: ServerDependencies) {
       return { ok: false, error: error.message };
     },
   });
-  const rpcHandler = new RPCHandler(router, {
-    plugins: [new EvlogHandlerPlugin({ logAbort: true })],
-  });
-
-  function handleOpenAPIRequest(request: Request, server: Server<SocketData>) {
+  function handleOpenAPIRequest(request: Request, server: Server<undefined>) {
     return onlyApplication(request, async () => {
       const req = await boundedRequest(request);
       const { response } = await openapiHandler.handle(req, {
@@ -92,7 +81,7 @@ export function createServerOptions(deps: ServerDependencies) {
   return {
     maxRequestBodySize: maxBodyBytes,
     routes: {
-      "/*": (req: Request, server: Server<SocketData>) =>
+      "/*": (req: Request, server: Server<undefined>) =>
         index(req, server.requestIP(req)?.address ?? null),
       "/api": handleOpenAPIRequest,
       "/api/*": handleOpenAPIRequest,
@@ -100,56 +89,12 @@ export function createServerOptions(deps: ServerDependencies) {
         onlyApplication(req, async () => {
           if (req.method !== "GET") return notFoundResponse();
           try {
-            await deps.db.execute(sql`select 1`);
+            await deps.db.get(sql`select 1`);
             return Response.json({ ok: true });
           } catch {
             return Response.json({ ok: false }, { status: 503 });
           }
         }),
-      "/ws/rpc": (req: Request, server: Server<SocketData>) => {
-        if (hostDraftId(req)) return respond(notFoundResponse);
-        const origin = req.headers.get("origin");
-        // Browser cookies must never authorize a cross-origin socket. Per-call headers cannot override this.
-        if (
-          (origin && origin !== applicationOrigin(req)) ||
-          (req.headers.has("cookie") && !origin)
-        ) {
-          return respond(() => new Response("Forbidden", { status: 403 }));
-        }
-        if (
-          server.upgrade(req, {
-            data: { request: req, peerIp: server.requestIP(req)?.address ?? null },
-          })
-        )
-          return;
-        return respond(() => new Response("Upgrade failed", { status: 500 }));
-      },
-    },
-    websocket: {
-      maxPayloadLength: maxBodyBytes,
-      message(ws: ServerWebSocket<SocketData>, message: string | Buffer) {
-        return rpcHandler
-          .message(ws, typeof message === "string" ? message : new Uint8Array(message), {
-            context: (request) => ({
-              resolveContext: () => {
-                // Authenticate every call, including key revocation and session expiry on an existing connection.
-                const headers = new Headers(ws.data.request.headers);
-                const authorization = request.headers.authorization;
-                if (authorization !== undefined)
-                  headers.set(
-                    "authorization",
-                    Array.isArray(authorization) ? authorization.join(",") : authorization,
-                  );
-                const req = new Request(ws.data.request.url, { method: "POST", headers });
-                return context(req, true, ws.data.peerIp);
-              },
-            }),
-          })
-          .then(() => {});
-      },
-      close(ws: ServerWebSocket<SocketData>) {
-        void rpcHandler.close(ws);
-      },
     },
     development: process.env.NODE_ENV !== "production" && { hmr: true, console: true },
   };
@@ -157,7 +102,7 @@ export function createServerOptions(deps: ServerDependencies) {
 
 async function main(): Promise<void> {
   assertStorageConfigured();
-  const { db, pool } = createDatabase(config);
+  const { db, client } = createDatabase(config.databasePath);
   await seedAccounts(db, config.bootstrapApiKey);
   const server = serve({
     port: config.port,
@@ -176,7 +121,7 @@ async function main(): Promise<void> {
       force.unref();
       try {
         await server.stop();
-        await pool.end();
+        client.close();
         await shutdownInstrumentation();
         process.exit(0);
       } catch (error) {

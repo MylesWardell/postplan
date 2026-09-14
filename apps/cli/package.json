@@ -13,10 +13,10 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json && tsdown",
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json && tsdown",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/test/*.test.js",
-    "prepack": "pnpm build"
+    "prepack": "bun run build"
   },
   "dependencies": {
     "commander": "^14.0.0"

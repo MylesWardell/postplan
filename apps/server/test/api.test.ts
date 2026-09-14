@@ -1,22 +1,19 @@
+import { createDatabase } from "../src/db/client.js";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
-import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/websocket";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { ORPCError, createORPCClient } from "@orpc/client";
+import { OpenAPILink } from "@orpc/openapi/fetch";
 import { accounts } from "../src/db/schema.js";
 import { createApiKey, seedAccounts } from "../src/routers/account-store.js";
-import * as schema from "../src/db/schema.js";
-import type { ApiClient } from "@postplan/api";
+import { contract, type ApiClient } from "@postplan/api";
 import { createServerOptions } from "../src/index.js";
 import { config } from "../src/config.js";
 import { createSessionCookie } from "../src/auth/session.js";
 
 test("oRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
-  const postgres = new PGlite();
-  const db = drizzle(postgres, { schema });
+  const { db, client: sqlite } = createDatabase(":memory:");
   const objects = new Map<string, string>();
   const originalConfig = { ...config };
   let failStorage = false;
@@ -47,30 +44,22 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     const base = server.url.origin;
     config.publicBaseUrl = base;
     config.sessionSecret = "test-session-secret";
-    const sockets: WebSocket[] = [];
-    const client = (
-      token?: string,
-      headers: Record<string, string> = {},
-      callHeaders: Record<string, string> = {},
-    ) =>
+    const client = (token?: string, headers: Record<string, string> = {}) =>
       createORPCClient<ApiClient>(
-        new RPCLink({
-          connect: () =>
-            new Promise<WebSocket>((resolve, reject) => {
-              const Socket = WebSocket as unknown as new (
-                url: string,
-                options: Bun.WebSocketOptions,
-              ) => WebSocket;
-              const ws = new Socket(base.replace("http", "ws") + "/ws/rpc", { headers });
-              sockets.push(ws);
-              ws.addEventListener("open", () => resolve(ws), { once: true });
-              ws.addEventListener(
-                "error",
-                () => reject(new Error("WebSocket connection rejected")),
-                { once: true },
-              );
-            }),
-          headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...callHeaders },
+        new OpenAPILink(contract, {
+          origin: base,
+          url: "/api",
+          headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
+          customErrorResponseBodyDecoder: (body) => {
+            if (body && typeof body === "object") {
+              if ("error" in body && typeof body.error === "string")
+                return new ORPCError("API_ERROR", { message: body.error });
+              if ("errors" in body)
+                return new ORPCError("UNPROCESSABLE_CONTENT", {
+                  message: "HTML validation failed.",
+                });
+            }
+          },
         }),
       );
     const owner = client("owner-key");
@@ -125,16 +114,8 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
       email: null,
       pictureUrl: null,
     }).split(";")[0]!;
-    await assert.rejects(client(undefined, {}, { cookie, origin: base }).drafts.list(), /Sign in/);
-    const session = client(undefined, { cookie, origin: base });
-    await session.drafts.update({ draftId, description: "From frontend" });
-    assert.equal((await session.drafts.detail({ draftId })).draft.description, "From frontend");
-    for (const headers of [
-      new Headers({ cookie, origin: "https://evil.example" }),
-      new Headers({ cookie }),
-    ]) {
-      assert.equal((await fetch(`${base}/ws/rpc`, { headers })).status, 403);
-    }
+    await assert.rejects(client(undefined, { cookie, origin: base }).drafts.list(), /Sign in/);
+    assert.equal((await fetch(`${base}/ws/rpc`)).status, 404);
     await assert.rejects(
       client("invalid", { cookie, origin: base }).drafts.list(),
       /Invalid API key/,
@@ -149,10 +130,10 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     assert.equal((await owner.drafts.detail({ draftId })).versions.length, before);
     const key = await owner.apiKeys.create({ name: "temporary" });
     await assert.rejects(other.apiKeys.revoke({ apiKeyId: key.apiKey.id }), /API key not found/);
-    const existingConnection = client(key.token);
-    await existingConnection.account.me();
+    const revokedClient = client(key.token);
+    await revokedClient.account.me();
     await owner.apiKeys.revoke({ apiKeyId: key.apiKey.id });
-    await assert.rejects(existingConnection.account.me(), /Invalid API key/);
+    await assert.rejects(revokedClient.account.me(), /Invalid API key/);
     await assert.rejects(client(key.token).account.me(), /Invalid API key/);
     for (let i = 0; i < 9; i++) await owner.apiKeys.create({ name: "Rate test" });
     await assert.rejects(owner.apiKeys.create({ name: "Over limit" }), /Rate limit exceeded/);
@@ -169,10 +150,9 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     await owner.drafts.delete({ draftId });
     assert.equal((await fetch(upload.publicUrl)).status, 404);
     assert.equal((await owner.drafts.list()).drafts.length, 0);
-    for (const ws of sockets) ws.close();
   } finally {
     Object.assign(config, originalConfig);
     await server.stop(true);
-    await postgres.close();
+    sqlite.close();
   }
 }, 30_000);

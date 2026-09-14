@@ -1,18 +1,20 @@
 # Database
 
-`src/db/schema.ts` is the source of truth for PostgreSQL tables and inferred row types. Application queries use Drizzle; the `pg` driver is confined to connection setup and the migration lock.
+Drizzle uses Bun's built-in SQLite driver, following the [Bun guide](https://bun.com/guides/ecosystem/drizzle). `src/db/schema.ts` defines tables; routers own queries. `DATABASE_PATH` defaults to `data/postplan.sqlite`, relative to the process working directory. Use an absolute path in production.
 
 From the repository root:
 
 ```sh
-pnpm db:generate
-pnpm db:migrate
+bun run db:generate
+bun run db:migrate
 ```
 
-Generation writes reviewable SQL and schema snapshots without connecting to a database. Migration loads the root `.env` if present and applies reviewed SQL to `DATABASE_URL`, recording it in Drizzle's migration journal. It verifies the configured PostgreSQL CA and serializes concurrent migration processes with an advisory lock. Never run migration commands against an environment unintentionally.
+Generation writes SQL and snapshots without opening a database. Migration loads the root `.env` and applies pending SQL to SQLite. Run one migration process with the app stopped, then start the release. Startup seeds accounts and keys but does not change the schema. Keep applied migrations immutable.
 
-The initial migration is an idempotent compatibility baseline adapted from the previous startup DDL. It creates an empty installation or preserves the existing six tables and backfills previously introduced columns. Review unexpected schema drift separately; the baseline does not repair arbitrary manual changes. Keep its generated snapshot and SQL immutable once applied.
+Connections enable WAL, foreign keys and a five-second busy timeout. Transactions are synchronous: storage I/O finishes first, then an immediate transaction allocates the version and records all rows atomically. A failed transaction can leave an unreferenced storage object. Run a single server process with the database on persistent local disk.
 
-Server startup seeds the public-upload identity and optional bootstrap key; it no longer changes the schema. Apply migrations once before starting a new release. Use a DDL-capable migration role and a DML-only application role in production. Future changes must preserve compatibility with the previous application version during rolling updates.
+This is a fresh SQLite baseline, not an in-place upgrade of PostgreSQL. Existing installations need a separate export/import: preserve IDs, key hashes and object keys; convert dates to epoch milliseconds, booleans to integers and JSON to text; verify row counts, relationships and content hashes before switching. No existing database has been converted or modified.
 
-Tests use PGlite, an embedded PostgreSQL engine, for schema migration, identity and API-key behavior. They do not replace staging checks against networked RDS, concurrent connections, certificate rotation, or backups.
+Back up with SQLite's online backup API or `VACUUM INTO` to a new file, then copy that completed snapshot off-host. Do not copy only the live main file while WAL writes are active. Verify `PRAGMA integrity_check` and `PRAGMA foreign_key_check` on a restored copy. See [SQLite backups](https://sqlite.org/backup.html) and the [AWS plan](../../docs/aws-deployment-plan.md).
+
+Tests use the production SQLite adapter for migrations, identities, concurrent versions, HTTP and SSR forms.

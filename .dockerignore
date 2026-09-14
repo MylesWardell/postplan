@@ -1,7 +1,6 @@
 *
 !package.json
-!pnpm-lock.yaml
-!pnpm-workspace.yaml
+!bun.lock
 !tsconfig.base.json
 !turbo.json
 !.oxlintrc.json
@@ -17,3 +16,5 @@
 **/.turbo
 apps/cli/bin
 **/.env*
+**/data
+**/*.sqlite*

@@ -1,10 +1,11 @@
+import { createDatabase } from "../../src/db/client.js";
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "bun:test";
 import { fileURLToPath } from "node:url";
-import { readFileSync } from "node:fs";
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { eq } from "drizzle-orm";
 import * as schema from "../../src/db/schema.js";
 import {
@@ -15,9 +16,57 @@ import {
   seedAccounts,
 } from "../../src/routers/account-store.js";
 
-test("migrations, bootstrap keys, revocation and identity updates use PostgreSQL semantics", async () => {
-  const client = new PGlite();
-  const db = drizzle(client, { schema });
+test("SQLite survives reopen and rolls back a failed transaction", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "postplan-sqlite-"));
+  const filename = join(directory, "postplan.sqlite");
+  let connection = createDatabase(filename);
+  try {
+    migrate(connection.db, {
+      migrationsFolder: fileURLToPath(new URL("../../drizzle", import.meta.url)),
+    });
+    await seedAccounts(connection.db, "persistent-key");
+    assert.throws(() =>
+      connection.db.transaction((tx) => {
+        tx.insert(schema.accounts).values({ id: "rolled-back", name: "Rollback" }).run();
+        tx.insert(schema.apiKeys)
+          .values({
+            id: "invalid",
+            name: "Invalid",
+            account_id: "missing",
+            key_hash: "hash",
+          })
+          .run();
+      }),
+    );
+    connection.client.close();
+    connection = createDatabase(filename);
+    assert.equal(
+      (await findApiKeyByToken(connection.db, "persistent-key"))?.account_id,
+      "acct_bootstrap",
+    );
+    assert.equal(
+      connection.db
+        .select()
+        .from(schema.accounts)
+        .where(eq(schema.accounts.id, "rolled-back"))
+        .all().length,
+      0,
+    );
+    assert.ok(connection.db.select().from(schema.accounts).get()?.created_at instanceof Date);
+    assert.deepEqual(connection.client.query("PRAGMA integrity_check").get(), {
+      integrity_check: "ok",
+    });
+    assert.deepEqual(connection.client.query("PRAGMA foreign_key_check").all(), []);
+  } finally {
+    connection.client.close();
+    // Release Drizzle's temporary prepared statements before deleting the file on Windows.
+    Bun.gc(true);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("migrations, bootstrap keys, revocation and identity updates use SQLite semantics", async () => {
+  const { db, client } = createDatabase(":memory:");
   try {
     const options = { migrationsFolder: fileURLToPath(new URL("../../drizzle", import.meta.url)) };
     await migrate(db, options);
@@ -44,30 +93,6 @@ test("migrations, bootstrap keys, revocation and identity updates use PostgreSQL
       .from(schema.identities)
       .where(eq(schema.identities.account_id, first.accountId));
     assert.equal(identity?.pii_subject, "stable");
-  } finally {
-    await client.close();
-  }
-});
-
-test("the compatibility baseline preserves an existing installation", async () => {
-  const client = new PGlite();
-  const db = drizzle(client, { schema });
-  try {
-    const directory = new URL("../../drizzle/", import.meta.url);
-    const journal = JSON.parse(readFileSync(new URL("meta/_journal.json", directory), "utf8")) as {
-      entries: { tag: string }[];
-    };
-    const tag = journal.entries[0]?.tag;
-    assert.ok(tag);
-    // Simulate the old startup-created schema without a Drizzle journal.
-    await client.exec(readFileSync(new URL(`${tag}.sql`, directory), "utf8"));
-    await db.insert(schema.accounts).values({ id: "existing", name: "Keep me" });
-    await migrate(db, { migrationsFolder: fileURLToPath(directory) });
-    const [account] = await db
-      .select()
-      .from(schema.accounts)
-      .where(eq(schema.accounts.id, "existing"));
-    assert.equal(account?.name, "Keep me");
   } finally {
     await client.close();
   }

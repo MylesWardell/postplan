@@ -12,17 +12,14 @@ export interface S3Config {
 
 export interface Config {
   port: number;
-  databaseUrl: string | undefined;
-  // PEM bundle used to verify the Postgres server certificate (e.g. the RDS
-  // global bundle). Absent, the connection string's own sslmode applies.
-  databaseSslCaFile: string | undefined;
+  databasePath: string;
   bootstrapApiKey: string | undefined;
   publicBaseUrl: string | undefined;
   maxHtmlBytes: number;
   sessionSecret: string | undefined;
   shooBaseUrl: string;
   // Edge/proxy topology. Defaults preserve the Railway behaviour; see
-  // src/http/client-ip.ts and docs/aws-deployment-plan.md for the AWS (ALB) values.
+  // src/http/client-ip.ts and docs/aws-deployment-plan.md for the AWS values.
   trustProxy: TrustProxySetting;
   clientIpSource: ClientIpSource;
   requestIdHeader: string;
@@ -34,8 +31,7 @@ const s3Endpoint = env.AWS_ENDPOINT_URL || env.S3_ENDPOINT || undefined;
 
 export const config: Config = {
   port: Number(env.PORT || 3000),
-  databaseUrl: env.DATABASE_URL,
-  databaseSslCaFile: env.DATABASE_SSL_CA_FILE || undefined,
+  databasePath: env.DATABASE_PATH || "data/postplan.sqlite",
   bootstrapApiKey: env.POSTPLAN_BOOTSTRAP_API_KEY,
   publicBaseUrl: env.POSTPLAN_PUBLIC_BASE_URL,
   maxHtmlBytes: Number(env.MAX_HTML_BYTES || 512 * 1024),
@@ -49,7 +45,7 @@ export const config: Config = {
   s3: {
     // Endpoint and static keys are only needed for S3-compatible stores
     // (Railway buckets, MinIO, R2). On AWS leave them unset: the SDK talks to
-    // regional S3 and picks up credentials from the ECS task role.
+    // regional S3 and picks up credentials from the EC2 instance role.
     endpoint: s3Endpoint,
     accessKeyId: env.AWS_ACCESS_KEY_ID || env.S3_ACCESS_KEY_ID || undefined,
     secretAccessKey: env.AWS_SECRET_ACCESS_KEY || env.S3_SECRET_ACCESS_KEY || undefined,

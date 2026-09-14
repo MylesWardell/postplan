@@ -1,21 +1,18 @@
+import { createDatabase } from "../src/db/client.js";
 import { boundedRequest } from "../src/http/body.js";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { accounts } from "../src/db/schema.js";
-import * as schema from "../src/db/schema.js";
 import { seedAccounts } from "../src/routers/account-store.js";
 import { createServerOptions } from "../src/index.js";
 import { config } from "../src/config.js";
 import { createAuthStateCookie, createSessionCookie } from "../src/auth/session.js";
 
-// Exercise rendered pages and native forms against PostgreSQL, without S3 or OAuth calls.
+// Exercise rendered pages and native forms against SQLite, without S3 or OAuth calls.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
-  const postgres = new PGlite();
-  const db = drizzle(postgres, { schema });
+  const { db, client: sqlite } = createDatabase(":memory:");
   let server: ReturnType<typeof Bun.serve> | undefined;
   const original = { ...config };
   try {
@@ -157,7 +154,8 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       "/cli/auth",
       "/auth/sign-in",
       "/api/drafts",
-      "/rpc/drafts/list",
+      "/ws/rpc",
+      "/api/spec.json",
     ]) {
       assert.equal(
         (await app(new Request(publicUrl + forbidden, { headers: { cookie } }))).status,
@@ -227,6 +225,6 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
   } finally {
     Object.assign(config, original);
     await server?.stop(true);
-    await postgres.close();
+    sqlite.close();
   }
 }, 30_000);

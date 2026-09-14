@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

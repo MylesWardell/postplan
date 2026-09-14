@@ -44,7 +44,7 @@ Do not include:
 2. Run:
 
    ```sh
-   pnpm dlx postplan upload <file path>
+   bunx postplan upload <file path>
    ```
 
 3. Return the Postplan URL to the user.
@@ -54,7 +54,7 @@ The CLI prints both a draft URL and a `Raw HTML` URL. Either works for any clien
 If the same local file was uploaded before, the CLI updates the existing draft. To force a new draft, use:
 
 ```sh
-pnpm dlx postplan upload <file path> --new
+bunx postplan upload <file path> --new
 ```
 
 Postplan stores CLI auth and draft mappings in `~/.postplan`.

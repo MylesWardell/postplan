@@ -6,3 +6,7 @@ dist/
 *.tgz
 .turbo/
 apps/cli/bin/
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

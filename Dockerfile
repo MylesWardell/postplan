@@ -1,23 +1,28 @@
 FROM oven/bun:1.3.14-debian AS bun
-
 FROM node:22-bookworm-slim AS build
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /workspace
-RUN npm install --global pnpm@11.22.0
 COPY . .
-RUN pnpm install --frozen-lockfile
-RUN pnpm check
-RUN pnpm --filter @postplan/server deploy --prod --legacy /out
+RUN bun install --frozen-lockfile
+RUN bun run check
 
-FROM oven/bun:1.3.14-debian AS runtime
+FROM bun AS dependencies
 WORKDIR /app
-ENV NODE_ENV=production
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
-    && mkdir -p /app/certs \
-    && curl --fail --silent --show-error https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /app/certs/rds-global-bundle.pem \
-    && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
-COPY --from=build /out /app
-RUN bun -e "await import('./dist/src/index.js')"
+COPY package.json bun.lock ./
+COPY apps/server/package.json ./apps/server/package.json
+COPY apps/cli/package.json ./apps/cli/package.json
+COPY packages/api/package.json ./packages/api/package.json
+RUN bun install --production --frozen-lockfile
+
+FROM bun AS runtime
+WORKDIR /app
+ENV NODE_ENV=production DATABASE_PATH=/data/postplan.sqlite
+COPY --from=dependencies /app /app
+COPY --from=build /workspace/apps/server/dist/src ./apps/server/dist/src
+COPY --from=build /workspace/apps/server/drizzle ./apps/server/drizzle
+COPY --from=build /workspace/packages/api/dist/src ./packages/api/dist/src
+RUN mkdir /data && chown bun:bun /data
+RUN bun -e "await import('./apps/server/dist/src/index.js')"
 USER bun
 EXPOSE 3000
-CMD ["bun", "dist/src/index.js"]
+CMD ["bun", "apps/server/dist/src/index.js"]

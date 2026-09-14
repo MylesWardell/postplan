@@ -13,7 +13,7 @@ packages/
 scripts/           Workspace build helpers
 ```
 
-`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/routers` implements it using Drizzle-backed domain procedures; the OpenAPI handler exposes the contract at `/api`, and the WebSocket RPC handler at `/ws/rpc`. Preact pages in `apps/server/src/frontend` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
+`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/routers` implements it using Drizzle-backed domain procedures; the OpenAPI handler exposes the contract at `/api`, for HTTP clients. Preact pages in `apps/server/src/frontend` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
 
 The server follows the [Bun playground's router composition](https://github.com/middleapi/orpc/blob/main/playgrounds/bun/src/routers/index.ts):
 
@@ -38,32 +38,32 @@ Schemas and HTTP route metadata stay in the exported `contract` from `packages/a
 
 ## Development
 
-Use Node 22.20+, Bun 1.3.14, and pnpm 11.22.0. Bun runs the server; Node runs the CLI and workspace tooling. Turborepo builds dependencies before their consumers. oxfmt and oxlint run across the workspace; tsdown bundles the CLI.
+Use Bun 1.3.14 and Node 22.20+. Bun manages workspace packages and runs the server; Node runs the CLI and workspace tooling. Turborepo builds dependencies before their consumers. oxfmt and oxlint run across the workspace; tsdown bundles the CLI.
 
 ```sh
-pnpm install --frozen-lockfile
-pnpm check
-pnpm build
+bun install --frozen-lockfile
+bun run check
+bun run build
 ```
 
-Copy `.env.example` to `.env` and configure PostgreSQL and S3-compatible storage. Apply reviewed migrations before starting the service:
+Copy `.env.example` to `.env` and configure S3-compatible storage and `DATABASE_PATH` (default `data/postplan.sqlite`). Apply reviewed migrations before starting the service:
 
 ```sh
-pnpm db:migrate
+bun run db:migrate
 bun --env-file=.env apps/server/dist/src/index.js
 ```
 
-For development, build once, then run `pnpm --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `pnpm build` to refresh their exports. Startup seeds account/key records but does not run DDL.
+For development, build once, then run `bun run --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `bun run build` to refresh their exports. Startup seeds account/key records but does not run DDL.
 
-`pnpm check` covers formatting, lint, strict types, and tests. Tests include embedded PostgreSQL migration and HTTP/oRPC and SSR form integration checks, without AWS access. Use `pnpm format`, `pnpm lint:fix`, and `pnpm db:generate` while editing. See [database migration guidance](apps/server/DATABASE.md).
+`bun run check` covers formatting, lint, strict types, and tests. Tests include native SQLite migration and HTTP/oRPC and SSR form integration checks, without AWS access. Use `bun run format`, `bun run lint:fix`, and `bun run db:generate` while editing. See [database migration guidance](apps/server/DATABASE.md).
 
-Build the portable CLI tarball with `pnpm pack:cli`. The executable is `apps/cli/bin/postplan.js`. This fork is not published to the package registry; the published package in the examples below remains upstream. See [CLI development](apps/cli/README.md).
+Build the portable CLI tarball with `bun run pack:cli`. The executable is `apps/cli/bin/postplan.js`. This fork is not published to the package registry; the published package in the examples below remains upstream. See [CLI development](apps/cli/README.md).
 
 ## Typed API
 
 The server follows the Fetch host pattern in the [oRPC Bun playground](https://github.com/middleapi/orpc/tree/main/playgrounds/bun), using its pinned oRPC `2.0.0-beta.35` generation. All oRPC packages must stay on the same version. Its API is still prerelease; review upgrades together with contract and transport tests.
 
-The [contract](packages/api/src/index.ts) defines the REST routes; the server uses `OpenAPIHandler` without a manual REST dispatcher. `RPCHandler` exposes the same implementation for typed oRPC clients. Dates are native `Date` values over RPC and ISO strings in REST JSON. Uploads return HTTP 201 for a new draft, 200 for a version, and 422 with validation errors for rejected HTML.
+The [contract](packages/api/src/index.ts) defines the REST routes; the server uses `OpenAPIHandler` without a manual REST dispatcher. Typed clients use `OpenAPILink` with the exported contract. Dates are ISO strings in REST JSON. Uploads return HTTP 201 for a new draft, 200 for a version, and 422 with validation errors for rejected HTML.
 
 | Router    | Procedures                                                          |
 | --------- | ------------------------------------------------------------------- |
@@ -73,26 +73,26 @@ The [contract](packages/api/src/index.ts) defines the REST routes; the server us
 
 Protected procedures derive ownership from the bearer API key or verified session, never an input account ID. Browser session mutations require the application's exact Origin. The API is unavailable on draft subdomains. No batch handler is installed; rate limits run per procedure and are shared with the REST and dashboard adapters. Invalid bearer keys are rejected rather than falling back to anonymous uploads.
 
-Draft updates lock the owned draft row before allocating a version, preserving unique monotonically increasing version numbers across concurrent uploads. Database writes roll back on storage failure; if S3 succeeds and the later transaction fails, the unreferenced object may remain for later cleanup.
+Draft updates use a synchronous SQLite immediate transaction to allocate a version, preserving unique monotonically increasing version numbers across concurrent uploads. Storage completes before the transaction starts; if S3 succeeds and the later transaction fails, the unreferenced object may remain for later cleanup.
 
 ```ts
 import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/websocket";
-import type { ApiClient } from "@postplan/api";
+import { OpenAPILink } from "@orpc/openapi/fetch";
+import { contract, type ApiClient } from "@postplan/api";
 
 const api = createORPCClient<ApiClient>(
-  new RPCLink({
+  new OpenAPILink(contract, {
     origin: "http://localhost:3000",
-    url: "/rpc",
+    url: "/api",
     headers: { authorization: `Bearer ${token}` },
   }),
 );
 const { drafts } = await api.drafts.list();
 ```
 
-The native Bun `routes` map mounts the SSR frontend at `/*`, OpenAPI at `/api` and `/api/*`, and a WebSocket upgrade handler at `/ws/rpc`. Its `message` and `close` callbacks delegate to oRPC. Each WebSocket call revalidates its bearer key or the socket's signed session; message headers cannot forge cookies or browser Origin.
+The native Bun `routes` map mounts SSR at `/*`, the HTTP API at `/api` and `/api/*`, and health checks at `/healthz`. There is no WebSocket transport.
 
-The OpenAPI handler includes `CORSHandlerPlugin`, `EvlogHandlerPlugin`, `SmartCoercionHandlerPlugin`, and `OpenAPIReferenceHandlerPlugin`, using `ZodToJsonSchemaConverter`. Visit `/api` for the interactive reference and `/api/spec.json` for the contract-generated specification. REST uses bearer authentication; CORS permits bearer clients without credentialed cookies. The WebSocket handler also uses Evlog. Bun development mode enables HMR and browser console forwarding; SSR pages need no browser bundle.
+The OpenAPI handler includes `CORSHandlerPlugin`, `EvlogHandlerPlugin`, `SmartCoercionHandlerPlugin`, and `OpenAPIReferenceHandlerPlugin`, using `ZodToJsonSchemaConverter`. Visit `/api` for the interactive reference and `/api/spec.json` for the contract-generated specification. REST uses bearer authentication; CORS permits bearer clients without credentialed cookies. Bun development mode enables HMR and browser console forwarding; SSR pages need no browser bundle.
 
 `instrumentation.ts` follows the example's NodeSDK, auto-instrumentation and oRPC instrumentation setup. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to your collector's trace endpoint to enable export; `OTEL_SERVICE_NAME` defaults to `postplan`. The app does not assume the example's local Jaeger collector. The playground's sample planet/file/message domains and fake authentication are replaced by real draft/account procedures, Drizzle persistence and signed sessions.
 
@@ -105,13 +105,13 @@ The shared Preact `Layout` supplies navigation and styling. The dashboard suppor
 Upload a draft:
 
 ```sh
-pnpm dlx postplan upload ./plan.html
+bunx postplan upload ./plan.html
 ```
 
 Attach an optional stable description (a short label shown in your dashboard and `postplan list`). Re-running with `--description` updates it; omitting it leaves the existing one untouched:
 
 ```sh
-pnpm dlx postplan upload ./plan.html --description "Q3 warehouse migration plan"
+bunx postplan upload ./plan.html --description "Q3 warehouse migration plan"
 ```
 
 The CLI defaults to `https://postplan.dev`. Use `--api-url http://localhost:3000` for a local or custom deployment.
@@ -119,19 +119,19 @@ The CLI defaults to `https://postplan.dev`. Use `--api-url http://localhost:3000
 API keys are optional for private/admin flows. Log in interactively (opens a browser page that mints a key you paste back — works over SSH, no localhost redirect):
 
 ```sh
-pnpm dlx postplan auth login
+bunx postplan auth login
 ```
 
 Or set a key directly:
 
 ```sh
-pnpm dlx postplan auth set <api-key>
+bunx postplan auth set <api-key>
 ```
 
 List the drafts published to your account (requires an API key). Each row shows the auto-linked git repo, latest version, total version count, and last-updated time:
 
 ```sh
-pnpm dlx postplan list
+bunx postplan list
 ```
 
 The CLI stores optional credentials and draft mappings in `~/.postplan`.
@@ -140,17 +140,17 @@ The CLI stores optional credentials and draft mappings in `~/.postplan`.
 
 Required service variables:
 
-- `DATABASE_URL`
 - `AWS_S3_BUCKET_NAME`
 - `AWS_DEFAULT_REGION`
 
 Optional service variables:
 
+- `DATABASE_PATH` - defaults to `data/postplan.sqlite`; use a persistent absolute path in production.
+
 - `POSTPLAN_BOOTSTRAP_API_KEY` - creates or updates the bootstrap administrator key on startup.
-- `DATABASE_SSL_CA_FILE` - PEM CA bundle for verified PostgreSQL TLS; omit conflicting SSL parameters from `DATABASE_URL`.
-- `AWS_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` - for S3-compatible storage. On ECS, omit them to use native S3 with the task role.
+- `AWS_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` - for S3-compatible storage. On EC2, omit them to use native S3 with the instance role.
 - `AWS_S3_FORCE_PATH_STYLE` - defaults to true for a custom endpoint and false for native S3.
-- `TRUST_PROXY`, `CLIENT_IP_SOURCE`, `REQUEST_ID_HEADER` - configure the trusted proxy topology; use `1`, `req-ip`, and `x-amzn-trace-id` behind a direct ALB. Local direct connections should use `false` and `req-ip`.
+- `TRUST_PROXY`, `CLIENT_IP_SOURCE`, `REQUEST_ID_HEADER` - configure the trusted proxy topology; use `1`, `req-ip`, and `x-request-id` behind one trusted proxy. Local direct connections should use `false` and `req-ip`.
 - `POSTPLAN_PUBLIC_BASE_URL` - set to a normal base URL for `/d/<draft-id>` URLs, or a wildcard URL such as `https://*.postplan.dev` for draft subdomains.
 - `POSTPLAN_SESSION_SECRET` - together with `POSTPLAN_PUBLIC_BASE_URL`, enables web sign-in (the dashboard and `/cli/auth`). If either is absent, those routes return 503 and uploads/serving are unaffected.
 - `SHOO_BASE_URL` - identity broker for web sign-in (default `https://shoo.dev`).
@@ -160,7 +160,7 @@ Optional service variables:
 - `UPLOAD_RATE_LIMIT_WINDOW_MS`
 - `UPLOAD_RATE_LIMIT_MAX`
 
-Uploads are public by default. Bearer API keys are still used for admin endpoints and authenticated ownership flows. The bootstrap key is inserted into Postgres on startup if present.
+Uploads are public by default. Bearer API keys are still used for admin endpoints and authenticated ownership flows. The bootstrap key is inserted into SQLite on startup if present.
 
 ## Dashboard & web sign-in
 
@@ -189,10 +189,10 @@ The upload API returns both `publicUrl` and `rawUrl`, and the CLI prints the raw
 
 ## AWS deployment preparation
 
-See [the AWS deployment plan](docs/aws-deployment-plan.md) for the proposed ECS Fargate, ALB, RDS and S3 architecture, runtime settings, IAM boundaries, staging acceptance, migration and rollback. No AWS resources have been deployed.
+See [the AWS deployment plan](docs/aws-deployment-plan.md) for the proposed single EC2 instance, persistent SQLite volume and S3 architecture, runtime settings, IAM boundaries, staging acceptance, migration and rollback. No AWS resources have been deployed.
 
 ```sh
 docker build --tag postplan:local .
 ```
 
-The image runs compiled JavaScript with Bun as a non-root user and includes the RDS CA bundle. CI checks formatting, lint, types, tests, CLI packaging and the container build; it has no AWS deployment step.
+The image runs compiled JavaScript with Bun as a non-root user with SQLite on a persistent `/data` mount. CI checks formatting, lint, types, tests, CLI packaging and the container build; it has no AWS deployment step.

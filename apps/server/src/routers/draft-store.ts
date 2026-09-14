@@ -155,100 +155,124 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
   const html = input.html;
   const auth = ctx.apiKey ?? publicUploadAuth;
   const metadata = input.metadata ?? {};
-  return ctx.db.transaction(async (tx) => {
-    // Lock the owned row before allocating the next version. Concurrent uploads
-    // serialize here instead of colliding on (draft_id, version_number).
-    const [existing] = input.draftId
-      ? await tx
-          .select()
-          .from(drafts)
-          .where(
-            and(
-              eq(drafts.id, input.draftId),
-              eq(drafts.account_id, auth.account_id),
-              isNull(drafts.deleted_at),
-            ),
-          )
-          .limit(1)
-          .for("update")
-      : [];
-    if (input.draftId && !existing)
-      throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
-    const draftId = existing?.id ?? newDraftId();
-    const [latest] = existing
-      ? await tx
-          .select({ number: max(draftVersions.version_number) })
-          .from(draftVersions)
-          .where(eq(draftVersions.draft_id, draftId))
-      : [];
-    const versionNumber = (latest?.number ?? 0) + 1;
-    const versionId = randomUUID();
-    const objectKey = `drafts/${draftId}/versions/${versionId}.html`;
-    const title = validation.title || existing?.title || input.filename || "Untitled Draft";
-    await ctx.putHtml(objectKey, html);
-    if (!existing)
-      await tx.insert(drafts).values({
-        id: draftId,
-        account_id: auth.account_id,
+  const draftId = input.draftId ?? newDraftId();
+  if (
+    input.draftId &&
+    !ctx.db
+      .select({ id: drafts.id })
+      .from(drafts)
+      .where(
+        and(
+          eq(drafts.id, draftId),
+          eq(drafts.account_id, auth.account_id),
+          isNull(drafts.deleted_at),
+        ),
+      )
+      .get()
+  )
+    throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+  const versionId = randomUUID();
+  const objectKey = `drafts/${draftId}/versions/${versionId}.html`;
+  // Storage must finish before entering Bun SQLite's synchronous transaction.
+  await ctx.putHtml(objectKey, html);
+  return ctx.db.transaction(
+    (tx) => {
+      const [existing] = input.draftId
+        ? tx
+            .select()
+            .from(drafts)
+            .where(
+              and(
+                eq(drafts.id, input.draftId),
+                eq(drafts.account_id, auth.account_id),
+                isNull(drafts.deleted_at),
+              ),
+            )
+            .limit(1)
+            .all()
+        : [];
+      if (input.draftId && !existing)
+        throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+      const [latest] = existing
+        ? tx
+            .select({ number: max(draftVersions.version_number) })
+            .from(draftVersions)
+            .where(eq(draftVersions.draft_id, draftId))
+            .all()
+        : [];
+      const versionNumber = (latest?.number ?? 0) + 1;
+      const title = validation.title || existing?.title || input.filename || "Untitled Draft";
+      if (!existing)
+        tx.insert(drafts)
+          .values({
+            id: draftId,
+            account_id: auth.account_id,
+            title,
+            description: cleanText(input.description, 1000),
+            repo_org: cleanText(metadata.repoOrg),
+            repo_name: cleanText(metadata.repoName),
+            repo_host: cleanText(metadata.repoHost),
+          })
+          .run();
+      tx.insert(draftVersions)
+        .values({
+          id: versionId,
+          draft_id: draftId,
+          version_number: versionNumber,
+          object_key: objectKey,
+          content_hash: createHash("sha256").update(html).digest("hex"),
+          file_size: Buffer.byteLength(html, "utf8"),
+          created_by_api_key_id: auth.id,
+          source_ip: ctx.sourceIp,
+          user_agent: ctx.userAgent,
+          request_id: ctx.requestId,
+          cli_version: cleanText(metadata.cliVersion),
+          git_branch: cleanText(metadata.gitBranch),
+          git_commit_sha: cleanText(metadata.gitCommitSha),
+          git_commit_subject: cleanText(metadata.gitCommitSubject),
+          git_dirty: typeof metadata.gitDirty === "boolean" ? metadata.gitDirty : null,
+          original_filename: cleanText(input.filename),
+          has_inline_script: validation.stats.hasInlineScript,
+          external_image_hosts: validation.stats.externalImageHosts,
+          ci_run_url: cleanText(metadata.ciRunUrl),
+          ci_actor: cleanText(metadata.ciActor),
+        })
+        .run();
+      tx.update(drafts)
+        .set({
+          current_version_id: versionId,
+          title,
+          updated_at: new Date(),
+          description: sql`coalesce(${cleanText(input.description, 1000)}, ${drafts.description})`,
+          repo_org: sql`coalesce(${cleanText(metadata.repoOrg)}, ${drafts.repo_org})`,
+          repo_name: sql`coalesce(${cleanText(metadata.repoName)}, ${drafts.repo_name})`,
+          repo_host: sql`coalesce(${cleanText(metadata.repoHost)}, ${drafts.repo_host})`,
+        })
+        .where(eq(drafts.id, draftId))
+        .run();
+      tx.insert(uploadEvents)
+        .values({
+          id: randomUUID(),
+          draft_id: draftId,
+          draft_version_id: versionId,
+          api_key_id: auth.id,
+          event_type: existing ? "draft.updated" : "draft.created",
+          source_ip: ctx.sourceIp,
+          user_agent: ctx.userAgent,
+          metadata_json: metadata,
+        })
+        .run();
+      return {
+        ok: true as const,
+        draftId,
+        versionId,
+        versionNumber,
         title,
-        description: cleanText(input.description, 1000),
-        repo_org: cleanText(metadata.repoOrg),
-        repo_name: cleanText(metadata.repoName),
-        repo_host: cleanText(metadata.repoHost),
-      });
-    await tx.insert(draftVersions).values({
-      id: versionId,
-      draft_id: draftId,
-      version_number: versionNumber,
-      object_key: objectKey,
-      content_hash: createHash("sha256").update(html).digest("hex"),
-      file_size: Buffer.byteLength(html, "utf8"),
-      created_by_api_key_id: auth.id,
-      source_ip: ctx.sourceIp,
-      user_agent: ctx.userAgent,
-      request_id: ctx.requestId,
-      cli_version: cleanText(metadata.cliVersion),
-      git_branch: cleanText(metadata.gitBranch),
-      git_commit_sha: cleanText(metadata.gitCommitSha),
-      git_commit_subject: cleanText(metadata.gitCommitSubject),
-      git_dirty: typeof metadata.gitDirty === "boolean" ? metadata.gitDirty : null,
-      original_filename: cleanText(input.filename),
-      has_inline_script: validation.stats.hasInlineScript,
-      external_image_hosts: validation.stats.externalImageHosts,
-      ci_run_url: cleanText(metadata.ciRunUrl),
-      ci_actor: cleanText(metadata.ciActor),
-    });
-    await tx
-      .update(drafts)
-      .set({
-        current_version_id: versionId,
-        title,
-        updated_at: new Date(),
-        description: sql`coalesce(${cleanText(input.description, 1000)}, ${drafts.description})`,
-        repo_org: sql`coalesce(${cleanText(metadata.repoOrg)}, ${drafts.repo_org})`,
-        repo_name: sql`coalesce(${cleanText(metadata.repoName)}, ${drafts.repo_name})`,
-        repo_host: sql`coalesce(${cleanText(metadata.repoHost)}, ${drafts.repo_host})`,
-      })
-      .where(eq(drafts.id, draftId));
-    await tx.insert(uploadEvents).values({
-      id: randomUUID(),
-      draft_id: draftId,
-      draft_version_id: versionId,
-      api_key_id: auth.id,
-      event_type: existing ? "draft.updated" : "draft.created",
-      source_ip: ctx.sourceIp,
-      user_agent: ctx.userAgent,
-      metadata_json: metadata,
-    });
-    return {
-      ok: true as const,
-      draftId,
-      versionId,
-      versionNumber,
-      title,
-      requestId: ctx.requestId,
-      ...urls(draftId, ctx),
-      warnings: validation.warnings,
-    };
-  });
+        requestId: ctx.requestId,
+        ...urls(draftId, ctx),
+        warnings: validation.warnings,
+      };
+    },
+    { behavior: "immediate" },
+  );
 }

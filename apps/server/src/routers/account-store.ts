@@ -18,7 +18,7 @@ export const publicUploadAuth: ApiKeyAuth = {
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function seedAccounts(db: Database, bootstrapKey?: string): Promise<void> {
-  await db.transaction(async (tx) => {
+  await db.transaction((tx) => {
     for (const [auth, token] of [
       [publicUploadAuth, "postplan-public-upload-sentinel"],
       ...(bootstrapKey
@@ -35,12 +35,11 @@ export async function seedAccounts(db: Database, bootstrapKey?: string): Promise
           ]
         : []),
     ] as const) {
-      await tx
-        .insert(accounts)
+      tx.insert(accounts)
         .values({ id: auth.account_id, name: auth.account_name })
-        .onConflictDoUpdate({ target: accounts.id, set: { updated_at: new Date() } });
-      await tx
-        .insert(apiKeys)
+        .onConflictDoUpdate({ target: accounts.id, set: { updated_at: new Date() } })
+        .run();
+      tx.insert(apiKeys)
         .values({
           id: auth.id,
           account_id: auth.account_id,
@@ -50,7 +49,8 @@ export async function seedAccounts(db: Database, bootstrapKey?: string): Promise
         .onConflictDoUpdate({
           target: apiKeys.id,
           set: { key_hash: hash(token), name: auth.name, revoked_at: null },
-        });
+        })
+        .run();
     }
   });
 }
@@ -126,53 +126,40 @@ export interface IdentityInput {
 
 export async function findOrCreateAccountForIdentity(
   db: Database,
-  input: IdentityInput,
-): Promise<IdentityAccount> {
-  try {
-    return await upsertIdentity(db, input);
-  } catch (error) {
-    // Drizzle wraps driver errors; retry the losing concurrent first login.
-    if (postgresErrorCode(error) === "23505") return upsertIdentity(db, input);
-    throw error;
-  }
-}
-function postgresErrorCode(error: unknown): string | undefined {
-  if (!error || typeof error !== "object") return undefined;
-  if ("code" in error && typeof error.code === "string") return error.code;
-  return "cause" in error ? postgresErrorCode(error.cause) : undefined;
-}
-async function upsertIdentity(
-  db: Database,
   { provider, subject, profile = {} }: IdentityInput,
 ): Promise<IdentityAccount> {
-  return db.transaction(async (tx) => {
-    const [existing] = await tx
-      .select()
-      .from(identities)
-      .where(and(eq(identities.provider, provider), eq(identities.subject, subject)))
-      .limit(1);
-    const accountId = existing?.account_id ?? `acct_${randomUUID()}`;
-    const accountName = profile.displayName || profile.email || `Postplan ${subject.slice(-6)}`;
-    const values = {
-      email: profile.email ?? null,
-      email_verified: profile.emailVerified ?? null,
-      display_name: profile.displayName ?? null,
-      picture_url: profile.pictureUrl ?? null,
-      pii_subject: profile.piiSubject ?? existing?.pii_subject ?? null,
-      last_login_at: new Date(),
-    };
-    if (existing) {
-      await tx.update(identities).set(values).where(eq(identities.id, existing.id));
-      await tx
-        .update(accounts)
-        .set({ name: accountName, updated_at: new Date() })
-        .where(eq(accounts.id, accountId));
-    } else {
-      await tx.insert(accounts).values({ id: accountId, name: accountName });
-      await tx
-        .insert(identities)
-        .values({ id: randomUUID(), account_id: accountId, provider, subject, ...values });
-    }
-    return { accountId, accountName, email: values.email, pictureUrl: values.picture_url };
-  });
+  return db.transaction(
+    (tx) => {
+      const [existing] = tx
+        .select()
+        .from(identities)
+        .where(and(eq(identities.provider, provider), eq(identities.subject, subject)))
+        .limit(1)
+        .all();
+      const accountId = existing?.account_id ?? `acct_${randomUUID()}`;
+      const accountName = profile.displayName || profile.email || `Postplan ${subject.slice(-6)}`;
+      const values = {
+        email: profile.email ?? null,
+        email_verified: profile.emailVerified ?? null,
+        display_name: profile.displayName ?? null,
+        picture_url: profile.pictureUrl ?? null,
+        pii_subject: profile.piiSubject ?? existing?.pii_subject ?? null,
+        last_login_at: new Date(),
+      };
+      if (existing) {
+        tx.update(identities).set(values).where(eq(identities.id, existing.id)).run();
+        tx.update(accounts)
+          .set({ name: accountName, updated_at: new Date() })
+          .where(eq(accounts.id, accountId))
+          .run();
+      } else {
+        tx.insert(accounts).values({ id: accountId, name: accountName }).run();
+        tx.insert(identities)
+          .values({ id: randomUUID(), account_id: accountId, provider, subject, ...values })
+          .run();
+      }
+      return { accountId, accountName, email: values.email, pictureUrl: values.picture_url };
+    },
+    { behavior: "immediate" },
+  );
 }
