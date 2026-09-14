@@ -8,7 +8,7 @@ import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { accounts, createApiKey, schema, seedAccounts } from "@postplan/database";
 import type { ApiClient } from "@postplan/api";
-import { createApp } from "../src/app.js";
+import { createApp } from "../src/index.js";
 import { config } from "../src/config.js";
 import { createSessionCookie } from "../src/auth/session.js";
 

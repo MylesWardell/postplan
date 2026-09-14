@@ -5,7 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { accounts, schema, seedAccounts } from "@postplan/database";
-import { createApp } from "../src/app.js";
+import { createApp } from "../src/index.js";
 import { config } from "../src/config.js";
 import { createAuthStateCookie, createSessionCookie } from "../src/auth/session.js";
 

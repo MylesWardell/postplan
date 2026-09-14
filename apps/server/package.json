@@ -10,8 +10,8 @@
     "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "bun test ./test",
-    "start": "bun dist/src/server.js",
-    "dev": "bun --watch src/server.ts"
+    "start": "bun dist/src/index.js",
+    "dev": "bun --watch src/index.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.835.0",

@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server";
 import { config } from "../config.js";
 import { findOrCreateAccountForIdentity } from "@postplan/database";
 import type { Database } from "@postplan/database";
-import { createCaller } from "../rpc/router.js";
+import { createCaller } from "../client.js";
 import type { ContextFactory } from "./context.js";
 import { formBody } from "./body.js";
 import { errorMessage, errorStatus } from "./errors.js";

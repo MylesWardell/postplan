@@ -15,7 +15,26 @@ packages/
 scripts/           Workspace build helpers
 ```
 
-`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/rpc` implements it using Drizzle-backed services; the OpenAPI handler exposes the contract at `/api`, and the RPC handler at `/rpc`. Preact pages in `apps/server/src/views` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
+`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/routers` implements it using Drizzle-backed services; the OpenAPI handler exposes the contract at `/api`, and the RPC handler at `/rpc`. Preact pages in `apps/server/src/views` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
+
+The server follows the [Bun playground's router composition](https://github.com/middleapi/orpc/blob/main/playgrounds/bun/src/routers/index.ts):
+
+```text
+apps/server/src/
+  index.ts          Bun entry point and Fetch transport wiring
+  context.ts        Database/storage context type
+  orpc.ts           implement(contract), public and authenticated middleware
+  routers/
+    index.ts        Compose the implemented contract
+    account.ts      Named account procedures
+    draft.ts        Named draft procedures
+    api-key.ts      Named API-key procedures
+  client.ts         Direct server-side caller for SSR
+  services/         Drizzle-backed business operations
+  views/            Preact SSR pages and shared Layout
+```
+
+Schemas and HTTP route metadata stay in the exported `contract` from `packages/api`; server procedures only implement it. `index.ts` starts Bun when executed directly, while tests import its request handler without starting infrastructure.
 
 ## Development
 
@@ -31,7 +50,7 @@ Copy `.env.example` to `.env` and configure PostgreSQL and S3-compatible storage
 
 ```sh
 pnpm db:migrate
-bun --env-file=.env apps/server/dist/src/server.js
+bun --env-file=.env apps/server/dist/src/index.js
 ```
 
 For development, build once, then run `pnpm --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `pnpm build` to refresh their exports. Startup seeds account/key records but does not run DDL.

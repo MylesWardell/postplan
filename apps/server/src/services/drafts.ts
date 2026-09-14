@@ -6,7 +6,7 @@ import { drafts, draftVersions, uploadEvents, publicUploadAuth } from "@postplan
 import type { Database } from "@postplan/database";
 import { validateHtml } from "@postplan/core";
 import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/core/public-url";
-import type { ApiContext } from "../rpc/context.js";
+import type { ApiContext } from "../context.js";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 export function cleanText(value: unknown, maxLength = 255): string | null {

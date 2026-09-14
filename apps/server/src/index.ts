@@ -1,6 +1,10 @@
+import { serve } from "bun";
+import { createDatabase, seedAccounts } from "@postplan/database";
+import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
+import { maxBodyBytes } from "./http/body.js";
 import { RPCHandler } from "@orpc/server/fetch";
 import { sql } from "drizzle-orm";
-import { router } from "./rpc/router.js";
+import { router } from "./routers/index.js";
 import { config } from "./config.js";
 import { createContextFactory } from "./http/context.js";
 import type { ServerDependencies } from "./http/context.js";
@@ -77,3 +81,42 @@ export function createApp(deps: ServerDependencies) {
     return response;
   };
 }
+
+async function main(): Promise<void> {
+  assertStorageConfigured();
+  const { db, pool } = createDatabase(config);
+  await seedAccounts(db, config.bootstrapApiKey);
+  const app = createApp({ db, putHtml: putHtmlObject, getHtml: getHtmlObject });
+  const server = serve({
+    port: config.port,
+    maxRequestBodySize: maxBodyBytes,
+    fetch: (req, server) => app(req, server.requestIP(req)?.address ?? null),
+  });
+  console.log(`Postplan listening on port ${server.port}`);
+  let stopping = false;
+  for (const signal of ["SIGTERM", "SIGINT"] as const)
+    process.once(signal, async () => {
+      if (stopping) return;
+      stopping = true;
+      console.log(`Received ${signal}; shutting down.`);
+      // Drain before closing PostgreSQL; keep below ECS's task stop timeout.
+      const force = setTimeout(
+        () => process.exit(1),
+        Number(process.env.SHUTDOWN_GRACE_MS || 20_000),
+      );
+      force.unref();
+      try {
+        await server.stop();
+        await pool.end();
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        process.exit(1);
+      }
+    });
+}
+if (import.meta.main)
+  main().catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });

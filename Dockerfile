@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && curl --fail --silent --show-error https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /app/certs/rds-global-bundle.pem \
     && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 COPY --from=build /out /app
-RUN bun -e "await import('./dist/src/app.js')"
+RUN bun -e "await import('./dist/src/index.js')"
 USER bun
 EXPOSE 3000
-CMD ["bun", "dist/src/server.js"]
+CMD ["bun", "dist/src/index.js"]

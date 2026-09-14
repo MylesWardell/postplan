@@ -8,7 +8,7 @@ import {
   findOrCreateAccountForIdentity,
   seedAccounts,
 } from "@postplan/database";
-import { createCaller } from "../src/rpc/router.js";
+import { createCaller } from "../src/client.js";
 
 (process.env.TEST_DATABASE_URL ? test : test.skip)(
   "separate PostgreSQL connections serialize draft versions and concurrent first logins",

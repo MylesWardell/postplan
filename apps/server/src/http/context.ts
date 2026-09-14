@@ -1,7 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import { findApiKeyByToken } from "@postplan/database";
 import type { Database } from "@postplan/database";
-import type { ApiContext } from "../rpc/context.js";
+import type { ApiContext } from "../context.js";
 import { config } from "../config.js";
 import { clientIp } from "./client-ip.js";
 import { getHomeUrl, getRequestBaseUrl } from "./public-url.js";
