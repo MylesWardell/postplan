@@ -1,12 +1,8 @@
-import { createDatabase } from "#db/client";
+import { createTestStore } from "@postplan/store/testing";
 import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { accounts } from "#db/schema";
-import { seedAccounts } from "#routers/account-store";
 import { createServerOptions } from "./start-server";
 import { config } from "#config";
 import {
@@ -19,21 +15,22 @@ import { resetShooCaches } from "#auth/shoo";
 
 // Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
-  const { db, client: sqlite } = createDatabase(":memory:");
+  const { store, close } = await createTestStore();
   let server: ReturnType<typeof Bun.serve> | undefined;
   let shoo: ReturnType<typeof Bun.serve> | undefined;
   const original = { ...config };
   try {
-    migrate(db, {
-      migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
+    await store.accounts.seed({ bootstrapKey: "ssr-owner-key" });
+    const visitor = await store.accounts.findOrCreateIdentity({
+      provider: "test",
+      subject: "visitor",
+      profile: { displayName: "Visitor" },
     });
-    await seedAccounts(db, "ssr-owner-key");
-    await db.insert(accounts).values({ id: "visitor", name: "Visitor" });
     config.publicBaseUrl = "https://*.plans.example.com";
     config.sessionSecret = "ssr-test-secret";
     const objects = new Map<string, string>();
     const options = createServerOptions({
-      db,
+      store,
       putHtml: async (key, html) => {
         objects.set(key, html);
       },
@@ -56,9 +53,10 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     const cookie = createSessionCookie({ accountId: "acct_bootstrap", accountName: "Owner" }).split(
       ";",
     )[0]!;
-    const otherCookie = createSessionCookie({ accountId: "visitor", accountName: "Visitor" }).split(
-      ";",
-    )[0]!;
+    const otherCookie = createSessionCookie({
+      accountId: visitor.accountId,
+      accountName: visitor.accountName,
+    }).split(";")[0]!;
     const get = (path: string, sessionCookie = cookie) =>
       app(new Request(base + path, { headers: { cookie: sessionCookie } }));
     const post = (
@@ -438,6 +436,6 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     resetShooCaches();
     await shoo?.stop(true);
     await server?.stop(true);
-    sqlite.close();
+    await close();
   }
 }, 30_000);

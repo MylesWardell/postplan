@@ -2,24 +2,16 @@ import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
-import { drafts, draftVersions, uploadEvents } from "#db/schema";
-import { publicUploadAuth } from "./account-store";
-import type { Database } from "#db/client";
-import { validateHtml } from "#lib/html-policy";
-import { getDraftPublicUrl, getDraftRawUrl } from "#lib/public-url";
-import type { ApiContext } from "#context";
+import { drafts, draftVersions, uploadEvents } from "./schema";
+import { publicUploadAuth } from "@postplan/store";
+import type { Database } from "./client";
+import { validateHtml } from "@postplan/store/html-policy";
+import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
+import type { UploadContext, UploadInput } from "@postplan/store";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
-export function cleanText(value: unknown, maxLength = 255): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  return value.trim().slice(0, maxLength) || null;
-}
-interface UrlContext {
-  publicBaseUrl: string | undefined;
-  requestBaseUrl: string;
-}
+import { cleanText } from "@postplan/store/text";
+import type { UrlContext } from "@postplan/store";
 const urls = (draftId: string, context: UrlContext) => ({
   publicUrl: getDraftPublicUrl({ draftId, ...context }),
   rawUrl: getDraftRawUrl({ draftId, ...context }),
@@ -147,14 +139,7 @@ export async function updateOwnedDraft(
   return { ok: true as const };
 }
 
-export interface UploadInput {
-  html?: unknown;
-  filename?: string;
-  draftId?: string;
-  description?: string;
-  metadata?: Record<string, unknown>;
-}
-export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
+export async function uploadDraft(db: Database, ctx: UploadContext, input: UploadInput) {
   const validation = validateHtml(input.html, { maxBytes: ctx.maxHtmlBytes });
   if (!validation.ok || typeof input.html !== "string") {
     return { ok: false as const, errors: validation.errors, warnings: validation.warnings };
@@ -165,7 +150,7 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
   const draftId = input.draftId ?? newDraftId();
   if (
     input.draftId &&
-    !ctx.db
+    !db
       .select({ id: drafts.id })
       .from(drafts)
       .where(
@@ -179,7 +164,7 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
   const objectKey = `drafts/${draftId}/versions/${versionId}.html`;
   // Storage must finish before entering Bun SQLite's synchronous transaction.
   await ctx.putHtml(objectKey, html);
-  return ctx.db.transaction(
+  return db.transaction(
     (tx) => {
       const [existing] = input.draftId
         ? tx

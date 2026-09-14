@@ -2,7 +2,7 @@
 
 ## Application structure
 
-`packages/api` defines the oRPC contract, including HTTP routes, status codes, schemas, and client types. `apps/server/src/routers` implements that contract with Drizzle and SQLite. Keep every oRPC package on the pinned `2.0.0-beta.35` generation and review upgrades with the contract and transport tests.
+`packages/api` defines the public oRPC contract, including HTTP routes, status codes, schemas, and client types. `apps/server/src/routers` implements it through the provider-independent `@postplan/store` client. `packages/store` defines internal account/draft store contracts; `packages/store-drizzle` and `packages/store-dynamodb` implement them with Drizzle/SQLite and DynamoDB respectively. Backend selection happens at startup. Keep every oRPC package on the pinned `2.0.0-beta.35` generation and review upgrades with the contract and transport tests.
 
 TanStack Start owns file routing, SSR, hydration, and server functions. Routes and their data functions live in `apps/server/src/frontend/routes`. Server-side functions call oRPC directly; browser navigation uses Start's generated endpoints.
 
@@ -10,11 +10,11 @@ TanStack Start owns file routing, SSR, hydration, and server functions. Routes a
 apps/server/src/
   index.ts          Bun host and static assets
   server.ts         TanStack Start entry and request dependencies
-  context.ts        Database and storage context
+  context.ts        Store client and HTML storage context
   orpc.ts           Contract implementation and middleware
   routers/          Account, draft, and API-key procedures
   client.ts         Direct server-side caller for SSR
-  db/               Drizzle schema, connection, and migrations
+  db/               Provider selection and maintenance entry points
   lib/              HTML policy and public URL helpers
   frontend/         Router, page routes, layouts, and styles
   instrumentation.ts Optional OTLP tracing

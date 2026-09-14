@@ -2,7 +2,7 @@ const DRAFT_ID_PATTERN = /^[a-z0-9]{12}$/;
 
 export interface DraftUrlOptions {
   draftId: string;
-  publicBaseUrl: string | undefined;
+  publicBaseUrl?: string;
   requestBaseUrl: string;
 }
 
@@ -14,7 +14,7 @@ export function getHomeUrl({
   publicBaseUrl,
   requestBaseUrl,
 }: {
-  publicBaseUrl: string | undefined;
+  publicBaseUrl?: string;
   requestBaseUrl: string;
 }): string {
   const configured = normalizeUrl(publicBaseUrl);
@@ -75,7 +75,7 @@ export function getDraftIdFromHost({
   publicBaseUrl,
   host,
 }: {
-  publicBaseUrl: string | undefined;
+  publicBaseUrl?: string;
   host: string | undefined;
 }): string | null {
   const wildcard = parseWildcardBaseUrl(publicBaseUrl);

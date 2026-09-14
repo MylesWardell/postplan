@@ -11,5 +11,17 @@ data/
 *.sqlite-wal
 *.sqlite-shm
 
+# Terraform state, local configuration and downloaded providers
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+**/backend.hcl
+infra/terraform/bootstrap/backend.tf
+crash.log
+crash.*.log
+
 # Recreated by scripts/setup/link-skills.ts, points at .agents/skills.
 .claude/skills

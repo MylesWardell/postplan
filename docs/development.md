@@ -26,17 +26,21 @@ bun run --filter @postplan/server dev
 
 Set variables in the shell or create `apps/server/.env` for Bun to load. Run server package commands from `apps/server` when they depend on its React JSX configuration. Rebuild shared packages after changing their exports.
 
-Production startup seeds configured accounts and keys but does not apply schema changes. Review and run migrations before starting the service. See [database operations](../apps/server/DATABASE.md).
+SQLite startup seeds configured accounts and keys but does not apply schema changes. Review and run migrations before starting the service. DynamoDB uses an explicit bootstrap command. See [database operations](../apps/server/DATABASE.md).
 
 ## Workspace
 
 ```text
 apps/
+  cleanup/         AWS cleanup executable and S3 deletion adapter
   cli/             CLI source, agent skill, and bundled executable
   server/          Bun host, TanStack Start application, OAuth, and storage
 packages/
   api/             oRPC contract, schemas, routes, and client types
-scripts/           Workspace and setup helpers
+  store/           Internal oRPC store contracts and shared domain helpers
+  store-drizzle/   Drizzle/SQLite stores, schema, migrations, and driver tests
+  store-dynamodb/  DynamoDB stores, cleanup, and local test fixture
+scripts/           Workspace setup and provider-specific test preloads
 ```
 
 Useful commands:

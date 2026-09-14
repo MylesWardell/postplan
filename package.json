@@ -27,6 +27,9 @@
     "db:migrate": "bun run --filter @postplan/server build && bun apps/server/dist/src/db/migrate.js"
   },
   "devDependencies": {
+    "@postplan/store": "workspace:*",
+    "@postplan/store-drizzle": "workspace:*",
+    "@postplan/store-dynamodb": "workspace:*",
     "@tanstack/eslint-plugin-router": "^1.162.0",
     "@types/bun": "1.4.2",
     "@types/node": "^26.5.1",

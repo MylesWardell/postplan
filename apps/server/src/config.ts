@@ -1,3 +1,5 @@
+import { parseRetentionDays } from "@postplan/store/retention";
+
 export type TrustProxySetting = boolean | number | string;
 export type ClientIpSource = "x-real-ip" | "req-ip";
 
@@ -5,6 +7,7 @@ export interface S3Config {
   endpoint: string | undefined;
   accessKeyId: string | undefined;
   secretAccessKey: string | undefined;
+  sessionToken?: string;
   bucketName: string | undefined;
   region: string | undefined;
   forcePathStyle: boolean;
@@ -13,6 +16,9 @@ export interface S3Config {
 export interface Config {
   port: number;
   databasePath: string;
+  planRetentionDays: number;
+  allowAnonymousUploads: boolean;
+  apiGateway: boolean;
   bootstrapApiKey: string | undefined;
   publicBaseUrl: string | undefined;
   maxHtmlBytes: number;
@@ -39,6 +45,13 @@ const s3Endpoint = env.AWS_ENDPOINT_URL || env.S3_ENDPOINT || undefined;
 export const config: Config = {
   port: Number(env.PORT || 3000),
   databasePath: env.DATABASE_PATH || "data/postplan.sqlite",
+  planRetentionDays: parseRetentionDays(env.PLAN_RETENTION_DAYS),
+  allowAnonymousUploads: parseBoolean(
+    "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS",
+    env.POSTPLAN_ALLOW_ANONYMOUS_UPLOADS,
+    true,
+  ),
+  apiGateway: parseBoolean("POSTPLAN_API_GATEWAY", env.POSTPLAN_API_GATEWAY, false),
   bootstrapApiKey: env.POSTPLAN_BOOTSTRAP_API_KEY,
   publicBaseUrl: env.POSTPLAN_PUBLIC_BASE_URL,
   maxHtmlBytes: Number(env.MAX_HTML_BYTES || 512 * 1024),
@@ -71,6 +84,7 @@ export const config: Config = {
     endpoint: s3Endpoint,
     accessKeyId: env.AWS_ACCESS_KEY_ID || env.S3_ACCESS_KEY_ID || undefined,
     secretAccessKey: env.AWS_SECRET_ACCESS_KEY || env.S3_SECRET_ACCESS_KEY || undefined,
+    sessionToken: env.AWS_SESSION_TOKEN || undefined,
     bucketName: env.AWS_S3_BUCKET_NAME || env.S3_BUCKET_NAME || undefined,
     region: env.AWS_DEFAULT_REGION || env.AWS_REGION || (s3Endpoint ? "auto" : undefined),
     forcePathStyle: (env.AWS_S3_FORCE_PATH_STYLE || (s3Endpoint ? "true" : "false")) !== "false",
@@ -82,6 +96,16 @@ export function requireEnv(name: string, value: string | undefined): string {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+function parseBoolean(name: string, value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (value === "true" || value === "false") {
+    return value === "true";
+  }
+  throw new Error(`${name} must be true or false.`);
 }
 
 export function parseAllowedLoginDomains(value: string | undefined): string[] {

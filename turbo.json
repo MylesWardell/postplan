@@ -8,10 +8,10 @@
       "dependsOn": ["//#lint:root:fix", "//#format:root:fix"]
     },
     "//#lint:root": {
-      "dependsOn": ["@postplan/api#build"]
+      "dependsOn": ["@postplan/store-drizzle#build", "@postplan/store-dynamodb#build"]
     },
     "//#lint:root:fix": {
-      "dependsOn": ["@postplan/api#build"],
+      "dependsOn": ["@postplan/store-drizzle#build", "@postplan/store-dynamodb#build"],
       "cache": false
     },
     "//#format:root": {},

@@ -1,13 +1,13 @@
-import { MemoryRateLimiter } from "@orpc/ratelimit/memory";
 import { config } from "#config";
 import type { RateLimiters } from "#context";
-
-// One set per server instance, so separate servers (and tests) don't share buckets.
-export function createRateLimiters(): RateLimiters {
-  const { uploadIp, uploadKey, keyMint } = config.rateLimits;
+import type { Store, RateLimitConfig } from "@postplan/store";
+export function createRateLimiters(store: Store): RateLimiters {
+  const limiter = (namespace: string, rule: RateLimitConfig) => ({
+    limit: (key: string, { weight = 1 } = {}) => store.rateLimit({ namespace, rule, key, weight }),
+  });
   return {
-    "upload-ip": new MemoryRateLimiter(uploadIp),
-    "upload-key": new MemoryRateLimiter(uploadKey),
-    "key-mint": new MemoryRateLimiter(keyMint),
+    "upload-ip": limiter("upload-ip", config.rateLimits.uploadIp),
+    "upload-key": limiter("upload-key", config.rateLimits.uploadKey),
+    "key-mint": limiter("key-mint", config.rateLimits.keyMint),
   };
 }

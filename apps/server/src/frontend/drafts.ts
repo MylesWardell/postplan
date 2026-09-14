@@ -1,4 +1,3 @@
-import { findPublicDraftVersion } from "#routers/draft-store";
 import type { ServerDependencies } from "#context";
 
 export async function draftResponse(
@@ -22,12 +21,16 @@ export async function draftResponse(
   if (versionNumber !== undefined && (!Number.isInteger(versionNumber) || versionNumber < 1)) {
     return undefined;
   }
-  const { draft, version } = await findPublicDraftVersion(deps.db, draftId, versionNumber);
+  const { draft, version } = await deps.store.drafts.findPublicVersion({
+    draftId: draftId,
+    versionNumber: versionNumber,
+  });
   if (!draft || !version) {
     return undefined;
   }
   return new Response(req.method === "HEAD" ? null : await deps.getHtml(version.objectKey), {
     headers: {
+      "Cache-Control": "no-store",
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy":
         "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; img-src https: data:; connect-src 'none'; base-uri 'none'; form-action 'none'",

@@ -1,0 +1,32 @@
+{
+  "name": "@postplan/store",
+  "version": "0.0.4",
+  "private": true,
+  "files": [
+    "dist/src/"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./dist/src/*.js"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "test": "bun test ./test"
+  },
+  "dependencies": {
+    "@orpc/contract": "2.0.0-beta.35",
+    "@postplan/api": "workspace:*",
+    "parse5": "^8.0.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2"
+  }
+}

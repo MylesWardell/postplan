@@ -31,3 +31,30 @@ jobs:
       - run: bun run pack:cli
       - run: node apps/cli/bin/postplan.js --help
       - run: docker build --tag postplan:ci .
+      - run: docker build --target lambda-app --tag postplan:lambda-app .
+      - run: docker build --target lambda-cleanup --tag postplan:lambda-cleanup .
+  dynamodb:
+    runs-on: ubuntu-latest
+    services:
+      dynamodb:
+        image: amazon/dynamodb-local:3.3.0
+        ports:
+          - 8000:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.8.2
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun test --preload ../../scripts/testing/dynamodb.ts --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/concurrency.test.ts ./test/store.test.ts
+        working-directory: apps/server
+        env:
+          POSTPLAN_TEST_DYNAMODB_ENDPOINT: http://127.0.0.1:8000
+      - run: bun test ./test
+        working-directory: packages/store-dynamodb
+        env:
+          POSTPLAN_TEST_DYNAMODB_ENDPOINT: http://127.0.0.1:8000

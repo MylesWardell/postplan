@@ -2,8 +2,8 @@ import { shutdownInstrumentation } from "./instrumentation";
 import { serve } from "bun";
 import type { Server } from "bun";
 import { fileURLToPath } from "node:url";
-import { createDatabase } from "#db/client";
-import { seedAccounts } from "#routers/account-store";
+import { createRuntimeStore } from "#db/client";
+import { gatewayRequest } from "#lib/gateway";
 import { config } from "./config";
 import type { ServerDependencies } from "./context";
 import type { createApplication } from "./server";
@@ -24,7 +24,25 @@ export function createServerOptions(
   }
   return {
     maxRequestBodySize: 2 * 1024 * 1024,
-    fetch: (request: Request, server: Server<undefined>) => {
+    fetch: (incoming: Request, server: Server<undefined>) => {
+      let request = incoming;
+      let peerIp = server.requestIP(incoming)?.address ?? null;
+      if (config.apiGateway) {
+        // Adapter readiness requests have no invocation context.
+        if (
+          new URL(incoming.url).pathname === "/healthz" &&
+          !incoming.headers.has("x-amzn-request-context") &&
+          peerIp &&
+          ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(peerIp)
+        ) {
+          return Response.json({ ok: true });
+        }
+        try {
+          ({ request, peerIp } = gatewayRequest(incoming));
+        } catch {
+          return new Response("Invalid gateway request", { status: 400 });
+        }
+      }
       const pathname = new URL(request.url).pathname;
       const asset = assets.get(pathname);
       if (asset) {
@@ -41,20 +59,20 @@ export function createServerOptions(
             : notFoundResponse(),
         );
       }
-      return application(request, server.requestIP(request)?.address ?? null);
+      return application(request, peerIp);
     },
   };
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   assertStorageConfigured();
-  const { db, client } = createDatabase(config.databasePath);
-  await seedAccounts(db, config.bootstrapApiKey);
+  const { store, close } = createRuntimeStore();
+  await store.initialize({ bootstrapKey: config.bootstrapApiKey });
   const entry = new URL("../server/server.js", import.meta.url).href;
   const start: { createApplication: typeof createApplication } = await import(entry);
   const server = serve({
     port: config.port,
-    ...createServerOptions({ db, putHtml: putHtmlObject, getHtml: getHtmlObject }, start),
+    ...createServerOptions({ store, putHtml: putHtmlObject, getHtml: getHtmlObject }, start),
   });
   console.log(`Postplan listening at ${server.url}`);
   let stopping = false;
@@ -71,7 +89,7 @@ async function main(): Promise<void> {
       force.unref();
       try {
         await server.stop();
-        client.close();
+        close();
         await shutdownInstrumentation();
         process.exit(0);
       } catch (error) {

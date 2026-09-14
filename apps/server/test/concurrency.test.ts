@@ -1,20 +1,18 @@
 import { createContextFactory } from "#context";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { createDatabase } from "#db/client";
-import { findOrCreateAccountForIdentity, seedAccounts } from "#routers/account-store";
+import { createTestStore } from "@postplan/store/testing";
 import { createCaller } from "#client";
 
-test("concurrent requests serialize SQLite draft versions and first logins", async () => {
-  const { db, client } = createDatabase(":memory:");
+test("concurrent requests serialize draft versions and first logins", async () => {
+  const { store, close } = await createTestStore();
   try {
-    migrate(db, {
-      migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
+    await store.accounts.seed({ bootstrapKey: "concurrency-key" });
+    const context = createContextFactory({
+      store,
+      putHtml: async () => {},
+      getHtml: async () => "",
     });
-    await seedAccounts(db, "concurrency-key");
-    const context = createContextFactory({ db, putHtml: async () => {}, getHtml: async () => "" });
     const caller = createCaller(
       context(
         new Request("https://plans.example.com", {
@@ -48,11 +46,11 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
     );
     const identities = await Promise.all(
       Array.from({ length: 4 }, () =>
-        findOrCreateAccountForIdentity(db, { provider: "test", subject: "concurrent-user" }),
+        store.accounts.findOrCreateIdentity({ provider: "test", subject: "concurrent-user" }),
       ),
     );
     assert.equal(new Set(identities.map((identity) => identity.accountId)).size, 1);
   } finally {
-    client.close();
+    await close();
   }
 });

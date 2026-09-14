@@ -22,6 +22,7 @@ function getClient(): S3Client {
     options.credentials = {
       accessKeyId: config.s3.accessKeyId,
       secretAccessKey: config.s3.secretAccessKey,
+      sessionToken: config.s3.sessionToken,
     };
   }
 
@@ -47,6 +48,7 @@ export async function putHtmlObject(key: string, html: string): Promise<void> {
       ContentType: "text/html; charset=utf-8",
       CacheControl: "no-store",
     }),
+    { abortSignal: AbortSignal.timeout(20_000) },
   );
 }
 

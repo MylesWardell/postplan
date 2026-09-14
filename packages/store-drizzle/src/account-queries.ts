@@ -1,20 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
-import type { Database } from "#db/client";
-import { accounts, apiKeys, identities } from "#db/schema";
+import type { Database } from "./client";
+import { accounts, apiKeys, identities } from "./schema";
 
-export interface ApiKeyAuth {
-  id: string;
-  accountId: string;
-  name: string;
-  accountName: string;
-}
-export const publicUploadAuth: ApiKeyAuth = {
-  id: "key_public_upload",
-  accountId: "acct_public_upload",
-  name: "Public Uploads",
-  accountName: "Public Uploads",
-};
+import { publicUploadAuth } from "@postplan/store";
+import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "@postplan/store";
+
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function seedAccounts(db: Database, bootstrapKey?: string): Promise<void> {
@@ -105,25 +96,6 @@ export function listAccountApiKeys(db: Database, accountId: string) {
     .from(apiKeys)
     .where(and(eq(apiKeys.accountId, accountId), isNull(apiKeys.revokedAt)))
     .orderBy(desc(apiKeys.createdAt));
-}
-
-export interface IdentityProfile {
-  email?: string | null;
-  emailVerified?: boolean | null;
-  displayName?: string | null;
-  pictureUrl?: string | null;
-  piiSubject?: string | null;
-}
-export interface IdentityAccount {
-  accountId: string;
-  accountName: string;
-  email: string | null;
-  pictureUrl: string | null;
-}
-export interface IdentityInput {
-  provider: string;
-  subject: string;
-  profile?: IdentityProfile;
 }
 
 export async function findOrCreateAccountForIdentity(

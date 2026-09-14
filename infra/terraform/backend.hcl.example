@@ -1,0 +1,5 @@
+bucket = "postplan-tfstate-123456789012-ap-southeast-2"
+key = "postplan/app.tfstate"
+region = "ap-southeast-2"
+encrypt = true
+use_lockfile = true

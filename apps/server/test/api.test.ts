@@ -1,30 +1,30 @@
-import { createDatabase } from "#db/client";
+import { createTestStore } from "@postplan/store/testing";
 import assert from "node:assert/strict";
-import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { ORPCError, createORPCClient } from "@orpc/client";
 import { OpenAPILink } from "@orpc/openapi/fetch";
-import { accounts } from "#db/schema";
-import { createApiKey, seedAccounts } from "#routers/account-store";
 import { contract, type ApiClient } from "@postplan/api";
 import { createServerOptions } from "./start-server";
 import { config } from "#config";
 import { createSessionCookie } from "#auth/session";
 
 test("oRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
-  const { db, client: sqlite } = createDatabase(":memory:");
+  const { store, close } = await createTestStore();
   const objects = new Map<string, string>();
   const originalConfig = { ...config };
   let failStorage = false;
-  migrate(db, {
-    migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
+  await store.accounts.seed({ bootstrapKey: "owner-key" });
+  const otherAccount = await store.accounts.findOrCreateIdentity({
+    provider: "test",
+    subject: "other",
+    profile: { displayName: "Other" },
   });
-  await seedAccounts(db, "owner-key");
-  await db.insert(accounts).values({ id: "other", name: "Other" });
-  const otherKey = await createApiKey(db, "other", "other-key");
+  const otherKey = await store.accounts.createApiKey({
+    accountId: otherAccount.accountId,
+    name: "other-key",
+  });
   const options = createServerOptions({
-    db,
+    store,
     putHtml: async (key, html) => {
       if (failStorage) {
         throw new Error("Storage unavailable");
@@ -59,6 +59,9 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     const anonymous = client();
     const html = "<!doctype html><html><head><title>Draft</title></head><body>Résumé</body></html>";
     assert.equal((await fetch(`${base}/healthz`)).status, 200);
+    config.allowAnonymousUploads = false;
+    await assert.rejects(anonymous.drafts.upload({ html }), /API key/);
+    config.allowAnonymousUploads = originalConfig.allowAnonymousUploads;
     await assert.rejects(anonymous.drafts.list(), /Sign in/);
     const { body: upload } = await owner.drafts.upload({ html, description: "Original" });
     assert.equal(upload.ok, true);
@@ -162,6 +165,6 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
   } finally {
     Object.assign(config, originalConfig);
     await server.stop(true);
-    sqlite.close();
+    await close();
   }
 }, 30_000);
