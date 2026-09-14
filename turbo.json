@@ -8,10 +8,20 @@
       "dependsOn": ["//#lint:root:fix", "//#format:root:fix"]
     },
     "//#lint:root": {
-      "dependsOn": ["@postplan/store-drizzle#build", "@postplan/store-dynamodb#build"]
+      "dependsOn": [
+        "@postplan/lambda#build",
+        "@postplan/store-drizzle#build",
+        "@postplan/store-dynamodb#build",
+        "@postplan/cloudflare#cf:types"
+      ]
     },
     "//#lint:root:fix": {
-      "dependsOn": ["@postplan/store-drizzle#build", "@postplan/store-dynamodb#build"],
+      "dependsOn": [
+        "@postplan/lambda#build",
+        "@postplan/store-drizzle#build",
+        "@postplan/store-dynamodb#build",
+        "@postplan/cloudflare#cf:types"
+      ],
       "cache": false
     },
     "//#format:root": {},
@@ -26,6 +36,7 @@
         "$TURBO_ROOT$/scripts/clean.ts",
         "$TURBO_ROOT$/tsconfig.base.json"
       ],
+      "env": ["POSTPLAN_RUNTIME", "POSTPLAN_DATABASE", "POSTPLAN_CLOUDFLARE_CONFIG"],
       "outputs": ["dist/**", "bin/**"]
     },
     "test": {
@@ -40,6 +51,18 @@
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
+    },
+    "cf:build": {
+      "dependsOn": ["^build"],
+      "env": ["POSTPLAN_DATABASE", "POSTPLAN_CLOUDFLARE_CONFIG"],
+      "cache": false
+    },
+    "cf:test": {
+      "dependsOn": ["^build", "cf:types"],
+      "cache": false
+    },
+    "cf:types": {
+      "cache": false
     }
   }
 }

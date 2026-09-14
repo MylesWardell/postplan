@@ -1,10 +1,17 @@
 node_modules/
+__pycache__/
 dist/
 .env
 .env.*
 !.env.example
 *.tgz
 .turbo/
+.local/
+.wrangler/
+.dev.vars
+.dev.vars.*
+packages/cloudflare/generated/
+packages/cloudflare/dist/
 apps/cli/bin/
 data/
 *.sqlite
@@ -25,3 +32,5 @@ crash.*.log
 
 # Recreated by scripts/setup/link-skills.ts, points at .agents/skills.
 .claude/skills
+
+packages/cloudflare/env.d.ts

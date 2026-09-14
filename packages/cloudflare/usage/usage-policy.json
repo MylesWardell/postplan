@@ -1,0 +1,21 @@
+{
+  "worker": "postplan-clone",
+  "database_id": "6f150bc0-0a62-48b9-9958-4994397b5484",
+  "bucket": "postplan-cf-probe-a3342cb9",
+  "zone_ids": [],
+  "limits": {
+    "workers_requests_24h": 50000,
+    "workers_cpu_ms_24h": 400000,
+    "d1_rows_read_24h": 2500000,
+    "d1_rows_written_24h": 50000,
+    "d1_storage_bytes": 2500000000,
+    "do_requests_24h": 50000,
+    "do_duration_gb_seconds_24h": 6500,
+    "do_rows_read_24h": 2500000,
+    "do_rows_written_24h": 50000,
+    "do_storage_bytes": 2500000000,
+    "r2_class_a_31d": 500000,
+    "r2_class_b_31d": 5000000,
+    "r2_storage_peak_bytes_31d": 5000000000
+  }
+}

@@ -19,3 +19,8 @@ apps/cli/bin
 **/.env*
 **/data
 **/*.sqlite*
+
+**/.wrangler
+**/.dev.vars*
+packages/cloudflare/generated
+packages/cloudflare/env.d.ts

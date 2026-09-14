@@ -1,0 +1,31 @@
+{
+  "name": "@postplan/cloudflare",
+  "version": "0.0.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cf:types": "wrangler types --config wrangler.jsonc env.d.ts",
+    "cf:build": "POSTPLAN_RUNTIME=cloudflare vite build ../../apps/server --config ../../apps/server/vite.config.ts",
+    "cf:dev": "POSTPLAN_RUNTIME=cloudflare vite ../../apps/server --config ../../apps/server/vite.config.ts",
+    "cf:test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "cf:initialize": "bun deploy/initialize.ts"
+  },
+  "dependencies": {
+    "@orpc/cloudflare": "2.0.0-beta.35",
+    "@orpc/server": "2.0.0-beta.35",
+    "@postplan/server": "workspace:*",
+    "@postplan/store": "workspace:*",
+    "@postplan/store-drizzle": "workspace:*",
+    "drizzle-orm": "^0.45.2"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.54.9",
+    "@cloudflare/vitest-plugin": "1.1.9",
+    "@types/node": "^26.5.1",
+    "vite": "^8.3.0",
+    "vitest": "4.1.0",
+    "wrangler": "4.131.2",
+    "zod": "^4.6.5"
+  }
+}

@@ -1,6 +1,6 @@
 import { implement } from "@orpc/server";
 import { draftStoreContract } from "@postplan/store";
-import type { Database } from "./client";
+import type { Database } from "./database";
 import * as queries from "./draft-queries";
 
 export function draftStore(db: Database) {

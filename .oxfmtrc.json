@@ -6,9 +6,13 @@
     "**/dist/**",
     "**/node_modules/**",
     "**/.turbo/**",
+    ".local/**",
     "bun.lock",
     "**/routeTree.gen.ts",
     ".agents/skills/**",
-    ".claude/**"
+    ".claude/**",
+    "**/.wrangler/**",
+    "packages/cloudflare/generated/**",
+    "packages/cloudflare/env.d.ts"
   ]
 }

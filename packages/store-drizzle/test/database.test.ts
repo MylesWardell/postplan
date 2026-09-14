@@ -1,10 +1,11 @@
-import { createDatabase } from "@postplan/store-drizzle";
+import { createDatabase } from "@postplan/store-drizzle/client";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
 import { migrateDatabase } from "@postplan/store-drizzle/migrate";
+import { statement } from "@postplan/store-drizzle/database";
 import { eq } from "drizzle-orm";
 import * as schema from "@postplan/store-drizzle/schema";
 import {
@@ -22,18 +23,17 @@ test("SQLite survives reopen and rolls back a failed transaction", async () => {
   try {
     migrateDatabase(connection.db);
     await seedAccounts(connection.db, "persistent-key");
-    assert.throws(() =>
-      connection.db.transaction((tx) => {
-        tx.insert(schema.accounts).values({ id: "rolled-back", name: "Rollback" }).run();
-        tx.insert(schema.apiKeys)
-          .values({
-            id: "invalid",
-            name: "Invalid",
-            accountId: "missing",
-            keyHash: "hash",
-          })
-          .run();
-      }),
+    await assert.rejects(
+      connection.db.atomic([
+        statement(
+          connection.db.insert(schema.accounts).values({ id: "rolled-back", name: "Rollback" }),
+        ),
+        statement(
+          connection.db
+            .insert(schema.apiKeys)
+            .values({ id: "invalid", name: "Invalid", accountId: "missing", keyHash: "hash" }),
+        ),
+      ]),
     );
     connection.client.close();
     connection = createDatabase(filename);

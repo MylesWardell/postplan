@@ -18,6 +18,15 @@ test("rejects empty and non-string input", () => {
   assert.equal(validateHtml(42).ok, false);
 });
 
+test("oversized UTF-8 is rejected before collecting document metadata", () => {
+  const result = validateHtml(page("世界".repeat(100)), { maxBytes: 100 });
+  assert.equal(result.ok, false);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0]!, /maximum is 100 bytes/);
+  assert.equal(result.title, null);
+  assert.deepEqual(result.warnings, []);
+});
+
 test("allows inline classic script but flags it in stats", () => {
   const result = validateHtml(page("<script>console.log(1)</script>"));
   assert.equal(result.ok, true);

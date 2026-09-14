@@ -21,6 +21,9 @@
     "**/node_modules/**",
     "**/.turbo/**",
     "pnpm-lock.yaml",
-    "**/routeTree.gen.ts"
+    "**/routeTree.gen.ts",
+    "**/.wrangler/**",
+    "packages/cloudflare/generated/**",
+    "packages/cloudflare/env.d.ts"
   ]
 }

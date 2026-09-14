@@ -1,15 +1,19 @@
 import { createRouterClient, implement } from "@orpc/server";
 import { storeContract } from "@postplan/store";
-import type { StoreConnection } from "@postplan/store";
-import type { Database } from "./client";
+import type { Store, StoreConnection } from "@postplan/store";
+import type { Database } from "./database";
 import { accountStore } from "./account-store";
 import { draftStore } from "./draft-store";
 import { sql } from "drizzle-orm";
 import { MemoryRateLimiter } from "@orpc/ratelimit/memory";
 import { seedAccounts } from "./account-queries";
-export { createDatabase } from "./client";
+export type { Database } from "./database";
 
-export function createDrizzleStore(db: Database, close: () => void = () => {}): StoreConnection {
+export function createDrizzleStore(
+  db: Database,
+  close: () => void = () => {},
+  rateLimit?: Store["rateLimit"],
+): StoreConnection {
   const impl = implement(storeContract);
   const limits = new Map<string, MemoryRateLimiter>();
   const router = impl.router({
@@ -23,6 +27,9 @@ export function createDrizzleStore(db: Database, close: () => void = () => {}): 
       await db.get(sql`select 1`);
     }),
     rateLimit: impl.rateLimit.handler(async ({ input }) => {
+      if (rateLimit) {
+        return rateLimit(input);
+      }
       const key = JSON.stringify([input.namespace, input.rule.window, input.rule.maxRequests]);
       let limiter = limits.get(key);
       if (!limiter) {
