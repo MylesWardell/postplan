@@ -8,5 +8,5 @@ export const date = (value: Date | null) =>
       }).format(value)
     : "—";
 export const Status = ({ disabled }: { disabled: boolean }) => (
-  <span class={`badge${disabled ? " paused" : ""}`}>{disabled ? "Disabled" : "Published"}</span>
+  <span className={`badge${disabled ? " paused" : ""}`}>{disabled ? "Disabled" : "Published"}</span>
 );

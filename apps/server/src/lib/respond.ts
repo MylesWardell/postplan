@@ -30,7 +30,7 @@ export async function respond(
     response = renderError(failure, status);
   }
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Cache-Control", "no-store");
+  if (!response.headers.has("Cache-Control")) response.headers.set("Cache-Control", "no-store");
   response.headers.set("Referrer-Policy", "same-origin");
   return response;
 }

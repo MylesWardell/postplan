@@ -4,11 +4,14 @@
     "rootDir": ".",
     "outDir": "dist",
     "jsx": "react-jsx",
-    "jsxImportSource": "preact",
+    "jsxImportSource": "react",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
-    "types": ["bun"],
+    "types": ["bun", "vite/client"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "verbatimModuleSyntax": false,
     // Resolve package.json "imports" aliases to src/*.ts; runtime without it uses dist.
     "customConditions": ["source"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "vite.config.ts"]
 }
