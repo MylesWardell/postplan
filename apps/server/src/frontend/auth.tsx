@@ -3,11 +3,11 @@ import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
 import type { Session } from "#auth/types";
 import { assertApplicationOrigin, readSession } from "#auth/session";
-import { requireConfiguredSignIn } from "./context.server.js";
-import { Layout } from "./layout.js";
-import { page } from "./response.server.js";
+import { requireConfiguredSignIn } from "./context.server";
+import { Layout } from "./layout";
+import { page } from "./response.server";
 import { safeNextPath } from "#auth/handlers";
-import { webAction } from "./web.js";
+import { webAction } from "./web";
 
 export interface AuthState {
   session: Session | null;
@@ -25,8 +25,9 @@ export async function requireAuth({
   location: { href: string };
 }): Promise<{ auth: AuthState }> {
   const { auth } = context;
-  if (!auth.session && typeof window !== "undefined")
+  if (!auth.session && typeof window !== "undefined") {
     throw redirect({ href: location.href, reloadDocument: true });
+  }
   return { auth };
 }
 

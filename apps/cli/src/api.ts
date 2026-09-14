@@ -3,7 +3,7 @@ import { RequestCompressionLinkPlugin } from "@orpc/client/plugins";
 import { RequestValidationLinkPlugin } from "@orpc/contract/plugins";
 import { OpenAPILink } from "@orpc/openapi/fetch";
 import { contract, type ApiClient } from "@postplan/api";
-import { VERSION } from "./version.js";
+import { VERSION } from "./version";
 
 export interface ApiConnection {
   apiUrl: string;

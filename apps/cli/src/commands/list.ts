@@ -1,9 +1,9 @@
 import type { AccountDraft } from "@postplan/api";
 import type { Command } from "commander";
-import { createApiClient } from "../api.js";
-import { pluralize, timeAgo } from "../format.js";
-import { readAuth } from "../state.js";
-import { apiUrlOption, type ApiUrlOptions } from "./options.js";
+import { createApiClient } from "../api";
+import { pluralize, timeAgo } from "../format";
+import { readAuth } from "../state";
+import { apiUrlOption, type ApiUrlOptions } from "./options";
 
 interface ListOptions extends ApiUrlOptions {
   json?: boolean;

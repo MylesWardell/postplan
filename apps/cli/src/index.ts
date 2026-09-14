@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { registerAuthCommand } from "./commands/auth.js";
-import { registerListCommand } from "./commands/list.js";
-import { registerUploadCommand } from "./commands/upload.js";
-import { registerWhoamiCommand } from "./commands/whoami.js";
-import { reportError } from "./errors.js";
-import { VERSION } from "./version.js";
+import { registerAuthCommand } from "./commands/auth";
+import { registerListCommand } from "./commands/list";
+import { registerUploadCommand } from "./commands/upload";
+import { registerWhoamiCommand } from "./commands/whoami";
+import { reportError } from "./errors";
+import { VERSION } from "./version";
 
 const program = new Command()
   .name("postplan")

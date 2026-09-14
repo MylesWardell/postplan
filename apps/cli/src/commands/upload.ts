@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { isDefinedError, safe } from "@orpc/client";
 import type { Command } from "commander";
-import { createApiClient } from "../api.js";
-import { CliError } from "../errors.js";
-import { collectCiMetadata, collectGitMetadata, sha256 } from "../metadata.js";
-import { findDraft, readAuth, saveDraft } from "../state.js";
-import { VERSION } from "../version.js";
-import { apiUrlOption, type ApiUrlOptions } from "./options.js";
+import { createApiClient } from "../api";
+import { CliError } from "../errors";
+import { collectCiMetadata, collectGitMetadata, sha256 } from "../metadata";
+import { findDraft, readAuth, saveDraft } from "../state";
+import { VERSION } from "../version";
+import { apiUrlOption, type ApiUrlOptions } from "./options";
 
 interface UploadOptions extends ApiUrlOptions {
   draft?: string;

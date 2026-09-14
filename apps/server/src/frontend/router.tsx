@@ -1,6 +1,6 @@
 import { createIsomorphicFn, getGlobalStartContext } from "@tanstack/react-start";
 import { createRouter } from "@tanstack/react-router";
-import { routeTree } from "./routeTree.gen.js";
+import { routeTree } from "./routeTree.gen";
 
 // Set by the contentSecurityPolicy request middleware in start.ts.
 const getNonce = createIsomorphicFn()

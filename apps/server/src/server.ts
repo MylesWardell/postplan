@@ -1,8 +1,8 @@
 import handler from "@tanstack/react-start/server-entry";
-import { createContextFactory } from "./context.js";
-import type { ServerDependencies } from "./context.js";
-import { createApiHandler } from "./api.js";
-import { config } from "./config.js";
+import { createContextFactory } from "./context";
+import type { ServerDependencies } from "./context";
+import { createApiHandler } from "./api";
+import { config } from "./config";
 import { draftResponse } from "#frontend/drafts";
 import { notFoundResponse } from "#frontend/response.server";
 import { hostDraftId } from "#lib/host-guard";
@@ -20,8 +20,12 @@ export function createApplication(deps: ServerDependencies) {
     respond(async () => {
       const draftId = hostDraftId(request);
       const draft = await draftResponse(request, deps, draftId);
-      if (draft) return draft;
-      if (draftId) return notFoundResponse();
+      if (draft) {
+        return draft;
+      }
+      if (draftId) {
+        return notFoundResponse();
+      }
       return handler.fetch(request, { context: { deps, createContext, api, peerIp } });
     });
 }
