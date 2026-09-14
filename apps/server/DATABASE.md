@@ -1,6 +1,6 @@
 # Database
 
-Drizzle uses Bun's built-in SQLite driver, following the [Bun guide](https://bun.com/guides/ecosystem/drizzle). `src/db/schema.ts` defines tables; routers own queries. `DATABASE_PATH` defaults to `data/postplan.sqlite`, relative to the process working directory. Use an absolute path in production.
+Drizzle uses Bun's built-in SQLite driver, following the [Bun guide](https://bun.com/guides/ecosystem/drizzle). `src/db/schema.ts` defines tables with camelCase properties, which Drizzle's `casing: "snake_case"` maps to snake_case SQL columns; routers own queries. `DATABASE_PATH` defaults to `data/postplan.sqlite`, relative to the process working directory. Use an absolute path in production.
 
 From the repository root:
 

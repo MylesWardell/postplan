@@ -49,9 +49,9 @@ export function keysResponse(
                     <tr key={key.id}>
                       <td>
                         <strong>{key.name}</strong>
-                        <div class="repo">Created {date(key.created_at)}</div>
+                        <div class="repo">Created {date(key.createdAt)}</div>
                       </td>
-                      <td class="muted nowrap">{date(key.last_used_at)}</td>
+                      <td class="muted nowrap">{date(key.lastUsedAt)}</td>
                       <td>
                         <form method="post" action={`/cli/auth/keys/${key.id}/revoke`}>
                           <button class="secondary" aria-label={`Revoke ${key.name}`}>

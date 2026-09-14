@@ -12,7 +12,7 @@ export const publicOS = implement(contract)
   });
 export const protectedOS = publicOS.use(({ context, next }) => {
   const account = context.apiKey
-    ? { accountId: context.apiKey.account_id, accountName: context.apiKey.account_name }
+    ? { accountId: context.apiKey.accountId, accountName: context.apiKey.accountName }
     : context.session;
   if (!account)
     throw new ORPCError("UNAUTHORIZED", { message: "Sign in or provide a valid API key." });
