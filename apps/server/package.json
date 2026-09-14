@@ -28,10 +28,6 @@
       "source": "./src/routers/*.ts",
       "default": "./dist/src/routers/*.js"
     },
-    "#storage/*": {
-      "source": "./src/storage/*.ts",
-      "default": "./dist/src/storage/*.js"
-    },
     "#client": {
       "source": "./src/client.ts",
       "default": "./dist/src/client.js"
