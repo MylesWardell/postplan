@@ -1,0 +1,39 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../.oxlintrc.json"],
+  "plugins": ["import", "node", "promise"],
+  // Oxlint only inherits rules, plugins, and overrides; retain other base settings here.
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "ignorePatterns": ["**/dist/**", "**/node_modules/**", "**/.turbo/**"],
+  "rules": {
+    "eqeqeq": "error",
+    "import/no-cycle": "error",
+    "import/no-duplicates": "error",
+    "import/no-self-import": "error",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-new-func": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["bun", "bun:*"],
+            "message": "The published CLI runs on Node.js; use a Node.js or web-standard API."
+          }
+        ]
+      }
+    ],
+    "node/no-path-concat": "error",
+    "promise/no-multiple-resolved": "error",
+    "promise/no-new-statics": "error",
+    "promise/no-return-wrap": "error",
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-import-type-side-effects": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/only-throw-error": "error"
+  }
+}

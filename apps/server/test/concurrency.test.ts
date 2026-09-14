@@ -27,12 +27,14 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
     const html = "<!doctype html><title>Concurrent</title><p>Versions</p>";
     const { body: first } = await caller.drafts.upload({ html });
     assert.ok(first.ok);
-    if (!first.ok) throw new Error("Upload failed");
+    if (!first.ok) {
+      throw new Error("Upload failed");
+    }
     const versions = await Promise.all(
       Array.from({ length: 6 }, () => caller.drafts.upload({ html, draftId: first.draftId })),
     );
     assert.deepEqual(
-      versions.map((version) => version.body.versionNumber).sort((a, b) => a - b),
+      versions.map((version) => version.body.versionNumber).toSorted((a, b) => a - b),
       [2, 3, 4, 5, 6, 7],
     );
     assert.equal(

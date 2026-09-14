@@ -150,7 +150,9 @@ export function validateHtml(
       if (tagName === "img") {
         const src = (node.attrs || []).find((attr) => attr.name.toLowerCase() === "src");
         const host = externalHost(src?.value);
-        if (host) externalImageHosts.add(host);
+        if (host) {
+          externalImageHosts.add(host);
+        }
       }
     }
 
@@ -189,7 +191,7 @@ export function validateHtml(
     hasScripts,
     stats: {
       hasInlineScript: hasScripts,
-      externalImageHosts: [...externalImageHosts].sort(),
+      externalImageHosts: [...externalImageHosts].toSorted(),
     },
   };
 }
@@ -202,7 +204,9 @@ function emptyStats(): HtmlStats {
 // or null for relative paths, data: URIs, and anything unparseable.
 function externalHost(value: string | undefined): string | null {
   const raw = String(value || "").trim();
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   const candidate = raw.startsWith("//") ? `https:${raw}` : raw;
   try {
     const url = new URL(candidate);
@@ -218,7 +222,9 @@ function externalHost(value: string | undefined): string | null {
 function collectText(node: TreeNode): string {
   let value = "";
   for (const child of node.childNodes || []) {
-    if (child.nodeName === "#text") value += child.value || "";
+    if (child.nodeName === "#text") {
+      value += child.value || "";
+    }
     value += collectText(child);
   }
   return value;

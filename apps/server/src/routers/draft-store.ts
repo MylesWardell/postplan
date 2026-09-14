@@ -3,7 +3,7 @@ import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import { drafts, draftVersions, uploadEvents } from "#db/schema";
-import { publicUploadAuth } from "./account-store.js";
+import { publicUploadAuth } from "./account-store";
 import type { Database } from "#db/client";
 import { validateHtml } from "#lib/html-policy";
 import { getDraftPublicUrl, getDraftRawUrl } from "#lib/public-url";
@@ -11,7 +11,9 @@ import type { ApiContext } from "#context";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 export function cleanText(value: unknown, maxLength = 255): string | null {
-  if (typeof value !== "string") return null;
+  if (typeof value !== "string") {
+    return null;
+  }
   return value.trim().slice(0, maxLength) || null;
 }
 interface UrlContext {
@@ -69,7 +71,9 @@ export async function getAccountDraftWithVersions(
     .from(drafts)
     .where(and(eq(drafts.id, draftId), eq(drafts.accountId, accountId), isNull(drafts.deletedAt)))
     .limit(1);
-  if (!draft) return null;
+  if (!draft) {
+    return null;
+  }
   const versions = await db
     .select({
       id: draftVersions.id,
@@ -137,7 +141,9 @@ export async function updateOwnedDraft(
     .set({ ...values, updatedAt: new Date() })
     .where(and(eq(drafts.id, draftId), eq(drafts.accountId, accountId), isNull(drafts.deletedAt)))
     .returning({ id: drafts.id });
-  if (!draft) throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+  if (!draft) {
+    throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+  }
   return { ok: true as const };
 }
 
@@ -150,8 +156,9 @@ export interface UploadInput {
 }
 export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
   const validation = validateHtml(input.html, { maxBytes: ctx.maxHtmlBytes });
-  if (!validation.ok || typeof input.html !== "string")
+  if (!validation.ok || typeof input.html !== "string") {
     return { ok: false as const, errors: validation.errors, warnings: validation.warnings };
+  }
   const html = input.html;
   const auth = ctx.apiKey ?? publicUploadAuth;
   const metadata = input.metadata ?? {};
@@ -165,8 +172,9 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
         and(eq(drafts.id, draftId), eq(drafts.accountId, auth.accountId), isNull(drafts.deletedAt)),
       )
       .get()
-  )
+  ) {
     throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+  }
   const versionId = randomUUID();
   const objectKey = `drafts/${draftId}/versions/${versionId}.html`;
   // Storage must finish before entering Bun SQLite's synchronous transaction.
@@ -187,8 +195,9 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
             .limit(1)
             .all()
         : [];
-      if (input.draftId && !existing)
+      if (input.draftId && !existing) {
         throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+      }
       const [latest] = existing
         ? tx
             .select({ number: max(draftVersions.versionNumber) })
@@ -198,7 +207,7 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
         : [];
       const versionNumber = (latest?.number ?? 0) + 1;
       const title = validation.title || existing?.title || input.filename || "Untitled Draft";
-      if (!existing)
+      if (!existing) {
         tx.insert(drafts)
           .values({
             id: draftId,
@@ -210,6 +219,7 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
             repoHost: cleanText(metadata.repoHost),
           })
           .run();
+      }
       tx.insert(draftVersions)
         .values({
           id: versionId,

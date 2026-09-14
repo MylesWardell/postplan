@@ -3,6 +3,8 @@ import { test } from "bun:test";
 import { readCookie, signToken, verifyToken } from "#auth/session";
 
 const secret = "test-secret";
+const requestWithCookie = (cookie: string) =>
+  new Request("http://localhost", { headers: { cookie } });
 
 test("signed tokens round-trip and carry exp", () => {
   const token = signToken({ accountId: "acct_1" }, secret, 60);
@@ -26,11 +28,13 @@ test("rejects tampered, wrong-secret, expired, and malformed tokens", () => {
 });
 
 test("readCookie finds the named cookie and tolerates bad escapes", () => {
-  const req = (cookie: string) => new Request("http://localhost", { headers: { cookie } });
   assert.equal(
-    readCookie(req("a=1; postplan_session=abc%2Edef; b=2"), "postplan_session"),
+    readCookie(requestWithCookie("a=1; postplan_session=abc%2Edef; b=2"), "postplan_session"),
     "abc.def",
   );
-  assert.equal(readCookie(req("postplan_session=%E0%A4%A"), "postplan_session"), null);
-  assert.equal(readCookie(req(""), "postplan_session"), null);
+  assert.equal(
+    readCookie(requestWithCookie("postplan_session=%E0%A4%A"), "postplan_session"),
+    null,
+  );
+  assert.equal(readCookie(requestWithCookie(""), "postplan_session"), null);
 });

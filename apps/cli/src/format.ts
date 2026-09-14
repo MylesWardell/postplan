@@ -13,14 +13,20 @@ export function pluralize(count: number, noun: string): string {
 
 /** Relative time such as "3 days ago". Accepts a Date or an ISO string from JSON. */
 export function timeAgo(value: Date | string | null | undefined): string {
-  if (!value) return "unknown";
+  if (!value) {
+    return "unknown";
+  }
   const then = new Date(value).getTime();
-  if (Number.isNaN(then)) return "unknown";
+  if (Number.isNaN(then)) {
+    return "unknown";
+  }
 
   const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
   for (const [name, unitSeconds] of TIME_UNITS) {
     const amount = Math.floor(seconds / unitSeconds);
-    if (amount >= 1) return `${pluralize(amount, name)} ago`;
+    if (amount >= 1) {
+      return `${pluralize(amount, name)} ago`;
+    }
   }
   return "just now";
 }

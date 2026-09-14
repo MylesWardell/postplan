@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { createDatabase } from "./client.js";
+import { createDatabase } from "./client";
 
 const { db, client } = createDatabase();
 try {

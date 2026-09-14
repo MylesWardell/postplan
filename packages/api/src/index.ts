@@ -1,8 +1,8 @@
 import { openapi } from "@orpc/openapi";
 import { oc } from "@orpc/contract";
 import type { RouterContractClient } from "@orpc/contract";
-import * as schemas from "./schemas/index.js";
-export * from "./schemas/index.js";
+import * as schemas from "./schemas/index";
+export * from "./schemas/index";
 
 const publicContract = oc.errors({
   BAD_REQUEST: {},

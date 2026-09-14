@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     tanstackStart({
       srcDirectory: "src/frontend",
-      router: { quoteStyle: "double", semicolons: true, addExtensions: ".js" },
+      router: { quoteStyle: "double", semicolons: true },
       server: { entry: "../server.ts" },
     }),
     react(),

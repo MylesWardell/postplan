@@ -7,7 +7,7 @@ let compiled: { setting: TrustProxySetting; trust: TrustFn } | undefined;
 
 // Compile once per trustProxy value instead of on every request.
 function trustFor(setting: TrustProxySetting): TrustFn {
-  if (compiled?.setting !== setting)
+  if (compiled?.setting !== setting) {
     compiled = {
       setting,
       trust:
@@ -17,6 +17,7 @@ function trustFor(setting: TrustProxySetting): TrustFn {
             ? (_address, index) => index < setting
             : () => setting,
     };
+  }
   return compiled.trust;
 }
 
@@ -25,9 +26,13 @@ function trustFor(setting: TrustProxySetting): TrustFn {
 export function clientIp(req: Request, peerIp: string | null): string | null {
   if (config.clientIpSource === "x-real-ip") {
     const realIp = req.headers.get("x-real-ip")?.trim();
-    if (realIp) return realIp;
+    if (realIp) {
+      return realIp;
+    }
   }
-  if (!peerIp) return null;
+  if (!peerIp) {
+    return null;
+  }
   const trust = trustFor(config.trustProxy);
   const chain = [
     peerIp,
@@ -35,10 +40,12 @@ export function clientIp(req: Request, peerIp: string | null): string | null {
       .get("x-forwarded-for")
       ?.split(",")
       .map((value) => value.trim())
-      .reverse() ?? []),
+      .toReversed() ?? []),
   ];
   for (let i = 0; i < chain.length - 1; i++) {
-    if (!trust(chain[i]!, i)) return chain[i]!;
+    if (!trust(chain[i]!, i)) {
+      return chain[i]!;
+    }
   }
   return chain.at(-1) ?? peerIp;
 }

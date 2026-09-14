@@ -1,12 +1,12 @@
-import { shutdownInstrumentation } from "./instrumentation.js";
+import { shutdownInstrumentation } from "./instrumentation";
 import { serve } from "bun";
 import type { Server } from "bun";
 import { fileURLToPath } from "node:url";
 import { createDatabase } from "#db/client";
 import { seedAccounts } from "#routers/account-store";
-import { config } from "./config.js";
-import type { ServerDependencies } from "./context.js";
-import type { createApplication } from "./server.js";
+import { config } from "./config";
+import type { ServerDependencies } from "./context";
+import type { createApplication } from "./server";
 import { onlyApplication } from "#lib/host-guard";
 import { notFoundResponse } from "#frontend/response.server";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";
@@ -19,14 +19,15 @@ export function createServerOptions(
   const application = start.createApplication(deps);
   const assets = new Map<string, ReturnType<typeof Bun.file>>();
   const directory = fileURLToPath(clientDirectory);
-  for (const file of new Bun.Glob("**/*").scanSync({ cwd: directory, onlyFiles: true }))
+  for (const file of new Bun.Glob("**/*").scanSync({ cwd: directory, onlyFiles: true })) {
     assets.set("/" + file.replaceAll("\\", "/"), Bun.file(directory + "/" + file));
+  }
   return {
     maxRequestBodySize: 2 * 1024 * 1024,
     fetch: (request: Request, server: Server<undefined>) => {
       const pathname = new URL(request.url).pathname;
       const asset = assets.get(pathname);
-      if (asset)
+      if (asset) {
         return onlyApplication(request, () =>
           request.method === "GET" || request.method === "HEAD"
             ? new Response(request.method === "HEAD" ? null : asset, {
@@ -39,6 +40,7 @@ export function createServerOptions(
               })
             : notFoundResponse(),
         );
+      }
       return application(request, server.requestIP(request)?.address ?? null);
     },
   };
@@ -56,9 +58,11 @@ async function main(): Promise<void> {
   });
   console.log(`Postplan listening at ${server.url}`);
   let stopping = false;
-  for (const signal of ["SIGTERM", "SIGINT"] as const)
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
     process.once(signal, async () => {
-      if (stopping) return;
+      if (stopping) {
+        return;
+      }
       stopping = true;
       const force = setTimeout(
         () => process.exit(1),
@@ -75,9 +79,11 @@ async function main(): Promise<void> {
         process.exit(1);
       }
     });
+  }
 }
-if (import.meta.main)
+if (import.meta.main) {
   main().catch((error: unknown) => {
     console.error(error);
     process.exit(1);
   });
+}

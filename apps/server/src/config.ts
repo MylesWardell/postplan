@@ -86,7 +86,9 @@ export function requireEnv(name: string, value: string | undefined): string {
 
 export function parseAllowedLoginDomains(value: string | undefined): string[] {
   const raw = value?.trim();
-  if (!raw) return [];
+  if (!raw) {
+    return [];
+  }
 
   const domains = raw.split(",").map((entry) => entry.trim().toLowerCase().replace(/^@/, ""));
   if (domains.some((domain) => !isDomain(domain))) {
@@ -98,7 +100,9 @@ export function parseAllowedLoginDomains(value: string | undefined): string[] {
 }
 
 function isDomain(value: string): boolean {
-  if (value.length > 253) return false;
+  if (value.length > 253) {
+    return false;
+  }
   const labels = value.split(".");
   return (
     labels.length > 1 &&
@@ -114,15 +118,25 @@ function isDomain(value: string): boolean {
 // is what the Railway deployment has always used.
 function parseTrustProxy(value: string | undefined): TrustProxySetting {
   const raw = (value ?? "").trim();
-  if (!raw || raw === "true") return true;
-  if (raw === "false") return false;
-  if (/^\d+$/.test(raw)) return Number(raw);
+  if (!raw || raw === "true") {
+    return true;
+  }
+  if (raw === "false") {
+    return false;
+  }
+  if (/^\d+$/.test(raw)) {
+    return Number(raw);
+  }
   return raw;
 }
 
 function parseClientIpSource(value: string | undefined): ClientIpSource {
   const raw = (value ?? "").trim().toLowerCase();
-  if (!raw || raw === "x-real-ip") return "x-real-ip";
-  if (raw === "req-ip") return "req-ip";
+  if (!raw || raw === "x-real-ip") {
+    return "x-real-ip";
+  }
+  if (raw === "req-ip") {
+    return "req-ip";
+  }
   throw new Error(`Invalid CLIENT_IP_SOURCE "${value}" (expected "x-real-ip" or "req-ip").`);
 }
