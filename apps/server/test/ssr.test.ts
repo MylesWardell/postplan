@@ -1,5 +1,5 @@
 import { createDatabase } from "../src/db/client.js";
-import { boundedRequest } from "../src/http/body.js";
+import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
@@ -77,7 +77,10 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     const docs = await get("/api");
     assert.equal(docs.status, 200);
     assert.match(await docs.text(), /scalar/i);
-    const specResponse = await get("/api/spec.json");
+    const specResponse = await app(
+      new Request(base + "/api/spec.json", { headers: { "accept-encoding": "gzip" } }),
+    );
+    assert.equal(specResponse.headers.get("content-encoding"), "gzip");
     assert.equal(specResponse.status, 200);
     const spec = (await specResponse.json()) as {
       paths: Record<
@@ -105,11 +108,19 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.match(await (await get("/dashboard")).text(), /Your next idea starts here/);
     const html = "<!doctype html><title>Project roadmap</title><p>First version</p>";
     // Published CLI sends draftId:null for its first upload.
-    const upload = await api("/api/uploads", "POST", {
-      html,
-      draftId: null,
-      filename: "plan.html",
-    });
+    const upload = await app(
+      new Request(base + "/api/uploads", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "content-encoding": "gzip",
+          authorization: "Bearer ssr-owner-key",
+          [config.requestIdHeader]: "compression-test",
+        },
+        body: gzipSync(JSON.stringify({ html, draftId: null, filename: "plan.html" })),
+      }),
+    );
+    assert.equal(upload.headers.get("x-request-id"), "compression-test");
     assert.equal(upload.status, 201);
     const { draftId, publicUrl } = (await upload.json()) as { draftId: string; publicUrl: string };
     const path = `/dashboard/drafts/${draftId}`;
@@ -180,15 +191,15 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       }),
     );
     assert.equal(malformed.status, 400);
-    await assert.rejects(
-      boundedRequest(
-        new Request(base + "/api/uploads", {
-          method: "POST",
-          body: "x".repeat(2 * 1024 * 1024 + 1),
-        }),
-      ),
-      { code: "PAYLOAD_TOO_LARGE" },
+    const oversized = await app(
+      new Request(base + "/api/uploads", {
+        method: "POST",
+        headers: { "content-type": "application/json", "content-encoding": "gzip" },
+        body: gzipSync(JSON.stringify({ html: "x".repeat(2 * 1024 * 1024 + 1) })),
+      }),
     );
+    assert.equal(oversized.status, 413);
+    assert.equal(((await oversized.json()) as { code: string }).code, "PAYLOAD_TOO_LARGE");
     const minted = await post("/cli/auth/keys", { name: "Work laptop" });
     assert.equal(minted.status, 200);
     const keyPage = await minted.text();

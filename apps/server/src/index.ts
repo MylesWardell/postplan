@@ -4,7 +4,13 @@ import type { Server } from "bun";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { OpenAPIReferenceHandlerPlugin } from "@orpc/openapi/plugins";
-import { CORSHandlerPlugin } from "@orpc/server/plugins";
+import {
+  RequestLimitHandlerPlugin,
+  RequestCompressionHandlerPlugin,
+  ResponseCompressionHandlerPlugin,
+  ResponseHeadersHandlerPlugin,
+  CORSHandlerPlugin,
+} from "@orpc/server/plugins";
 import { EvlogHandlerPlugin } from "@orpc/evlog";
 import { SmartCoercionHandlerPlugin } from "@orpc/json-schema";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
@@ -16,7 +22,7 @@ import { router } from "./routers/index.js";
 import { config } from "./config.js";
 import { createContextFactory } from "./http/context.js";
 import type { ServerDependencies } from "./http/context.js";
-import { maxBodyBytes, boundedRequest } from "./http/body.js";
+
 import { onlyApplication } from "./http/response.js";
 import { createFrontend } from "./frontend/index.js";
 import { notFoundResponse } from "./frontend/pages.js";
@@ -31,9 +37,19 @@ export function createServerOptions(deps: ServerDependencies) {
   });
   const openapiHandler = new OpenAPIHandler(router, {
     plugins: [
+      new RequestCompressionHandlerPlugin(),
+      new RequestLimitHandlerPlugin({ maxBodySize: 2 * 1024 * 1024 }),
+      new ResponseHeadersHandlerPlugin(),
+      new ResponseCompressionHandlerPlugin(),
       new CORSHandlerPlugin({
-        allowHeaders: ["Content-Disposition", "Standard-Server", "Content-Type", "Authorization"],
-        exposeHeaders: ["Content-Disposition", "Standard-Server", "Retry-After"],
+        allowHeaders: [
+          "Content-Disposition",
+          "Standard-Server",
+          "Content-Type",
+          "Content-Encoding",
+          "Authorization",
+        ],
+        exposeHeaders: ["Content-Disposition", "Standard-Server", "Retry-After", "X-Request-Id"],
       }),
       new EvlogHandlerPlugin({ logAbort: true }),
       new SmartCoercionHandlerPlugin({ converters: [zodConverter] }),
@@ -52,7 +68,7 @@ export function createServerOptions(deps: ServerDependencies) {
   });
   function handleOpenAPIRequest(request: Request, server: Server<undefined>) {
     return onlyApplication(request, async () => {
-      const req = await boundedRequest(request);
+      const req = request;
       const { response } = await openapiHandler.handle(req, {
         prefix: "/api",
         context: {
@@ -64,7 +80,7 @@ export function createServerOptions(deps: ServerDependencies) {
   }
 
   return {
-    maxRequestBodySize: maxBodyBytes,
+    maxRequestBodySize: 2 * 1024 * 1024,
     routes: {
       "/*": (req: Request, server: Server<undefined>) =>
         index(req, server.requestIP(req)?.address ?? null),

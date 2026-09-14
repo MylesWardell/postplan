@@ -8,6 +8,11 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { Command } from "commander";
+import { createORPCClient, ORPCError } from "@orpc/client";
+import { OpenAPILink } from "@orpc/openapi/fetch";
+import { RequestCompressionLinkPlugin } from "@orpc/client/plugins";
+import { RequestValidationLinkPlugin } from "@orpc/contract/plugins";
+import { contract, uploadRejected, type ApiClient } from "@postplan/api";
 
 interface CliConfig {
   apiUrl?: string;
@@ -28,44 +33,6 @@ interface DraftMapping {
 
 interface DraftsFile {
   files?: Record<string, DraftMapping>;
-}
-
-// Loose view of API JSON responses; the CLI only reads a handful of fields.
-interface ApiBody {
-  message?: string;
-  data?: { errors?: string[] };
-  warnings?: string[];
-  [key: string]: unknown;
-}
-
-interface MeBody extends ApiBody {
-  accountId: string;
-  accountName: string;
-  apiKeyId: string;
-  apiKeyName: string;
-}
-
-interface UploadBody extends ApiBody {
-  draftId: string;
-  versionNumber: number;
-  publicUrl: string;
-  rawUrl?: string;
-}
-
-interface ListedDraft {
-  title: string | null;
-  description: string | null;
-  repoOrg: string | null;
-  repoName: string | null;
-  latestVersionNumber: number | null;
-  versionCount: number;
-  updatedAt: string;
-  disabled: boolean;
-  publicUrl: string;
-}
-
-interface ListBody extends ApiBody {
-  drafts?: ListedDraft[];
 }
 
 // The bundled CLI reads its own package version.
@@ -123,13 +90,7 @@ authCommand
       throw new CliError("No key entered. Nothing saved.");
     }
 
-    const response = await fetch(`${apiUrl}/api/me`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    const body = (await response.json()) as MeBody;
-    if (!response.ok) {
-      throw new CliError(body.message || "That key was rejected. Nothing saved.");
-    }
+    const body = await apiClient(apiUrl, apiKey).account.me();
 
     saveCredentials(apiKey, options.apiUrl);
     console.log(`\nLogged in as ${body.accountName} (key: ${body.apiKeyName}).`);
@@ -140,13 +101,7 @@ program
   .description("Check the configured Postplan credentials.")
   .action(async () => {
     const { apiUrl, apiKey } = readAuth();
-    const response = await fetch(`${apiUrl}/api/me`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    const body = (await response.json()) as MeBody;
-    if (!response.ok) {
-      throw new CliError(body.message || "Authentication failed.");
-    }
+    const body = await apiClient(apiUrl, apiKey).account.me();
     console.log(`Account: ${body.accountName} (${body.accountId})`);
     console.log(`API key: ${body.apiKeyName} (${body.apiKeyId})`);
   });
@@ -189,25 +144,7 @@ program
         },
       };
 
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "User-Agent": `postplan/${VERSION}`,
-      };
-      if (apiKey) {
-        headers.Authorization = `Bearer ${apiKey}`;
-      }
-
-      const response = await fetch(`${apiUrl}/api/uploads`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(payload),
-      });
-
-      const body = (await response.json()) as UploadBody;
-      if (!response.ok) {
-        const details = body.data?.errors?.length ? `\n- ${body.data.errors.join("\n- ")}` : "";
-        throw new CliError(`${body.message || "Upload failed."}${details}`);
-      }
+      const { body } = await apiClient(apiUrl, apiKey).drafts.upload(payload);
 
       drafts.files ||= {};
       drafts.files[resolvedFile] = {
@@ -237,13 +174,7 @@ program
   .option("--json", "Print the raw JSON response")
   .action(async (options: { apiUrl?: string; json?: boolean }) => {
     const { apiUrl, apiKey } = readAuth(options.apiUrl);
-    const response = await fetch(`${apiUrl}/api/drafts`, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-    const body = (await response.json()) as ListBody;
-    if (!response.ok) {
-      throw new CliError(body.message || "Failed to list drafts.");
-    }
+    const body = await apiClient(apiUrl, apiKey).drafts.list();
 
     const drafts = body.drafts || [];
 
@@ -267,7 +198,7 @@ program
 
       console.log(draft.title || "Untitled Draft");
       console.log(
-        `  ${repo} · ${version} · ${count} · updated ${timeAgo(draft.updatedAt)}${disabled}`,
+        `  ${repo} · ${version} · ${count} · updated ${timeAgo(new Date(draft.updatedAt).toISOString())}${disabled}`,
       );
       console.log(`  ${draft.publicUrl}`);
       if (draft.description) {
@@ -280,6 +211,14 @@ program
 program.exitOverride();
 
 program.parseAsync(process.argv).catch((error: { code?: string; message?: string }) => {
+  if (error instanceof ORPCError) {
+    const details =
+      error.code === "UNPROCESSABLE_CONTENT" ? uploadRejected.safeParse(error.data) : undefined;
+    console.error(
+      error.message + (details?.success ? `\n- ${details.data.errors.join("\n- ")}` : ""),
+    );
+    process.exit(1);
+  }
   if (error instanceof CliError) {
     console.error(error.message);
     process.exit(1);
@@ -463,4 +402,18 @@ function timeAgo(value: string | null | undefined): string {
     if (amount >= 1) return `${amount} ${name}${amount === 1 ? "" : "s"} ago`;
   }
   return "just now";
+}
+
+function apiClient(origin: string, apiKey?: string): ApiClient {
+  return createORPCClient(
+    new OpenAPILink(contract, {
+      origin,
+      url: "/api",
+      headers: {
+        "User-Agent": `postplan/${VERSION}`,
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      },
+      plugins: [new RequestValidationLinkPlugin(contract), new RequestCompressionLinkPlugin()],
+    }),
+  );
 }

@@ -92,7 +92,7 @@ const { drafts } = await api.drafts.list();
 
 The native Bun `routes` map mounts SSR at `/*`, the HTTP API at `/api` and `/api/*`, and health checks at `/healthz`. There is no WebSocket transport.
 
-The OpenAPI handler includes `CORSHandlerPlugin`, `EvlogHandlerPlugin`, `SmartCoercionHandlerPlugin`, and `OpenAPIReferenceHandlerPlugin`, using `ZodToJsonSchemaConverter`. Visit `/api` for the interactive reference and `/api/spec.json` for the contract-generated specification. REST uses bearer authentication; CORS permits bearer clients without credentialed cookies. Bun development mode enables HMR and browser console forwarding; SSR pages need no browser bundle.
+The OpenAPI handler uses `RequestLimitHandlerPlugin` (2 MiB after decompression), `RequestCompressionHandlerPlugin`, `ResponseCompressionHandlerPlugin`, `ResponseHeadersHandlerPlugin`, `CORSHandlerPlugin`, `EvlogHandlerPlugin`, `SmartCoercionHandlerPlugin`, and `OpenAPIReferenceHandlerPlugin`, using `ZodToJsonSchemaConverter`. Visit `/api` for the interactive reference and `/api/spec.json` for the contract-generated specification. REST uses bearer authentication; CORS permits bearer clients without credentialed cookies. Bun development mode enables HMR and browser console forwarding; SSR pages need no browser bundle.
 
 `instrumentation.ts` follows the example's NodeSDK, auto-instrumentation and oRPC instrumentation setup. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to your collector's trace endpoint to enable export; `OTEL_SERVICE_NAME` defaults to `postplan`. The app does not assume the example's local Jaeger collector. The playground's sample planet/file/message domains and fake authentication are replaced by real draft/account procedures, Drizzle persistence and signed sessions.
 
@@ -196,3 +196,7 @@ docker build --tag postplan:local .
 ```
 
 The image runs compiled JavaScript with Bun as a non-root user with SQLite on a persistent `/data` mount. CI checks formatting, lint, types, tests, CLI packaging and the container build; it has no AWS deployment step.
+
+The CLI uses `OpenAPILink` with `RequestValidationLinkPlugin(contract)` and `RequestCompressionLinkPlugin`. Browser SSR forms use `parseFormData` and `getIssueMessage` from oRPC's form helpers. Bun's body limit covers native SSR form requests; API bodies are additionally limited after decompression by oRPC.
+
+Request validation checks contract input, not proxy trust. `http/client-ip.ts` retains trusted-hop resolution for audit and rate-limit keys. Static File serves local directories; it is not enabled because this app has no local asset directory and its drafts require database checks before S3 retrieval.

@@ -1,11 +1,10 @@
-import { ORPCError } from "@orpc/server";
+import { ORPCError, toORPCError, COMMON_ERROR_STATUS_MAP } from "@orpc/server";
 import { config } from "../config.js";
 import { findOrCreateAccountForIdentity } from "../routers/account-store.js";
 import type { Database } from "../db/client.js";
 import { createCaller } from "../client.js";
 import type { ContextFactory } from "./context.js";
-import { formBody } from "./body.js";
-import { errorMessage, errorStatus } from "./errors.js";
+import { parseFormData, getIssueMessage } from "@orpc/openapi/helpers";
 import { getHomeUrl } from "./public-url.js";
 import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "../auth/shoo.js";
 import {
@@ -74,8 +73,8 @@ export async function webResponse(
     if (req.method === "GET" && path === "/cli/auth")
       return keysResponse(session, await caller.apiKeys.list());
     if (req.method === "POST" && path === "/cli/auth/keys") {
-      const form = await formBody(req);
-      const keyName = form.get("name") || `CLI · ${new Date().toISOString().slice(0, 10)}`;
+      const form = parseFormData(await req.formData());
+      const keyName = form.name || `CLI · ${new Date().toISOString().slice(0, 10)}`;
       const { token } = await caller.apiKeys.create({ name: keyName });
       return keysResponse(session, await caller.apiKeys.list(), token, keyName);
     }
@@ -94,13 +93,13 @@ export async function webResponse(
           url.searchParams.get("saved") === "1",
         );
       if (req.method === "POST" && draft[2]) {
-        const form = await formBody(req);
+        const form = parseFormData(await req.formData());
         switch (draft[2]) {
           case "update":
             await caller.drafts.update({
               draftId,
-              title: form.get("title") ?? "",
-              description: form.get("description") || null,
+              title: form.title ?? "",
+              description: form.description || null,
             });
             break;
           case "disable":
@@ -110,7 +109,7 @@ export async function webResponse(
             await caller.drafts.enable({ draftId });
             break;
           case "delete":
-            if (form.get("confirmation") !== "DELETE")
+            if (form.confirmation !== "DELETE")
               throw new ORPCError("BAD_REQUEST", { message: "Type DELETE to confirm deletion." });
             await caller.drafts.delete({ draftId });
             return redirect("/dashboard");
@@ -119,11 +118,18 @@ export async function webResponse(
       }
     }
   } catch (error) {
-    const status = errorStatus(error);
+    const failure = toORPCError(error);
+    const status =
+      COMMON_ERROR_STATUS_MAP[failure.code as keyof typeof COMMON_ERROR_STATUS_MAP] ?? 500;
     if (status >= 500) console.error(error);
     return messageResponse(
       "Request could not be completed",
-      status >= 500 ? "Please try again in a moment." : errorMessage(error),
+      status >= 500
+        ? "Please try again in a moment."
+        : (getIssueMessage(failure, "title") ??
+            getIssueMessage(failure, "description") ??
+            getIssueMessage(failure, "name") ??
+            failure.message),
       status,
     );
   }
@@ -155,7 +161,7 @@ async function authCallback(req: Request, db: Database): Promise<Response> {
     });
     claims = await verifyIdToken(tokens.id_token, { audOrigin: webOrigin() });
   } catch (error) {
-    console.error("shoo sign-in failed:", errorMessage(error));
+    console.error("shoo sign-in failed:", error);
     return messageResponse(
       "Sign-in unavailable",
       "Sign-in could not be completed. Please retry.",
