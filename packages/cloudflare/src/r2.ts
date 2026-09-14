@@ -11,7 +11,7 @@ export function r2Storage(bucket: R2Bucket) {
         throw new Error("HTML object not found.");
       }
       if (object.size > 512 * 1024) {
-        throw new Error("HTML object exceeds experiment limit.");
+        throw new Error("HTML object exceeds storage limit.");
       }
       return object.text();
     },

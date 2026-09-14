@@ -6,35 +6,9 @@ import {
   runDurableObjectAlarm,
 } from "cloudflare:test";
 import { afterEach, expect, test } from "vitest";
-import { cloudflareGateway } from "../gateway";
-import { limiterName, validateRule } from "../rate-limit";
-import { r2Storage } from "../r2";
-import { authorizedProbe, runProbe } from "../probe";
-import { reserveProbe } from "../budget";
-
-test("usage kill switch survives repeated initialization and blocks further storage probes", async () => {
-  expect(await reserveProbe(env.POSTPLAN_DB)).toBe(true);
-  await env.POSTPLAN_DB.exec("INSERT INTO usage_guard VALUES (1,1)");
-  expect(await reserveProbe(env.POSTPLAN_DB)).toBe(false);
-  expect(await reserveProbe(env.POSTPLAN_DB)).toBe(false);
-  expect(
-    await env.POSTPLAN_DB.prepare("SELECT used FROM experiment_budget WHERE id=1").first("used"),
-  ).toBe(1);
-});
-
-test("persistent experiment budget admits only twenty concurrent reservations", async () => {
-  const results = await Promise.all(
-    Array.from({ length: 30 }, () => reserveProbe(env.POSTPLAN_DB)),
-  );
-  expect(results.filter(Boolean)).toHaveLength(20);
-  expect(await reserveProbe(env.POSTPLAN_DB)).toBe(false);
-  const response = await runProbe(
-    env,
-    "<!doctype html><html><title>Budget</title><body>Stop</body></html>",
-  );
-  expect(response.status).toBe(429);
-  expect((await env.HTML_BUCKET.list()).objects).toHaveLength(0);
-});
+import { cloudflareGateway } from "../src/gateway";
+import { limiterName, validateRule } from "../src/rate-limit";
+import { r2Storage } from "../src/r2";
 
 afterEach(async () => {
   await reset();
@@ -158,26 +132,4 @@ test("an early alarm preserves the active counter and an expired alarm deletes s
   });
   await runDurableObjectAlarm(stub);
   expect((await stub.limit(rule)).success).toBe(true);
-});
-
-test("protected probe exercises real bindings, application HTML policy and Node crypto", async () => {
-  expect(authorizedProbe(new Request("https://example.com"), undefined)).toBe(false);
-  expect(
-    authorizedProbe(
-      new Request("https://example.com", { headers: { authorization: "Bearer local-test-only" } }),
-      env.EXPERIMENT_TOKEN,
-    ),
-  ).toBe(true);
-  const response = await runProbe(
-    env,
-    "<!doctype html><html><title>Probe</title><body>Hello</body></html>",
-  );
-  expect(await response.json()).toMatchObject({
-    ok: true,
-    database: true,
-    r2: true,
-    limiter: [true, true, false],
-    crypto: true,
-  });
-  expect((await env.HTML_BUCKET.list()).objects).toHaveLength(0);
 });

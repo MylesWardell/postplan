@@ -1,9 +1,12 @@
 import copy
 from datetime import datetime, timezone
 import json
+import sys
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "usage"))
 import usage_guard as guard
 
 NOW = datetime(2026, 9, 14, 12, tzinfo=timezone.utc)

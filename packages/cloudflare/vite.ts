@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { cloudflare } from "@cloudflare/vite-plugin";
-import { assertSqliteDatabase } from "./configuration";
+import { assertSqliteDatabase } from "./src/configuration";
 
 export function runtimeOptions() {
   assertSqliteDatabase(process.env.POSTPLAN_DATABASE);
@@ -17,7 +17,7 @@ export function runtimeOptions() {
         viteEnvironment: { name: "ssr" },
       }),
     ],
-    entry: fileURLToPath(new URL("./worker.ts", import.meta.url)),
+    entry: fileURLToPath(new URL("./src/worker.ts", import.meta.url)),
     outDir: fileURLToPath(new URL("./dist", import.meta.url)),
     external: [],
   };

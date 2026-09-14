@@ -2,6 +2,16 @@
 
 The selectable Worker serves the shared API and TanStack Start dashboard using D1, private R2 Standard storage and a SQLite Durable Object limiter. Application routes are opt-in with `POSTPLAN_APPLICATION_ENABLED=true`; the checked-in configuration keeps them disabled. The existing remote experiment remains stopped.
 
+## Package layout
+
+- `src/`: Worker, gateway, D1/R2 adapters, limiter and cleanup.
+- `deploy/`: repeatable schema and account initialization.
+- `test/`: permanent workerd, HTTP acceptance and usage-guard regression tests.
+- `usage/`: operational account monitor and kill switch.
+- Root configuration: Wrangler, Vite, Vitest and TypeScript.
+
+One-off probes and CPU investigation scripts are kept outside the package in gitignored `.local/cloudflare/`. The experimental probe endpoint has been removed. `generated/` contains only ignored deployment inputs and generated bootstrap SQL; runtime code never imports it.
+
 ## Local application
 
 From the repository root, after `bun install`:
@@ -11,13 +21,13 @@ bun run --filter @postplan/cloudflare cf:types
 bunx --no-install turbo run cf:build cf:test --filter=@postplan/cloudflare
 bunx --no-install tsc -p packages/cloudflare/tsconfig.json
 cd packages/cloudflare
-$env:EXPERIMENT_TOKEN = 'local-test-only'
+$env:POSTPLAN_RATE_LIMIT_SECRET = 'local-test-only'
 $env:POSTPLAN_BOOTSTRAP_API_KEY = 'local-application-test'
-bun initialize.ts --local
+bun deploy/initialize.ts --local
 bunx --no-install wrangler dev --config dist/server/wrangler.json --persist-to .wrangler/state --port 5173 --local --var POSTPLAN_APPLICATION_ENABLED:true --var POSTPLAN_SESSION_SECRET:local-session-only
 ```
 
-In another terminal, run `bun packages/cloudflare/application-check.ts` from the root. It creates synthetic local plans, verifies authentication, versions, public HTML, dashboard sessions/CSP, key revocation, disable/enable/delete and body limits. It cannot target a remote URL. CI also sets the local stop latch, reruns initialization and verifies that the dashboard remains stopped.
+In another terminal, run `bun packages/cloudflare/test/http.ts` from the root. It creates synthetic local plans, verifies authentication, versions, public HTML, dashboard sessions/CSP, key revocation, disable/enable/delete and body limits. It cannot target a remote URL. CI also sets the local stop latch, reruns initialization and verifies that the dashboard remains stopped.
 
 Initialization applies shared Drizzle migrations, creates Cloudflare budget tables and inserts missing initial accounts. Existing keys, consumed budgets and the stop latch are preserved. The optional bootstrap API key is hashed before writing ignored SQL. Do not use the example credentials remotely. Local initialization, Vite development and built-Worker testing share this package's `.wrangler/state`; remote bindings are disabled in the Vite plugin.
 
@@ -47,18 +57,18 @@ The scheduled handler marks up to 25 expired plans and deletes up to 25 versions
 
 No Cron trigger is enabled by default. When activating a reviewed deployment, configure an hourly trigger (`0 * * * *`) for cleanup. The stop latch also prevents scheduled cleanup. The [GitHub usage guard](./usage/README.md) checks account usage hourly and supports a manual kill switch; it latches D1, disables public exposure and removes Cron triggers without automatically restoring service. Its schedule starts after merge to `master`. Analytics and GitHub scheduling can lag, so the cron is not a billing hard cap.
 
-The separate authenticated compatibility probe retains its 20 lifetime operations of at most 512 KiB each. Its reservations are additional to the application budget. Failed probe deletes can leave at most 10 MiB. Never reset either ledger to repeat remote tests.
-
 ## Remote configuration
 
-The source Wrangler configuration is local-only, with a placeholder D1 ID. Use an ignored `generated/wrangler.remote.json` with the intended resource identities, `main: "../worker.ts"`, migrations path `../../store-drizzle/drizzle`, exact HTTPS public URL and `EXPERIMENT_LOCAL: "false"`. Select it through `POSTPLAN_CLOUDFLARE_CONFIG`, initialize using `bun initialize.ts --remote`, then build and deploy the generated `dist/server/wrangler.json`. Configuration changes require rebuilding.
+The source Wrangler configuration is local-only, with a placeholder D1 ID. Use an ignored `generated/wrangler.remote.json` with the intended resource identities, `main: "../src/worker.ts"`, migrations path `../../store-drizzle/drizzle`, exact HTTPS public URL and `POSTPLAN_LOCAL: "false"`. Select it through `POSTPLAN_CLOUDFLARE_CONFIG`, initialize using `bun deploy/initialize.ts --remote`, then build and deploy the generated `dist/server/wrangler.json`. Configuration changes require rebuilding.
 
-Root `.env.cloudflare.local` contains CLI-only `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Load them into the CLI environment without printing them; never use that file as Worker secrets. Configure independent random Worker secrets for `EXPERIMENT_TOKEN` and `POSTPLAN_SESSION_SECRET`, plus the intended login-domain settings. Supply the bootstrap key only during initialization. Keep secrets out of checked-in vars and command arguments.
+Root `.env.cloudflare.local` contains CLI-only `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Load them into the CLI environment without printing them; never use that file as Worker secrets. Configure independent random Worker secrets for `POSTPLAN_RATE_LIMIT_SECRET` and `POSTPLAN_SESSION_SECRET`, plus the intended login-domain settings. Supply the bootstrap key only during initialization. Keep secrets out of checked-in vars and command arguments.
 
 Keep Workers Free and R2 private Standard. Do not enable paid WAF or upgrade the plan. Validate account-wide headroom before any remote experiment. Enabling application routes does not clear an existing stop latch; recovery requires a separate deliberate operation after checking usage and exposure settings.
 
 ## Validation and remaining acceptance
 
-Local repository checks, both runtime builds, Cloudflare TypeScript, 19 workerd tests and 15 usage-guard tests pass. The built Worker passes the application check and persistent-stop check. Tests cover concurrency, rollback, ownership/deletion races, account lifecycle, limiter isolation, budget exhaustion, UTF-8 sizes, expiry and cleanup.
+Local repository checks, both runtime builds, Cloudflare TypeScript, 16 workerd tests and 15 usage-guard tests pass. The built Worker passes the application check and persistent-stop check. Tests cover concurrency, rollback, ownership/deletion races, account lifecycle, limiter isolation, budget exhaustion, UTF-8 sizes, expiry and cleanup.
 
 The [bounded remote CPU test](../../docs/cloudflare-cpu-test.md) deployed this connector on Workers Free on 14 September 2026. Dashboard rendering and uploads repeatedly exceeded 10 ms, so the current build does not reliably fit the Free CPU allowance. All temporary HTML was deleted and verified absent; the test key was revoked and the remote stop restored. The tested version remains deployed with public access disabled. Shoo browser login, wildcard DNS, backup/restore and cleanup CPU remain unverified. See the [usage assessment](../../docs/cloudflare-usage-assessment.md) and [deployment plan](../../docs/cloudflare-deployment-plan.md).
+
+The package cleanup renames `EXPERIMENT_TOKEN` to `POSTPLAN_RATE_LIMIT_SECRET` and `EXPERIMENT_LOCAL` to `POSTPLAN_LOCAL`. Supply the rate-limit secret before deploying the new entry; reusing its previous value preserves limiter subject names. Historical probe counters are retained in D1 but no longer have a public endpoint.

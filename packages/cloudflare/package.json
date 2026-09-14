@@ -9,7 +9,7 @@
     "cf:dev": "POSTPLAN_RUNTIME=cloudflare vite ../../apps/server --config ../../apps/server/vite.config.ts",
     "cf:test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "cf:initialize": "bun initialize.ts"
+    "cf:initialize": "bun deploy/initialize.ts"
   },
   "dependencies": {
     "@orpc/server": "2.0.0-beta.35",

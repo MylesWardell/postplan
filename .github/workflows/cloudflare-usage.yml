@@ -14,11 +14,13 @@ on:
     paths:
       - ".github/workflows/cloudflare-usage.yml"
       - "packages/cloudflare/usage/**"
+      - "packages/cloudflare/test/test_usage_guard.py"
   push:
     branches: [master]
     paths:
       - ".github/workflows/cloudflare-usage.yml"
       - "packages/cloudflare/usage/**"
+      - "packages/cloudflare/test/test_usage_guard.py"
 
 permissions:
   contents: read
@@ -36,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - run: python3 -m unittest discover -s packages/cloudflare/usage -p 'test_*.py' -v
+      - run: python3 -m unittest discover -s packages/cloudflare/test -p 'test_*.py' -v
 
   guard:
     # Schedules only become active after this workflow is merged into master.

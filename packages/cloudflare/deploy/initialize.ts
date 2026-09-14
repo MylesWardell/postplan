@@ -12,7 +12,7 @@ if (target === "--remote" && !process.env.POSTPLAN_CLOUDFLARE_CONFIG) {
   throw new Error("Remote initialization requires POSTPLAN_CLOUDFLARE_CONFIG.");
 }
 const config = process.env.POSTPLAN_CLOUDFLARE_CONFIG || "wrangler.jsonc";
-const root = fileURLToPath(new URL("./", import.meta.url));
+const root = fileURLToPath(new URL("../", import.meta.url));
 async function wrangler(args: string[]) {
   const child = spawnSync(
     process.execPath,
@@ -37,7 +37,7 @@ async function wrangler(args: string[]) {
   }
 }
 await wrangler(["d1", "migrations", "apply", "POSTPLAN_DB"]);
-await wrangler(["d1", "execute", "POSTPLAN_DB", "--file", "application-schema.sql", "--yes"]);
+await wrangler(["d1", "execute", "POSTPLAN_DB", "--file", "deploy/schema.sql", "--yes"]);
 const seed = (account: string, id: string, name: string, token: string) => {
   const hash = createHash("sha256").update(token).digest("hex");
   return `INSERT OR IGNORE INTO accounts(id,name) VALUES ('${account}','${name}');
@@ -57,7 +57,7 @@ if (process.env.POSTPLAN_BOOTSTRAP_API_KEY) {
     process.env.POSTPLAN_BOOTSTRAP_API_KEY,
   );
 }
-await mkdir(new URL("./generated/", import.meta.url), { recursive: true });
-await writeFile(new URL("./generated/bootstrap.sql", import.meta.url), sql);
+await mkdir(new URL("../generated/", import.meta.url), { recursive: true });
+await writeFile(new URL("../generated/bootstrap.sql", import.meta.url), sql);
 await wrangler(["d1", "execute", "POSTPLAN_DB", "--file", "generated/bootstrap.sql", "--yes"]);
 console.log("Schema and initial accounts ready; existing keys, budgets and stop latch preserved.");

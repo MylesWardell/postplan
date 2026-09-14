@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
 import { beforeEach, afterEach, expect, test } from "vitest";
 import { eq } from "drizzle-orm";
-import { createCloudflareStore, createDatabase } from "../database";
+import { createCloudflareStore, createDatabase } from "../src/database";
 import {
   accounts,
   apiKeys,
@@ -13,10 +13,10 @@ import {
 } from "@postplan/store-drizzle/schema";
 import type { UploadContext } from "@postplan/store";
 import migration from "../../store-drizzle/drizzle/0000_same_vulcan.sql?raw";
-import { assertSqliteDatabase } from "../configuration";
-import applicationSchema from "../application-schema.sql?raw";
-import { applicationStorage } from "../application-storage";
-import { cleanup } from "../cleanup";
+import { assertSqliteDatabase } from "../src/configuration";
+import applicationSchema from "../deploy/schema.sql?raw";
+import { applicationStorage } from "../src/application-storage";
+import { cleanup } from "../src/cleanup";
 
 test("Cloudflare only accepts SQLite", () => {
   expect(() => assertSqliteDatabase(undefined)).not.toThrow();

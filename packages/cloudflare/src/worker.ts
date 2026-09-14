@@ -3,7 +3,6 @@ import { createApplication } from "@postplan/server/application";
 import { cloudflareGateway } from "./gateway";
 import { applicationStorage } from "./application-storage";
 import { boundedBody } from "./body";
-import { authorizedProbe, runProbe } from "./probe";
 import { cleanup } from "./cleanup";
 import { env as bindings } from "cloudflare:workers";
 export { RateLimit } from "./rate-limit";
@@ -30,7 +29,7 @@ export default {
       gateway = cloudflareGateway(incoming, {
         publicBaseUrl: env.POSTPLAN_PUBLIC_BASE_URL,
         requestIdHeader: "x-request-id",
-        local: env.EXPERIMENT_LOCAL === "true",
+        local: env.POSTPLAN_LOCAL === "true",
       });
     } catch {
       return new Response("Invalid gateway request", { status: 400 });
@@ -41,40 +40,22 @@ export default {
       return new Response("Not found", { status: 404 });
     }
     const path = new URL(request.url).pathname;
-    if (path === "/__experiment/probe") {
-      if (!authorizedProbe(request, env.EXPERIMENT_TOKEN)) {
-        return new Response("Not found", { status: 404 });
-      }
-      if (request.method !== "POST") {
-        return new Response("Method not allowed", { status: 405 });
-      }
-      const bytes = await boundedBody(request, 512 * 1024);
-      if (!bytes) {
-        return new Response("HTML too large", { status: 413 });
-      }
-      return runProbe(env, new TextDecoder().decode(bytes));
-    }
     if (!draftHost && path.startsWith("/assets/")) {
       return env.ASSETS.fetch(request);
     }
     if (!enabled && !["/", "/healthz", "/api/spec.json"].includes(path)) {
-      return new Response(
-        "Cloudflare compatibility experiment: application data routes are not enabled.",
-        { status: 503 },
-      );
+      return new Response("Application data routes are not enabled.", { status: 503 });
     }
     if (enabled) {
       try {
-        const killed = await env.POSTPLAN_DB.prepare(
-          "SELECT killed FROM usage_guard WHERE id=1",
-        ).first<number>("killed");
-        if (killed === 1) {
+        const budget = await env.POSTPLAN_DB.prepare(
+          "SELECT id, (SELECT killed FROM usage_guard WHERE id=1) AS killed FROM application_budget WHERE id=1",
+        ).first<{ id: number; killed: number | null }>();
+        if (budget?.killed === 1) {
           return new Response("Application stopped", { status: 503 });
         }
         // Missing migrations fail closed; bootstrap is an explicit deployment step.
-        if (
-          !(await env.POSTPLAN_DB.prepare("SELECT id FROM application_budget WHERE id=1").first())
-        ) {
+        if (!budget) {
           throw new Error("Missing budget");
         }
       } catch {

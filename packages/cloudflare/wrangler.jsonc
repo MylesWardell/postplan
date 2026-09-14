@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "postplan-cloudflare-experiment",
-  "main": "worker.ts",
+  "main": "src/worker.ts",
   "compatibility_date": "2026-09-14",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
@@ -15,7 +15,7 @@
     "POSTPLAN_APPLICATION_ENABLED": "false",
     "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS": "false",
     "POSTPLAN_PUBLIC_BASE_URL": "http://localhost:5173",
-    "EXPERIMENT_LOCAL": "true",
+    "POSTPLAN_LOCAL": "true",
     "REQUEST_ID_HEADER": "x-request-id",
     "CLIENT_IP_SOURCE": "req-ip",
     "TRUST_PROXY": "false",
@@ -56,6 +56,6 @@
     },
   },
   "secrets": {
-    "required": ["EXPERIMENT_TOKEN"],
+    "required": ["POSTPLAN_RATE_LIMIT_SECRET"],
   },
 }

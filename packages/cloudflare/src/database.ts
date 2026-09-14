@@ -26,7 +26,12 @@ export function createCloudflareStore(env: Cloudflare.Env) {
   assertSqliteDatabase(env.POSTPLAN_DATABASE);
   const db = createDatabase(env.POSTPLAN_DB);
   const connection = createDrizzleStore(db, undefined, async (input) => {
-    const name = limiterName(env.EXPERIMENT_TOKEN, input.namespace, input.key, input.rule);
+    const name = limiterName(
+      env.POSTPLAN_RATE_LIMIT_SECRET,
+      input.namespace,
+      input.key,
+      input.rule,
+    );
     return env.RATE_LIMITS.getByName(name).limit(input.rule, input.weight);
   });
   return {

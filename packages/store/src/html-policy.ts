@@ -64,6 +64,7 @@ export function validateHtml(
   const byteLength = Buffer.byteLength(html, "utf8");
   if (byteLength > maxBytes) {
     errors.push(`HTML document is ${byteLength} bytes; maximum is ${maxBytes} bytes.`);
+    return { ok: false, errors, warnings, title: null, hasScripts: false, stats: emptyStats() };
   }
 
   let document: TreeNode;

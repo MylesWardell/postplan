@@ -6,6 +6,7 @@
     "**/dist/**",
     "**/node_modules/**",
     "**/.turbo/**",
+    ".local/**",
     "bun.lock",
     "**/routeTree.gen.ts",
     ".agents/skills/**",

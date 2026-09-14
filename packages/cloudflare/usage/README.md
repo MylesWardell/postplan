@@ -24,7 +24,7 @@ Local checks use the same script with `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_US
 
 ```sh
 python packages/cloudflare/usage/usage_guard.py --mode audit
-python -m unittest discover -s packages/cloudflare/usage -p 'test_*.py' -v
+python -m unittest discover -s packages/cloudflare/test -p 'test_*.py' -v
 ```
 
 The scheduled job uses Python's standard library, with no package installation or application build. Hourly execution is about 720–744 runs per month. GitHub bills runner time separately, rounding jobs up to minutes; this uses the account's shared Actions allowance in this private repository. Check that allowance before increasing frequency. [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
@@ -54,7 +54,7 @@ R2 operations are classified using the published pricing list. Unknown operation
 
 The script attempts each control independently and verifies the result:
 
-1. Persist `usage_guard.killed = 1` in the experiment's D1 database. The Worker checks this inside its atomic probe reservation, preserving the existing 20-probe lifetime cap.
+1. Persist `usage_guard.killed = 1` in the experiment's D1 database. The Worker checks this before application dispatch and inside atomic storage reservations; scheduled cleanup also checks it.
 2. Disable workers.dev and preview URLs.
 3. Remove the Worker's Cron triggers.
 4. Remove custom domains belonging to that Worker.
@@ -63,7 +63,7 @@ The script attempts each control independently and verifies the result:
 
 The current experiment has no zone routes, custom domains or Cron triggers. Add every relevant zone ID to the policy before introducing routes. The script does not enumerate unrelated zones or modify other Workers/buckets. A failed control does not prevent the remaining controls from running, and is reported as `stop_incomplete` rather than a successful shutdown.
 
-Recovery is manual: investigate the report, fix the cause, confirm usage headroom, clear only the D1 kill flag, and restore intended ingress/triggers from deployment configuration. Do not reset the experiment's consumed-probe counter or delete the database. A redeploy alone cannot clear the stop flag in this Worker version; rolling back to code without the guard can bypass it. Keep disabled ingress in remote Wrangler configuration until intentionally restoring service. The guard does not keep a backup of removed route/domain/cron configuration.
+Recovery is manual: investigate the report, fix the cause, confirm usage headroom, clear only the D1 kill flag, and restore intended ingress/triggers from deployment configuration. Do not reset the application's consumed storage counters or delete the database. A redeploy alone cannot clear the stop flag in this Worker version; rolling back to code without the guard can bypass it. Keep disabled ingress in remote Wrangler configuration until intentionally restoring service. The guard does not keep a backup of removed route/domain/cron configuration.
 
 ## Limits of protection
 

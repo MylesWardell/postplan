@@ -3,7 +3,7 @@ export async function boundedBody(request: Request, maximum: number) {
   if (!reader) {
     return new Uint8Array();
   }
-  const chunks: Uint8Array[] = [];
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
   let size = 0;
   for (;;) {
     const part = await reader.read();
@@ -16,6 +16,9 @@ export async function boundedBody(request: Request, maximum: number) {
       return null;
     }
     chunks.push(part.value);
+  }
+  if (chunks.length === 1) {
+    return chunks[0]!;
   }
   const bytes = new Uint8Array(size);
   let offset = 0;

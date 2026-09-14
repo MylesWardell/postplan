@@ -83,6 +83,8 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       );
     const docs = await get("/api");
     assert.equal(docs.status, 200);
+    assert.match(docs.headers.get("content-security-policy")!, /frame-ancestors 'none'/);
+    assert.equal(docs.headers.get("x-content-type-options"), "nosniff");
     assert.match(await docs.text(), /scalar/i);
     const specResponse = await app(
       new Request(base + "/api/spec.json", { headers: { "accept-encoding": "gzip" } }),
