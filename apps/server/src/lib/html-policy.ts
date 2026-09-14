@@ -189,7 +189,7 @@ export function validateHtml(
     hasScripts,
     stats: {
       hasInlineScript: hasScripts,
-      externalImageHosts: [...externalImageHosts].sort(),
+      externalImageHosts: [...externalImageHosts].toSorted(),
     },
   };
 }

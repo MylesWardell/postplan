@@ -35,7 +35,7 @@ export function clientIp(req: Request, peerIp: string | null): string | null {
       .get("x-forwarded-for")
       ?.split(",")
       .map((value) => value.trim())
-      .reverse() ?? []),
+      .toReversed() ?? []),
   ];
   for (let i = 0; i < chain.length - 1; i++) {
     if (!trust(chain[i]!, i)) return chain[i]!;
