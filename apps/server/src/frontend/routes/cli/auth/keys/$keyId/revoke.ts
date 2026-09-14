@@ -1,6 +1,6 @@
-import { postOnly } from "#frontend/methods";
+import { postOnly } from "#frontend/middleware/methods";
 import { notFoundResponse } from "#frontend/response.server";
-import { authenticated } from "#frontend/auth";
+import { authenticated } from "#frontend/middleware/authenticated";
 import { createFileRoute } from "@tanstack/react-router";
 import { redirect } from "#lib/redirect";
 import { webAction } from "#frontend/web";

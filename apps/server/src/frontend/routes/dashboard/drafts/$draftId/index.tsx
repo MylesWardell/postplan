@@ -1,5 +1,5 @@
-import { getOnly } from "#frontend/methods";
-import { authenticated } from "#frontend/auth";
+import { getOnly } from "#frontend/middleware/methods";
+import { authenticated } from "#frontend/middleware/authenticated";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { authenticatedContext } from "#frontend/context.server";

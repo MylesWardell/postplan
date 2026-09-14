@@ -1,5 +1,5 @@
-import { postOnly } from "#frontend/methods";
-import { authenticated } from "#frontend/auth";
+import { postOnly } from "#frontend/middleware/methods";
+import { authenticated } from "#frontend/middleware/authenticated";
 import { createFileRoute } from "@tanstack/react-router";
 import { ORPCError } from "@orpc/server";
 import { parseFormData } from "@orpc/openapi/helpers";

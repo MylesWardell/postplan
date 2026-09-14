@@ -1,5 +1,5 @@
 import { createMiddleware } from "@tanstack/react-start";
-import { notFoundResponse } from "./response.server";
+import { notFoundResponse } from "../response.server";
 
 export const getOnly = createMiddleware().server(({ request, next }) =>
   request.method === "GET" || request.method === "HEAD" ? next() : notFoundResponse(),
