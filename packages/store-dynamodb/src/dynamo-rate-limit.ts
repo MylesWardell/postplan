@@ -3,7 +3,7 @@ import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import type { RateLimiter, RateLimitOptions } from "@orpc/ratelimit";
 import type { DynamoDatabase } from "./dynamo";
 import { conditionalFailure } from "./dynamo";
-import type { RateLimitConfig } from "#config";
+import type { RateLimitConfig } from "@postplan/store";
 
 export class DynamoRateLimiter implements RateLimiter {
   constructor(

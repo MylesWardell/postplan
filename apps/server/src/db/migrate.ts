@@ -1,10 +1,8 @@
-import { fileURLToPath } from "node:url";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { createDatabase } from "./client";
-
+import { createDatabase } from "@postplan/store-drizzle";
+import { migrateDatabase } from "@postplan/store-drizzle/migrate";
 const { db, client } = createDatabase();
 try {
-  migrate(db, { migrationsFolder: fileURLToPath(new URL("../../../drizzle", import.meta.url)) });
+  migrateDatabase(db);
 } finally {
   client.close();
 }

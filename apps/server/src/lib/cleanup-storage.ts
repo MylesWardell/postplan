@@ -4,7 +4,7 @@ import {
   ListObjectsV2Command,
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
-import type { CleanupStorage } from "#db/cleanup";
+import type { CleanupStorage } from "@postplan/store-dynamodb/cleanup";
 import { config, requireEnv } from "#config";
 
 export function cleanupStorage(): CleanupStorage {

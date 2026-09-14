@@ -1,5 +1,5 @@
 import { config } from "#config";
-import type { Database } from "#db/client";
+import type { Store } from "@postplan/store";
 import { findOrCreateAccountForIdentity } from "#routers/account-store";
 import { getHomeUrl } from "#lib/public-url";
 import { redirect } from "#lib/redirect";
@@ -24,13 +24,13 @@ export function signIn(req: Request): Response {
   ]);
 }
 
-export async function completeSignIn(req: Request, db: Database): Promise<Response> {
-  const response = await authCallback(req, db);
+export async function completeSignIn(req: Request, store: Store): Promise<Response> {
+  const response = await authCallback(req, store);
   response.headers.append("Set-Cookie", clearAuthStateCookie());
   return response;
 }
 
-async function authCallback(req: Request, db: Database): Promise<Response> {
+async function authCallback(req: Request, store: Store): Promise<Response> {
   const params = new URL(req.url).searchParams;
   if (params.get("error") === "access_denied") {
     return messageResponse(
@@ -75,7 +75,7 @@ async function authCallback(req: Request, db: Database): Promise<Response> {
       403,
     );
   }
-  const account = await findOrCreateAccountForIdentity(db, {
+  const account = await findOrCreateAccountForIdentity(store, {
     provider: "shoo",
     subject: claims.pairwise_sub,
     profile: {

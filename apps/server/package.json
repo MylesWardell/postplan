@@ -3,8 +3,7 @@
   "version": "0.0.4",
   "private": true,
   "files": [
-    "dist/",
-    "drizzle/"
+    "dist/"
   ],
   "type": "module",
   "imports": {
@@ -72,16 +71,14 @@
     "db:bootstrap": "bun dist/src/db/bootstrap.js",
     "cleanup": "bun dist/src/cleanup.js",
     "dev": "bun --bun vite dev",
-    "db:generate": "drizzle-kit generate",
+    "db:generate": "bun run --filter @postplan/store-drizzle db:generate",
     "db:migrate": "bun dist/src/db/migrate.js",
     "preview": "bun --bun vite preview"
   },
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.1131.0",
-    "@aws-sdk/client-dynamodb": "^3.1131.0",
     "@aws-sdk/client-s3": "^3.835.0",
     "@aws-sdk/client-ssm": "^3.1131.0",
-    "@aws-sdk/lib-dynamodb": "^3.1131.0",
     "@opentelemetry/auto-instrumentations-node": "^0.79.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
     "@opentelemetry/resources": "^2.11.0",
@@ -97,12 +94,12 @@
     "@orpc/server": "2.0.0-beta.35",
     "@orpc/zod": "2.0.0-beta.35",
     "@postplan/api": "workspace:*",
+    "@postplan/store": "workspace:*",
+    "@postplan/store-drizzle": "workspace:*",
+    "@postplan/store-dynamodb": "workspace:*",
     "@tanstack/react-router": "^1.170.36",
     "@tanstack/react-start": "^1.168.53",
-    "drizzle-orm": "^0.45.1",
     "jose": "^6.2.3",
-    "nanoid": "^5.1.5",
-    "parse5": "^7.3.0",
     "proxy-addr": "^2.0.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -114,7 +111,6 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "drizzle-kit": "0.31.10",
     "vite": "^8.3.0"
   }
 }

@@ -2,16 +2,16 @@ import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { ORPCError } from "@orpc/server";
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import type { DraftRow, DraftVersionRow } from "./schema";
+import type { DraftRow, DraftVersionRow } from "@postplan/store";
 import type { DynamoDatabase } from "./dynamo";
 import { encode, optimistic, conditionalFailure } from "./dynamo";
-import type { ApiContext } from "#context";
-import { validateHtml } from "#lib/html-policy";
-import { expired } from "#lib/retention";
-import { getDraftPublicUrl, getDraftRawUrl } from "#lib/public-url";
-import { cleanText } from "#routers/draft-store";
-import type { UploadInput } from "#routers/draft-store";
-import { publicUploadAuth } from "#routers/account-store";
+import type { UploadContext } from "@postplan/store";
+import { validateHtml } from "@postplan/store/html-policy";
+import { expired } from "@postplan/store/retention";
+import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
+import { cleanText } from "@postplan/store";
+import type { UploadInput } from "@postplan/store";
+import { publicUploadAuth } from "@postplan/store";
 
 export interface DynamoPlan extends DraftRow {
   draftId: string;
@@ -36,7 +36,7 @@ export interface DynamoVersion extends DraftVersionRow {
   sk: string;
 }
 interface UrlContext {
-  publicBaseUrl: string | undefined;
+  publicBaseUrl?: string;
   requestBaseUrl: string;
 }
 const urls = (draftId: string, context: UrlContext) => ({
@@ -200,7 +200,11 @@ export async function updateDynamoDraft(
   });
 }
 const newId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
-export async function uploadDynamoDraft(db: DynamoDatabase, ctx: ApiContext, input: UploadInput) {
+export async function uploadDynamoDraft(
+  db: DynamoDatabase,
+  ctx: UploadContext,
+  input: UploadInput,
+) {
   const validation = validateHtml(input.html, { maxBytes: ctx.maxHtmlBytes });
   if (!validation.ok || typeof input.html !== "string") {
     return { ok: false as const, errors: validation.errors, warnings: validation.warnings };

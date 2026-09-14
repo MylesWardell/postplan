@@ -2,10 +2,8 @@ import { shutdownInstrumentation } from "./instrumentation";
 import { serve } from "bun";
 import type { Server } from "bun";
 import { fileURLToPath } from "node:url";
-import { createRuntimeDatabase } from "#db/client";
-import { isDynamoDatabase } from "#db/dynamo";
+import { createRuntimeStore } from "#db/client";
 import { gatewayRequest } from "#lib/gateway";
-import { seedAccounts } from "#routers/account-store";
 import { config } from "./config";
 import type { ServerDependencies } from "./context";
 import type { createApplication } from "./server";
@@ -68,18 +66,13 @@ export function createServerOptions(
 
 export async function main(): Promise<void> {
   assertStorageConfigured();
-  const { db, close } = createRuntimeDatabase();
-  if (isDynamoDatabase(db)) {
-    await db.health();
-  }
-  if (!isDynamoDatabase(db)) {
-    await seedAccounts(db, config.bootstrapApiKey);
-  }
+  const { store, close } = createRuntimeStore();
+  await store.initialize({ bootstrapKey: config.bootstrapApiKey });
   const entry = new URL("../server/server.js", import.meta.url).href;
   const start: { createApplication: typeof createApplication } = await import(entry);
   const server = serve({
     port: config.port,
-    ...createServerOptions({ db, putHtml: putHtmlObject, getHtml: getHtmlObject }, start),
+    ...createServerOptions({ store, putHtml: putHtmlObject, getHtml: getHtmlObject }, start),
   });
   console.log(`Postplan listening at ${server.url}`);
   let stopping = false;

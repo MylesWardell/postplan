@@ -40,7 +40,7 @@ jobs:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - run: bun test --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/dynamo.test.ts ./test/gateway.test.ts
+      - run: bun test --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/dynamo.test.ts ./test/gateway.test.ts ./test/store.test.ts
         working-directory: apps/server
         env:
           POSTPLAN_TEST_DYNAMODB_ENDPOINT: http://127.0.0.1:8000

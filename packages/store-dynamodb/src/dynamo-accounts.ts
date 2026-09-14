@@ -3,7 +3,7 @@ import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ORPCError } from "@orpc/server";
 import { encode, optimistic, conditionalFailure } from "./dynamo";
 import type { DynamoDatabase } from "./dynamo";
-import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "#routers/account-store";
+import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "@postplan/store";
 
 interface Account {
   id: string;

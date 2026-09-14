@@ -16,18 +16,18 @@ import { resetShooCaches } from "#auth/shoo";
 
 // Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
-  const { db, close, createAccount } = await testDatabase();
+  const { store, close, createAccount } = await testDatabase();
   let server: ReturnType<typeof Bun.serve> | undefined;
   let shoo: ReturnType<typeof Bun.serve> | undefined;
   const original = { ...config };
   try {
-    await seedAccounts(db, "ssr-owner-key");
+    await seedAccounts(store, "ssr-owner-key");
     await createAccount("visitor", "Visitor");
     config.publicBaseUrl = "https://*.plans.example.com";
     config.sessionSecret = "ssr-test-secret";
     const objects = new Map<string, string>();
     const options = createServerOptions({
-      db,
+      store,
       putHtml: async (key, html) => {
         objects.set(key, html);
       },

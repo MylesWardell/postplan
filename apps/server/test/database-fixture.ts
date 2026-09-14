@@ -1,7 +1,6 @@
-import { fileURLToPath } from "node:url";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { createDatabase } from "#db/client";
-import { accounts } from "#db/schema";
+import { migrateDatabase } from "@postplan/store-drizzle/migrate";
+import { createDatabase, createDrizzleStore } from "@postplan/store-drizzle";
+import { accounts } from "@postplan/store-drizzle/schema";
 import { dynamoEndpoint, dynamoFixture } from "./dynamo-fixture";
 
 export async function testDatabase() {
@@ -21,9 +20,9 @@ export async function testDatabase() {
     };
   }
   const { db, client } = createDatabase(":memory:");
-  await migrate(db, { migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)) });
+  migrateDatabase(db);
   return {
-    db,
+    store: createDrizzleStore(db).store,
     close: async () => {
       client.close();
     },

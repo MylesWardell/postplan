@@ -22,7 +22,7 @@ export async function draftResponse(
   if (versionNumber !== undefined && (!Number.isInteger(versionNumber) || versionNumber < 1)) {
     return;
   }
-  const { draft, version } = await findPublicDraftVersion(deps.db, draftId, versionNumber);
+  const { draft, version } = await findPublicDraftVersion(deps.store, draftId, versionNumber);
   if (!draft || !version) {
     return;
   }

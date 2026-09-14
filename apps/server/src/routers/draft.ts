@@ -13,11 +13,11 @@ import {
 
 export const listDrafts = protectedOS.drafts.list.handler(async ({ context: ctx }) => ({
   ok: true,
-  drafts: await listAccountDrafts(ctx.db, ctx.account.accountId, ctx),
+  drafts: await listAccountDrafts(ctx.store, ctx.account.accountId, ctx),
 }));
 export const getDraft = protectedOS.drafts.detail.handler(async ({ context: ctx, input }) => {
   const result = await getAccountDraftWithVersions(
-    ctx.db,
+    ctx.store,
     ctx.account.accountId,
     input.draftId,
     ctx,
@@ -29,19 +29,19 @@ export const getDraft = protectedOS.drafts.detail.handler(async ({ context: ctx,
 });
 export const updateDraft = protectedOS.drafts.update.handler(
   ({ context: ctx, input: { draftId, ...values } }) =>
-    updateOwnedDraft(ctx.db, ctx.account.accountId, draftId, values),
+    updateOwnedDraft(ctx.store, ctx.account.accountId, draftId, values),
 );
 export const deleteDraft = protectedOS.drafts.delete.handler(({ context: ctx, input }) =>
-  updateOwnedDraft(ctx.db, ctx.account.accountId, input.draftId, { deletedAt: new Date() }),
+  updateOwnedDraft(ctx.store, ctx.account.accountId, input.draftId, { deletedAt: new Date() }),
 );
 export const disableDraft = protectedOS.drafts.disable.handler(({ context: ctx, input }) =>
-  updateOwnedDraft(ctx.db, ctx.account.accountId, input.draftId, {
+  updateOwnedDraft(ctx.store, ctx.account.accountId, input.draftId, {
     disabledAt: new Date(),
     disabledReason: cleanText(input.reason) || "Disabled by owner.",
   }),
 );
 export const enableDraft = protectedOS.drafts.enable.handler(({ context: ctx, input }) =>
-  updateOwnedDraft(ctx.db, ctx.account.accountId, input.draftId, {
+  updateOwnedDraft(ctx.store, ctx.account.accountId, input.draftId, {
     disabledAt: null,
     disabledReason: null,
   }),

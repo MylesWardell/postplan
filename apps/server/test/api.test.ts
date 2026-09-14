@@ -10,15 +10,15 @@ import { config } from "#config";
 import { createSessionCookie } from "#auth/session";
 
 test("oRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
-  const { db, close, createAccount } = await testDatabase();
+  const { store, close, createAccount } = await testDatabase();
   const objects = new Map<string, string>();
   const originalConfig = { ...config };
   let failStorage = false;
-  await seedAccounts(db, "owner-key");
+  await seedAccounts(store, "owner-key");
   await createAccount("other", "Other");
-  const otherKey = await createApiKey(db, "other", "other-key");
+  const otherKey = await createApiKey(store, "other", "other-key");
   const options = createServerOptions({
-    db,
+    store,
     putHtml: async (key, html) => {
       if (failStorage) {
         throw new Error("Storage unavailable");
@@ -51,7 +51,8 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     const owner = client("owner-key");
     const other = client(otherKey.token);
     const anonymous = client();
-    const html = "<!doctype html><html><head><title>Draft</title></head><body>Résumé</body></html>";
+    const html =
+      "<!doctype html><html><head><title>Draft</title></head><body>RÃ©sumÃ©</body></html>";
     assert.equal((await fetch(`${base}/healthz`)).status, 200);
     await assert.rejects(anonymous.drafts.list(), /Sign in/);
     const { body: upload } = await owner.drafts.upload({ html, description: "Original" });

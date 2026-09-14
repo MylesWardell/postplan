@@ -1,18 +1,13 @@
 import { CloudWatchClient, PutMetricDataCommand } from "@aws-sdk/client-cloudwatch";
-import { createRuntimeDatabase } from "./db/client";
-import { isDynamoDatabase } from "./db/dynamo";
-import { cleanupPlans } from "./db/cleanup";
+import { createRuntimeDynamoDatabase } from "./db/client";
+import { cleanupPlans } from "@postplan/store-dynamodb/cleanup";
 import { cleanupStorage } from "./lib/cleanup-storage";
 
 export async function handler() {
-  const connection = createRuntimeDatabase();
-  if (!isDynamoDatabase(connection.db)) {
-    connection.close();
-    throw new Error("Cleanup requires DynamoDB table configuration.");
-  }
+  const db = createRuntimeDynamoDatabase();
   const storage = cleanupStorage();
   try {
-    const result = await cleanupPlans(connection.db, storage);
+    const result = await cleanupPlans(db, storage);
     const namespace = process.env.CLEANUP_METRIC_NAMESPACE;
     if (namespace) {
       const metrics = new CloudWatchClient({});
@@ -36,7 +31,7 @@ export async function handler() {
     return result;
   } finally {
     storage.close?.();
-    connection.close();
+    db.client.destroy();
   }
 }
 if (import.meta.main) {

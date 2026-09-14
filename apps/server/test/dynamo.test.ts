@@ -8,14 +8,13 @@ import {
   revokeApiKey,
   findApiKeyByToken,
 } from "#routers/account-store";
-import { findDynamoPublicVersion, claimExpiredPlan } from "#db/dynamo-drafts";
-import type { DynamoPlan } from "#db/dynamo-drafts";
-import { DynamoRateLimiter } from "#db/dynamo-rate-limit";
-import { cleanupPlans } from "#db/cleanup";
+import { findDynamoPublicVersion, claimExpiredPlan } from "@postplan/store-dynamodb/dynamo-drafts";
+import type { DynamoPlan } from "@postplan/store-dynamodb/dynamo-drafts";
+import { DynamoRateLimiter } from "@postplan/store-dynamodb/dynamo-rate-limit";
+import { cleanupPlans } from "@postplan/store-dynamodb/cleanup";
 import { parseRetentionDays, expired } from "#lib/retention";
 import { dynamoFixture, dynamoEndpoint } from "./dynamo-fixture";
 import { config } from "#config";
-import { GetCommand } from "@aws-sdk/lib-dynamodb";
 
 test("retention accepts configurable whole days and rejects invalid values", () => {
   expect(parseRetentionDays(undefined)).toBe(90);
@@ -35,7 +34,7 @@ test.skipIf(!dynamoEndpoint)(
   async () => {
     let now = Date.UTC(2026, 0, 1);
     let days = 90;
-    const { db, close } = await dynamoFixture(
+    const { db, store, close } = await dynamoFixture(
       () => now,
       () => days,
     );
@@ -43,9 +42,9 @@ test.skipIf(!dynamoEndpoint)(
     const previous = config.allowAnonymousUploads;
     config.allowAnonymousUploads = false;
     try {
-      await seedAccounts(db, "dynamo-owner");
+      await seedAccounts(store, "dynamo-owner");
       const context = createContextFactory({
-        db,
+        store,
         putHtml: async (key, html) => {
           objects.set(key, { html, modifiedAt: now });
         },
@@ -78,14 +77,14 @@ test.skipIf(!dynamoEndpoint)(
       expect((await caller.drafts.list()).drafts[0]?.latestVersionNumber).toBe(7);
       const identities = await Promise.all(
         Array.from({ length: 4 }, () =>
-          findOrCreateAccountForIdentity(db, { provider: "test", subject: "same-user" }),
+          findOrCreateAccountForIdentity(store, { provider: "test", subject: "same-user" }),
         ),
       );
       expect(new Set(identities.map((x) => x.accountId)).size).toBe(1);
-      const other = await createApiKey(db, identities[0]!.accountId, "other");
-      expect(await findApiKeyByToken(db, other.token)).not.toBeNull();
-      expect(await revokeApiKey(db, identities[0]!.accountId, other.apiKey.id)).toBe(true);
-      expect(await findApiKeyByToken(db, other.token)).toBeNull();
+      const other = await createApiKey(store, identities[0]!.accountId, "other");
+      expect(await findApiKeyByToken(store, other.token)).not.toBeNull();
+      expect(await revokeApiKey(store, identities[0]!.accountId, other.apiKey.id)).toBe(true);
+      expect(await findApiKeyByToken(store, other.token)).toBeNull();
 
       const limiterA = new DynamoRateLimiter(db, "test", { maxRequests: 3, window: 1000 });
       const limiterB = new DynamoRateLimiter(db, "test", { maxRequests: 3, window: 1000 });
@@ -173,10 +172,7 @@ test.skipIf(!dynamoEndpoint)(
         }),
       ).toHaveLength(0);
       await cleanupPlans(db, storage);
-      expect(
-        (await db.client.send(new GetCommand({ TableName: db.tables.plans, Key: { draftId: id } })))
-          .Item?.ttlAt,
-      ).toBeDefined();
+      expect((await db.get<DynamoPlan>(db.tables.plans, { draftId: id }))?.ttlAt).toBeDefined();
     } finally {
       config.allowAnonymousUploads = previous;
       await close();
@@ -189,16 +185,16 @@ test.skipIf(!dynamoEndpoint)(
   "abandoned uploads cannot publish after their lease and are reconciled without expiring active plans",
   async () => {
     let now = Date.UTC(2026, 0, 1);
-    const { db, close } = await dynamoFixture(
+    const { db, store, close } = await dynamoFixture(
       () => now,
       () => 0,
     );
     const objects = new Map<string, number>();
     let mode: "ok" | "fail" | "late" = "ok";
     try {
-      await seedAccounts(db, "intent-owner");
+      await seedAccounts(store, "intent-owner");
       const context = createContextFactory({
-        db,
+        store,
         putHtml: async (key) => {
           if (mode === "fail") {
             throw new Error("Injected upload failure");

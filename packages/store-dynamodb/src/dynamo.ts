@@ -12,7 +12,6 @@ import type {
   ScanCommandInput,
   TransactWriteCommandInput,
 } from "@aws-sdk/lib-dynamodb";
-import { config } from "#config";
 
 export interface DynamoTables {
   identity: string;
@@ -27,7 +26,7 @@ export class DynamoDatabase {
     readonly client: DynamoDBDocumentClient,
     readonly tables: DynamoTables,
     readonly now: () => number = Date.now,
-    readonly retentionDays: () => number = () => config.planRetentionDays,
+    readonly retentionDays: () => number = () => 90,
   ) {}
   async get<T>(table: string, key: Item): Promise<T | undefined> {
     const response = await this.client.send(
@@ -69,20 +68,26 @@ export class DynamoDatabase {
 }
 export function createDynamoDatabase(
   tables: DynamoTables,
-  endpoint = process.env.POSTPLAN_DYNAMODB_ENDPOINT,
+  options: {
+    endpoint?: string;
+    region?: string;
+    now?: () => number;
+    retentionDays?: () => number;
+  } = {},
 ) {
   const client = new DynamoDBClient({
-    region: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "ap-southeast-2",
-    endpoint,
-    ...(endpoint ? { credentials: { accessKeyId: "local", secretAccessKey: "local" } } : {}),
+    region: options.region,
+    endpoint: options.endpoint,
+    ...(options.endpoint
+      ? { credentials: { accessKeyId: "local", secretAccessKey: "local" } }
+      : {}),
   });
   return new DynamoDatabase(
     DynamoDBDocumentClient.from(client, { marshallOptions: { removeUndefinedValues: true } }),
     tables,
+    options.now,
+    options.retentionDays,
   );
-}
-export function isDynamoDatabase(db: object): db is DynamoDatabase {
-  return "kind" in db && db.kind === "dynamodb";
 }
 const dateFields = new Set([
   "createdAt",

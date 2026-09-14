@@ -1,29 +1,26 @@
-import { createDatabase } from "#db/client";
+import { createDatabase } from "@postplan/store-drizzle";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "bun:test";
-import { fileURLToPath } from "node:url";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { migrateDatabase } from "@postplan/store-drizzle/migrate";
 import { eq } from "drizzle-orm";
-import * as schema from "#db/schema";
+import * as schema from "@postplan/store-drizzle/schema";
 import {
   createApiKey,
   findApiKeyByToken,
   findOrCreateAccountForIdentity,
   revokeApiKey,
   seedAccounts,
-} from "#routers/account-store";
+} from "@postplan/store-drizzle/account-queries";
 
 test("SQLite survives reopen and rolls back a failed transaction", async () => {
   const directory = mkdtempSync(join(tmpdir(), "postplan-sqlite-"));
   const filename = join(directory, "postplan.sqlite");
   let connection = createDatabase(filename);
   try {
-    migrate(connection.db, {
-      migrationsFolder: fileURLToPath(new URL("../../drizzle", import.meta.url)),
-    });
+    migrateDatabase(connection.db);
     await seedAccounts(connection.db, "persistent-key");
     assert.throws(() =>
       connection.db.transaction((tx) => {
@@ -68,9 +65,8 @@ test("SQLite survives reopen and rolls back a failed transaction", async () => {
 test("migrations, bootstrap keys, revocation and identity updates use SQLite semantics", async () => {
   const { db, client } = createDatabase(":memory:");
   try {
-    const options = { migrationsFolder: fileURLToPath(new URL("../../drizzle", import.meta.url)) };
-    await migrate(db, options);
-    await migrate(db, options);
+    await migrateDatabase(db);
+    await migrateDatabase(db);
     await seedAccounts(db, "bootstrap-test");
     await seedAccounts(db, "bootstrap-test");
     assert.equal((await findApiKeyByToken(db, "bootstrap-test"))?.accountId, "acct_bootstrap");

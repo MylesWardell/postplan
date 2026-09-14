@@ -1,10 +1,10 @@
 import type { RateLimiter } from "@orpc/ratelimit";
 import type { ApiKeyAuth } from "#routers/account-store";
-import type { Database } from "#db/client";
+import type { Store } from "@postplan/store";
 import { createRateLimiters } from "#lib/rate-limiters";
 
 export interface ServerDependencies {
-  db: Database;
+  store: Store;
   putHtml: (key: string, html: string) => Promise<void>;
   getHtml: (key: string) => Promise<string>;
 }
@@ -13,7 +13,7 @@ export type RateLimiters = Record<"upload-ip" | "upload-key" | "key-mint", RateL
 
 // Initial context handed to oRPC; middleware in orpc.ts derives the rest.
 export interface BaseContext {
-  db: Database;
+  store: Store;
   putHtml: (key: string, html: string) => Promise<void>;
   rateLimiters: RateLimiters;
   request: Request;
@@ -34,9 +34,9 @@ export interface ApiContext extends BaseContext {
 }
 
 export function createContextFactory(deps: ServerDependencies) {
-  const rateLimiters = createRateLimiters(deps.db);
+  const rateLimiters = createRateLimiters(deps.store);
   return (request: Request, peerIp: string | null, allowSession: boolean): BaseContext => ({
-    db: deps.db,
+    store: deps.store,
     putHtml: deps.putHtml,
     rateLimiters,
     request,

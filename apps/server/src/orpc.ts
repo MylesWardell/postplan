@@ -29,10 +29,10 @@ export const publicOS = implement(contract)
   })
   // Optional authentication: a Bearer key wins; otherwise a web session if allowed.
   // A presented-but-invalid key is always rejected rather than treated as anonymous.
-  .use(async ({ context: { db, request, allowSession }, next }) => {
+  .use(async ({ context: { store, request, allowSession }, next }) => {
     const authorization = request.headers.get("authorization");
     const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-    const apiKey = token ? await findApiKeyByToken(db, token) : null;
+    const apiKey = token ? await findApiKeyByToken(store, token) : null;
     if (authorization && !apiKey) {
       throw new ORPCError("UNAUTHORIZED", { message: "Invalid API key." });
     }

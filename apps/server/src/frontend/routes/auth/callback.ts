@@ -10,7 +10,7 @@ export const Route = createFileRoute("/auth/callback")({
       GET: ({ request, context }) =>
         webAction(() => {
           requireConfiguredSignIn();
-          return completeSignIn(request, context.deps.db);
+          return completeSignIn(request, context.deps.store);
         }),
     },
   },
