@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { parseFormData } from "@orpc/openapi/helpers";
 import { KeysPage } from "../index.js";
 import { authenticatedContext } from "../../../../context.server.js";
-import { webAction } from "../../../../../http/web.js";
+import { webAction } from "../../../../web.js";
 import { page } from "../../../../response.server.js";
 
 export const Route = createFileRoute("/cli/auth/keys/")({

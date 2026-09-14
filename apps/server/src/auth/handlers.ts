@@ -1,9 +1,9 @@
-import { config } from "../config.js";
-import type { Database } from "../db/client.js";
-import { findOrCreateAccountForIdentity } from "../routers/account-store.js";
-import { getHomeUrl } from "../http/public-url.js";
-import { redirect } from "../http/redirect.js";
-import { messageResponse } from "../frontend/response.server.js";
+import { config } from "#config";
+import type { Database } from "#db/client";
+import { findOrCreateAccountForIdentity } from "#routers/account-store";
+import { getHomeUrl } from "#lib/public-url";
+import { redirect } from "#lib/redirect";
+import { messageResponse } from "#frontend/response.server";
 import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "./shoo.js";
 import {
   clearAuthStateCookie,

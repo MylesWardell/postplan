@@ -1,11 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "bun:test";
-import {
-  getDraftIdFromHost,
-  getDraftPublicUrl,
-  getDraftRawUrl,
-  getHomeUrl,
-} from "../src/http/public-url.js";
+import { getDraftIdFromHost, getDraftPublicUrl, getDraftRawUrl, getHomeUrl } from "#lib/public-url";
 
 const wildcard = "https://*.postplan.dev";
 const draftId = "abc123def456";

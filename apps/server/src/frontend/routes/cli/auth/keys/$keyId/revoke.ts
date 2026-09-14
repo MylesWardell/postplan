@@ -2,8 +2,8 @@ import { postOnly } from "../../../../../methods.js";
 import { notFoundResponse } from "../../../../../response.server.js";
 import { authenticated } from "../../../../../auth.js";
 import { createFileRoute } from "@tanstack/react-router";
-import { redirect } from "../../../../../../http/redirect.js";
-import { webAction } from "../../../../../../http/web.js";
+import { redirect } from "#lib/redirect";
+import { webAction } from "../../../../../web.js";
 import { authenticatedContext } from "../../../../../context.server.js";
 export const Route = createFileRoute("/cli/auth/keys/$keyId/revoke")({
   server: {

@@ -6,7 +6,7 @@ import { EvlogHandlerPlugin } from "@orpc/evlog";
 import { SmartCoercionHandlerPlugin } from "@orpc/json-schema";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
 import { contract } from "@postplan/api";
-import { router } from "../routers/index.js";
+import { router } from "#routers/index";
 import {
   RequestLimitHandlerPlugin,
   RequestCompressionHandlerPlugin,
@@ -15,8 +15,8 @@ import {
   CORSHandlerPlugin,
 } from "@orpc/server/plugins";
 import type { ContextFactory } from "./context.js";
-import { onlyApplication } from "./response.js";
-import { notFoundResponse } from "../frontend/response.server.js";
+import { onlyApplication } from "#lib/host-guard";
+import { notFoundResponse } from "#frontend/response.server";
 
 export function createApiHandler(context: ContextFactory) {
   const zodConverter = new ZodToJsonSchemaConverter();
@@ -67,9 +67,7 @@ export function createApiHandler(context: ContextFactory) {
     return onlyApplication(request, async () => {
       const { response } = await openapiHandler.handle(request, {
         prefix: "/api",
-        context: {
-          resolveContext: () => context(request, false, peerIp),
-        },
+        context: context(request, peerIp, false),
       });
       return response ?? notFoundResponse();
     });

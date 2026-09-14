@@ -11,7 +11,10 @@ export const contentSecurityPolicy = createMiddleware().server(async ({ next }) 
   const nonce = crypto.randomUUID().replaceAll("-", "");
   const result = await next({ context: { nonce } });
   const { headers } = result.response;
-  if (headers.get("content-type")?.includes("text/html") && !headers.has("Content-Security-Policy")) {
+  if (
+    headers.get("content-type")?.includes("text/html") &&
+    !headers.has("Content-Security-Policy")
+  ) {
     const dev = process.env.NODE_ENV !== "production";
     headers.set(
       "Content-Security-Policy",

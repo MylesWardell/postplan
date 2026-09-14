@@ -11,7 +11,7 @@ const loadKeys = createServerFn({ method: "GET" }).handler(async ({ context }) =
 
 import { createFileRoute } from "@tanstack/react-router";
 import type { ApiKeySummary } from "@postplan/api";
-import type { Session } from "../../../../auth/types.js";
+import type { Session } from "#auth/types";
 
 export interface KeysPageProps {
   session: Session;
@@ -70,9 +70,9 @@ export function KeysPage({ session, keys, token, keyName }: KeysPageProps) {
                     <tr key={key.id}>
                       <td>
                         <strong>{key.name}</strong>
-                        <div className="repo">Created {date(key.created_at)}</div>
+                        <div className="repo">Created {date(key.createdAt)}</div>
                       </td>
-                      <td className="muted nowrap">{date(key.last_used_at)}</td>
+                      <td className="muted nowrap">{date(key.lastUsedAt)}</td>
                       <td>
                         <form method="post" action={`/cli/auth/keys/${key.id}/revoke`}>
                           <button className="secondary" aria-label={`Revoke ${key.name}`}>

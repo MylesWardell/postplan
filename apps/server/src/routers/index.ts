@@ -1,4 +1,4 @@
-import { publicOS } from "../orpc.js";
+import { publicOS } from "#orpc";
 import { getAccount } from "./account.js";
 import {
   listDrafts,

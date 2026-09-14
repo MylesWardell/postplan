@@ -1,14 +1,13 @@
-import { requestContext } from "./start.js";
 import { createMiddleware, createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { redirect } from "@tanstack/react-router";
-import type { Session } from "../auth/types.js";
-import { readSession } from "../auth/session.js";
+import type { Session } from "#auth/types";
+import { assertApplicationOrigin, readSession } from "#auth/session";
 import { requireConfiguredSignIn } from "./context.server.js";
 import { Layout } from "./layout.js";
 import { page } from "./response.server.js";
-import { safeNextPath } from "../auth/handlers.js";
-import { webAction } from "../http/web.js";
+import { safeNextPath } from "#auth/handlers";
+import { webAction } from "./web.js";
 
 export interface AuthState {
   session: Session | null;
@@ -32,19 +31,18 @@ export async function requireAuth({
 }
 
 // Server routes run independently of router beforeLoad, so protect document and form requests too.
-export const authenticated = createMiddleware()
-  .middleware([requestContext])
-  .server(async ({ request, context, next }) =>
-    webAction(async () => {
-      requireConfiguredSignIn();
-      const apiContext = await context.resolveContext(request, true, context.peerIp);
-      if (!apiContext.session) {
-        const url = new URL(request.url);
-        return signInResponse(safeNextPath(url.pathname + url.search));
-      }
-      return (await next()).response;
-    }),
-  );
+export const authenticated = createMiddleware().server(async ({ request, next }) =>
+  webAction(async () => {
+    requireConfiguredSignIn();
+    if (!readSession(request) || request.headers.has("authorization")) {
+      const url = new URL(request.url);
+      return signInResponse(safeNextPath(url.pathname + url.search));
+    }
+    // Checked up front so routes that never reach a procedure (sign-out) stay CSRF-safe.
+    assertApplicationOrigin(request);
+    return (await next()).response;
+  }),
+);
 
 function signInResponse(next: string): Response {
   return page(

@@ -1,16 +1,14 @@
-import { toORPCError, COMMON_ERROR_STATUS_MAP } from "@orpc/server";
 import { getIssueMessage } from "@orpc/openapi/helpers";
-import { messageResponse } from "../frontend/response.server.js";
+import { toHttpError } from "#lib/respond";
+import { messageResponse } from "./response.server.js";
 
+// Page and form handlers render failures as HTML; thrown Responses pass through.
 export async function webAction(action: () => Response | Promise<Response>): Promise<Response> {
   try {
     return await action();
   } catch (error) {
     if (error instanceof Response) return error;
-    const failure = toORPCError(error);
-    const status =
-      COMMON_ERROR_STATUS_MAP[failure.code as keyof typeof COMMON_ERROR_STATUS_MAP] ?? 500;
-    if (status >= 500) console.error(error);
+    const { failure, status } = toHttpError(error);
     return messageResponse(
       "Request could not be completed",
       status >= 500

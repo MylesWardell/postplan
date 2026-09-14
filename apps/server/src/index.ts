@@ -2,14 +2,14 @@ import { shutdownInstrumentation } from "./instrumentation.js";
 import { serve } from "bun";
 import type { Server } from "bun";
 import { fileURLToPath } from "node:url";
-import { createDatabase } from "./db/client.js";
-import { seedAccounts } from "./routers/account-store.js";
+import { createDatabase } from "#db/client";
+import { seedAccounts } from "#routers/account-store";
 import { config } from "./config.js";
-import type { ServerDependencies } from "./http/context.js";
+import type { ServerDependencies } from "./context.js";
 import type { createApplication } from "./server.js";
-import { onlyApplication } from "./http/response.js";
-import { notFoundResponse } from "./frontend/response.server.js";
-import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
+import { onlyApplication } from "#lib/host-guard";
+import { notFoundResponse } from "#frontend/response.server";
+import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";
 
 export function createServerOptions(
   deps: ServerDependencies,

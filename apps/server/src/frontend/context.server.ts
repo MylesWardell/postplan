@@ -1,14 +1,14 @@
-import { readSession } from "../auth/session.js";
 import { ORPCError } from "@orpc/server";
-import { config } from "../config.js";
-import { createCaller } from "../client.js";
-import type { ContextFactory, ServerDependencies } from "../http/context.js";
-import type { createApiHandler } from "../http/api.js";
+import { assertApplicationOrigin, readSession } from "#auth/session";
+import { config } from "#config";
+import { createCaller } from "#client";
+import type { ContextFactory, ServerDependencies } from "#context";
+import type { createApiHandler } from "#api";
 import { messageResponse } from "./response.server.js";
 
 export interface AppRequestContext {
   deps: ServerDependencies;
-  resolveContext: ContextFactory;
+  createContext: ContextFactory;
   api: ReturnType<typeof createApiHandler>;
   peerIp: string | null;
 }
@@ -25,10 +25,10 @@ export function requireConfiguredSignIn() {
       503,
     );
 }
-export async function authenticatedContext(request: Request, context: AppRequestContext) {
+export function authenticatedContext(request: Request, context: AppRequestContext) {
   requireConfiguredSignIn();
-  const apiContext = await context.resolveContext(request, true, context.peerIp);
   const session = readSession(request);
-  if (!apiContext.session || !session) throw new ORPCError("UNAUTHORIZED");
-  return { session, caller: createCaller(apiContext) };
+  if (!session || request.headers.has("authorization")) throw new ORPCError("UNAUTHORIZED");
+  assertApplicationOrigin(request);
+  return { session, caller: createCaller(context.createContext(request, context.peerIp, true)) };
 }

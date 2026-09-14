@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Session } from "../auth/types.js";
+import type { Session } from "#auth/types";
 
 export function Layout({
   title,

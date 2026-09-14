@@ -2,12 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
-import { drafts, draftVersions, uploadEvents } from "../db/schema.js";
+import { drafts, draftVersions, uploadEvents } from "#db/schema";
 import { publicUploadAuth } from "./account-store.js";
-import type { Database } from "../db/client.js";
-import { validateHtml } from "../lib/html-policy.js";
-import { getDraftPublicUrl, getDraftRawUrl } from "../lib/public-url.js";
-import type { ApiContext } from "../context.js";
+import type { Database } from "#db/client";
+import { validateHtml } from "#lib/html-policy";
+import { getDraftPublicUrl, getDraftRawUrl } from "#lib/public-url";
+import type { ApiContext } from "#context";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 export function cleanText(value: unknown, maxLength = 255): string | null {
@@ -25,34 +25,34 @@ const urls = (draftId: string, context: UrlContext) => ({
 
 export async function listAccountDrafts(db: Database, accountId: string, context: UrlContext) {
   const counts = db
-    .select({ draft_id: draftVersions.draft_id, version_count: count().as("version_count") })
+    .select({ draftId: draftVersions.draftId, versionCount: count().as("version_count") })
     .from(draftVersions)
-    .groupBy(draftVersions.draft_id)
+    .groupBy(draftVersions.draftId)
     .as("version_counts");
   const rows = await db
     .select({
       draft: drafts,
-      latest: { number: draftVersions.version_number, date: draftVersions.created_at },
-      count: counts.version_count,
+      latest: { number: draftVersions.versionNumber, date: draftVersions.createdAt },
+      count: counts.versionCount,
     })
     .from(drafts)
-    .leftJoin(draftVersions, eq(draftVersions.id, drafts.current_version_id))
-    .leftJoin(counts, eq(counts.draft_id, drafts.id))
-    .where(and(eq(drafts.account_id, accountId), isNull(drafts.deleted_at)))
-    .orderBy(desc(drafts.updated_at));
+    .leftJoin(draftVersions, eq(draftVersions.id, drafts.currentVersionId))
+    .leftJoin(counts, eq(counts.draftId, drafts.id))
+    .where(and(eq(drafts.accountId, accountId), isNull(drafts.deletedAt)))
+    .orderBy(desc(drafts.updatedAt));
   return rows.map(({ draft, latest, count: versionCount }) => ({
     draftId: draft.id,
     title: draft.title,
     description: draft.description,
-    repoOrg: draft.repo_org,
-    repoName: draft.repo_name,
-    repoHost: draft.repo_host,
+    repoOrg: draft.repoOrg,
+    repoName: draft.repoName,
+    repoHost: draft.repoHost,
     latestVersionNumber: latest?.number ?? null,
     latestVersionAt: latest?.date ?? null,
     versionCount: Number(versionCount ?? 0),
-    createdAt: draft.created_at,
-    updatedAt: draft.updated_at,
-    disabled: Boolean(draft.disabled_at),
+    createdAt: draft.createdAt,
+    updatedAt: draft.updatedAt,
+    disabled: Boolean(draft.disabledAt),
     ...urls(draft.id, context),
   }));
 }
@@ -67,29 +67,29 @@ export async function getAccountDraftWithVersions(
   const [draft] = await db
     .select()
     .from(drafts)
-    .where(and(eq(drafts.id, draftId), eq(drafts.account_id, accountId), isNull(drafts.deleted_at)))
+    .where(and(eq(drafts.id, draftId), eq(drafts.accountId, accountId), isNull(drafts.deletedAt)))
     .limit(1);
   if (!draft) return null;
   const versions = await db
     .select({
       id: draftVersions.id,
-      version_number: draftVersions.version_number,
-      created_at: draftVersions.created_at,
-      git_branch: draftVersions.git_branch,
-      git_commit_sha: draftVersions.git_commit_sha,
-      git_commit_subject: draftVersions.git_commit_subject,
-      git_dirty: draftVersions.git_dirty,
-      file_size: draftVersions.file_size,
+      versionNumber: draftVersions.versionNumber,
+      createdAt: draftVersions.createdAt,
+      gitBranch: draftVersions.gitBranch,
+      gitCommitSha: draftVersions.gitCommitSha,
+      gitCommitSubject: draftVersions.gitCommitSubject,
+      gitDirty: draftVersions.gitDirty,
+      fileSize: draftVersions.fileSize,
     })
     .from(draftVersions)
-    .where(eq(draftVersions.draft_id, draftId))
-    .orderBy(desc(draftVersions.version_number));
+    .where(eq(draftVersions.draftId, draftId))
+    .orderBy(desc(draftVersions.versionNumber));
   return {
     draft: {
       draftId,
       title: draft.title,
       description: draft.description,
-      disabled: Boolean(draft.disabled_at),
+      disabled: Boolean(draft.disabledAt),
       ...urls(draftId, context),
     },
     versions,
@@ -110,13 +110,13 @@ export async function findPublicDraftVersion(
     .innerJoin(
       draftVersions,
       and(
-        eq(draftVersions.draft_id, drafts.id),
+        eq(draftVersions.draftId, drafts.id),
         versionNumber === undefined
-          ? eq(draftVersions.id, drafts.current_version_id)
-          : eq(draftVersions.version_number, versionNumber),
+          ? eq(draftVersions.id, drafts.currentVersionId)
+          : eq(draftVersions.versionNumber, versionNumber),
       ),
     )
-    .where(and(eq(drafts.id, draftId), isNull(drafts.deleted_at), isNull(drafts.disabled_at)))
+    .where(and(eq(drafts.id, draftId), isNull(drafts.deletedAt), isNull(drafts.disabledAt)))
     .limit(1);
   return row ?? { draft: null, version: null };
 }
@@ -128,14 +128,14 @@ export async function updateOwnedDraft(
   values: Partial<
     Pick<
       typeof drafts.$inferInsert,
-      "title" | "description" | "disabled_at" | "disabled_reason" | "deleted_at"
+      "title" | "description" | "disabledAt" | "disabledReason" | "deletedAt"
     >
   >,
 ) {
   const [draft] = await db
     .update(drafts)
-    .set({ ...values, updated_at: new Date() })
-    .where(and(eq(drafts.id, draftId), eq(drafts.account_id, accountId), isNull(drafts.deleted_at)))
+    .set({ ...values, updatedAt: new Date() })
+    .where(and(eq(drafts.id, draftId), eq(drafts.accountId, accountId), isNull(drafts.deletedAt)))
     .returning({ id: drafts.id });
   if (!draft) throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
   return { ok: true as const };
@@ -162,11 +162,7 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
       .select({ id: drafts.id })
       .from(drafts)
       .where(
-        and(
-          eq(drafts.id, draftId),
-          eq(drafts.account_id, auth.account_id),
-          isNull(drafts.deleted_at),
-        ),
+        and(eq(drafts.id, draftId), eq(drafts.accountId, auth.accountId), isNull(drafts.deletedAt)),
       )
       .get()
   )
@@ -184,8 +180,8 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
             .where(
               and(
                 eq(drafts.id, input.draftId),
-                eq(drafts.account_id, auth.account_id),
-                isNull(drafts.deleted_at),
+                eq(drafts.accountId, auth.accountId),
+                isNull(drafts.deletedAt),
               ),
             )
             .limit(1)
@@ -195,9 +191,9 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
         throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
       const [latest] = existing
         ? tx
-            .select({ number: max(draftVersions.version_number) })
+            .select({ number: max(draftVersions.versionNumber) })
             .from(draftVersions)
-            .where(eq(draftVersions.draft_id, draftId))
+            .where(eq(draftVersions.draftId, draftId))
             .all()
         : [];
       const versionNumber = (latest?.number ?? 0) + 1;
@@ -206,60 +202,60 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
         tx.insert(drafts)
           .values({
             id: draftId,
-            account_id: auth.account_id,
+            accountId: auth.accountId,
             title,
             description: cleanText(input.description, 1000),
-            repo_org: cleanText(metadata.repoOrg),
-            repo_name: cleanText(metadata.repoName),
-            repo_host: cleanText(metadata.repoHost),
+            repoOrg: cleanText(metadata.repoOrg),
+            repoName: cleanText(metadata.repoName),
+            repoHost: cleanText(metadata.repoHost),
           })
           .run();
       tx.insert(draftVersions)
         .values({
           id: versionId,
-          draft_id: draftId,
-          version_number: versionNumber,
-          object_key: objectKey,
-          content_hash: createHash("sha256").update(html).digest("hex"),
-          file_size: Buffer.byteLength(html, "utf8"),
-          created_by_api_key_id: auth.id,
-          source_ip: ctx.sourceIp,
-          user_agent: ctx.userAgent,
-          request_id: ctx.requestId,
-          cli_version: cleanText(metadata.cliVersion),
-          git_branch: cleanText(metadata.gitBranch),
-          git_commit_sha: cleanText(metadata.gitCommitSha),
-          git_commit_subject: cleanText(metadata.gitCommitSubject),
-          git_dirty: typeof metadata.gitDirty === "boolean" ? metadata.gitDirty : null,
-          original_filename: cleanText(input.filename),
-          has_inline_script: validation.stats.hasInlineScript,
-          external_image_hosts: validation.stats.externalImageHosts,
-          ci_run_url: cleanText(metadata.ciRunUrl),
-          ci_actor: cleanText(metadata.ciActor),
+          draftId: draftId,
+          versionNumber: versionNumber,
+          objectKey: objectKey,
+          contentHash: createHash("sha256").update(html).digest("hex"),
+          fileSize: Buffer.byteLength(html, "utf8"),
+          createdByApiKeyId: auth.id,
+          sourceIp: ctx.sourceIp,
+          userAgent: ctx.userAgent,
+          requestId: ctx.requestId,
+          cliVersion: cleanText(metadata.cliVersion),
+          gitBranch: cleanText(metadata.gitBranch),
+          gitCommitSha: cleanText(metadata.gitCommitSha),
+          gitCommitSubject: cleanText(metadata.gitCommitSubject),
+          gitDirty: typeof metadata.gitDirty === "boolean" ? metadata.gitDirty : null,
+          originalFilename: cleanText(input.filename),
+          hasInlineScript: validation.stats.hasInlineScript,
+          externalImageHosts: validation.stats.externalImageHosts,
+          ciRunUrl: cleanText(metadata.ciRunUrl),
+          ciActor: cleanText(metadata.ciActor),
         })
         .run();
       tx.update(drafts)
         .set({
-          current_version_id: versionId,
+          currentVersionId: versionId,
           title,
-          updated_at: new Date(),
+          updatedAt: new Date(),
           description: sql`coalesce(${cleanText(input.description, 1000)}, ${drafts.description})`,
-          repo_org: sql`coalesce(${cleanText(metadata.repoOrg)}, ${drafts.repo_org})`,
-          repo_name: sql`coalesce(${cleanText(metadata.repoName)}, ${drafts.repo_name})`,
-          repo_host: sql`coalesce(${cleanText(metadata.repoHost)}, ${drafts.repo_host})`,
+          repoOrg: sql`coalesce(${cleanText(metadata.repoOrg)}, ${drafts.repoOrg})`,
+          repoName: sql`coalesce(${cleanText(metadata.repoName)}, ${drafts.repoName})`,
+          repoHost: sql`coalesce(${cleanText(metadata.repoHost)}, ${drafts.repoHost})`,
         })
         .where(eq(drafts.id, draftId))
         .run();
       tx.insert(uploadEvents)
         .values({
           id: randomUUID(),
-          draft_id: draftId,
-          draft_version_id: versionId,
-          api_key_id: auth.id,
-          event_type: existing ? "draft.updated" : "draft.created",
-          source_ip: ctx.sourceIp,
-          user_agent: ctx.userAgent,
-          metadata_json: metadata,
+          draftId: draftId,
+          draftVersionId: versionId,
+          apiKeyId: auth.id,
+          eventType: existing ? "draft.updated" : "draft.created",
+          sourceIp: ctx.sourceIp,
+          userAgent: ctx.userAgent,
+          metadataJson: metadata,
         })
         .run();
       return {

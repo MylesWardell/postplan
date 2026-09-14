@@ -3,11 +3,11 @@ import { authenticated } from "../../../../auth.js";
 import { createFileRoute } from "@tanstack/react-router";
 import { ORPCError } from "@orpc/server";
 import { parseFormData } from "@orpc/openapi/helpers";
-import { redirect } from "../../../../../http/redirect.js";
+import { redirect } from "#lib/redirect";
 import { notFoundResponse } from "../../../../response.server.js";
 
 import { authenticatedContext } from "../../../../context.server.js";
-import { webAction } from "../../../../../http/web.js";
+import { webAction } from "../../../../web.js";
 
 export const Route = createFileRoute("/dashboard/drafts/$draftId/$action")({
   server: {

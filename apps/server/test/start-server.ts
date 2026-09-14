@@ -1,6 +1,6 @@
-import { createServerOptions as bunOptions } from "../src/index.js";
-import { config } from "../src/config.js";
-import type { ServerDependencies } from "../src/http/context.js";
+import { createServerOptions as bunOptions } from "#index";
+import { config } from "#config";
+import type { ServerDependencies } from "#context";
 
 // Exercise Start's transformed production routes and server functions, not uncompiled source.
 const entry = new URL("../dist/server/server.js", import.meta.url).href;

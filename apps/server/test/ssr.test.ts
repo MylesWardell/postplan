@@ -1,21 +1,21 @@
-import { createDatabase } from "../src/db/client.js";
+import { createDatabase } from "#db/client";
 import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { accounts } from "../src/db/schema.js";
-import { seedAccounts } from "../src/routers/account-store.js";
+import { accounts } from "#db/schema";
+import { seedAccounts } from "#routers/account-store";
 import { createServerOptions } from "./start-server.js";
-import { config } from "../src/config.js";
+import { config } from "#config";
 import {
   createAuthStateCookie,
   createSessionCookie,
   readAuthState,
   readSession,
-} from "../src/auth/session.js";
-import { resetShooCaches } from "../src/auth/shoo.js";
+} from "#auth/session";
+import { resetShooCaches } from "#auth/shoo";
 
 // Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {

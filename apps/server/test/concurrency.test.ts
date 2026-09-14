@@ -1,11 +1,11 @@
-import { createContextFactory } from "../src/http/context.js";
+import { createContextFactory } from "#context";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { createDatabase } from "../src/db/client.js";
-import { findOrCreateAccountForIdentity, seedAccounts } from "../src/routers/account-store.js";
-import { createCaller } from "../src/client.js";
+import { createDatabase } from "#db/client";
+import { findOrCreateAccountForIdentity, seedAccounts } from "#routers/account-store";
+import { createCaller } from "#client";
 
 test("concurrent requests serialize SQLite draft versions and first logins", async () => {
   const { db, client } = createDatabase(":memory:");
@@ -16,10 +16,12 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
     await seedAccounts(db, "concurrency-key");
     const context = createContextFactory({ db, putHtml: async () => {}, getHtml: async () => "" });
     const caller = createCaller(
-      await context(
+      context(
         new Request("https://plans.example.com", {
           headers: { authorization: "Bearer concurrency-key" },
         }),
+        null,
+        false,
       ),
     );
     const html = "<!doctype html><title>Concurrent</title><p>Versions</p>";
@@ -34,7 +36,7 @@ test("concurrent requests serialize SQLite draft versions and first logins", asy
       [2, 3, 4, 5, 6, 7],
     );
     assert.equal(
-      (await caller.drafts.detail({ draftId: first.draftId })).versions[0]?.version_number,
+      (await caller.drafts.detail({ draftId: first.draftId })).versions[0]?.versionNumber,
       7,
     );
     assert.equal(
