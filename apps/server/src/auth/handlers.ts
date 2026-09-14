@@ -4,6 +4,7 @@ import { findOrCreateAccountForIdentity } from "#routers/account-store";
 import { getHomeUrl } from "#lib/public-url";
 import { redirect } from "#lib/redirect";
 import { messageResponse } from "#frontend/response.server";
+import { isLoginAllowed } from "./login-access";
 import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "./shoo";
 import {
   clearAuthStateCookie,
@@ -66,11 +67,19 @@ async function authCallback(req: Request, db: Database): Promise<Response> {
       502,
     );
   }
+  const email = claimText(claims.email);
+  if (!isLoginAllowed(email, claims.email_verified, config.allowedLoginDomains)) {
+    return messageResponse(
+      "Sign-in not allowed",
+      "This email address is not permitted to sign in.",
+      403,
+    );
+  }
   const account = await findOrCreateAccountForIdentity(db, {
     provider: "shoo",
     subject: claims.pairwise_sub,
     profile: {
-      email: claimText(claims.email),
+      email,
       emailVerified: typeof claims.email_verified === "boolean" ? claims.email_verified : null,
       displayName: claimText(claims.name),
       pictureUrl: claimText(claims.picture),

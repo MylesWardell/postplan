@@ -18,6 +18,7 @@ export interface Config {
   maxHtmlBytes: number;
   sessionSecret: string | undefined;
   shooBaseUrl: string;
+  allowedLoginDomains: string[];
   // Edge/proxy topology. Defaults preserve the Railway behaviour; see
   // src/lib/client-ip.ts and docs/aws-deployment-plan.md for the AWS values.
   trustProxy: TrustProxySetting;
@@ -45,6 +46,7 @@ export const config: Config = {
   // routes respond 503 and the API/serving paths are unaffected.
   sessionSecret: env.POSTPLAN_SESSION_SECRET,
   shooBaseUrl: (env.SHOO_BASE_URL || "https://shoo.dev").replace(/\/+$/, ""),
+  allowedLoginDomains: parseAllowedLoginDomains(env.POSTPLAN_ALLOWED_LOGIN_DOMAINS),
   trustProxy: parseTrustProxy(env.TRUST_PROXY),
   clientIpSource: parseClientIpSource(env.CLIENT_IP_SOURCE),
   requestIdHeader: (env.REQUEST_ID_HEADER || "x-railway-request-id").toLowerCase(),
@@ -80,6 +82,35 @@ export function requireEnv(name: string, value: string | undefined): string {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+export function parseAllowedLoginDomains(value: string | undefined): string[] {
+  const raw = value?.trim();
+  if (!raw) {
+    return [];
+  }
+
+  const domains = raw.split(",").map((entry) => entry.trim().toLowerCase().replace(/^@/, ""));
+  if (domains.some((domain) => !isDomain(domain))) {
+    throw new Error(
+      "Invalid POSTPLAN_ALLOWED_LOGIN_DOMAINS (expected comma-separated domains such as abx.com,kinesis.money).",
+    );
+  }
+  return [...new Set(domains)];
+}
+
+function isDomain(value: string): boolean {
+  if (value.length > 253) {
+    return false;
+  }
+  const labels = value.split(".");
+  return (
+    labels.length > 1 &&
+    labels.every(
+      (label) =>
+        label.length > 0 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
+    )
+  );
 }
 
 // Accepts the proxy-addr trust forms: true/false, a hop count, or a

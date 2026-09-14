@@ -375,10 +375,16 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
         if (requestPath === "/token" && req.method === "POST") {
           exchanges++;
           const form = await req.formData();
-          assert.equal(form.get("code"), "valid-code");
+          const code = form.get("code");
+          assert.ok(code === "valid-code" || code === "denied-code");
           assert.equal(form.get("code_verifier"), "verifier");
           assert.equal(form.get("redirect_uri"), base + "/auth/callback");
-          const idToken = await new SignJWT({ pairwise_sub: "iso-user", email: "iso@example.com" })
+          const allowed = code === "valid-code";
+          const idToken = await new SignJWT({
+            pairwise_sub: allowed ? "iso-user" : "denied-user",
+            email: allowed ? "iso@example.com" : "intruder@elsewhere.test",
+            email_verified: true,
+          })
             .setProtectedHeader({ alg: "ES256", kid: "test-key" })
             .setIssuer(config.shooBaseUrl)
             .setAudience(`origin:${base}`)
@@ -390,11 +396,16 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       },
     });
     config.shooBaseUrl = shoo.url.origin;
+    config.allowedLoginDomains = ["example.com"];
     resetShooCaches();
+    const denied = await get("/auth/callback?state=expected&code=denied-code", authCookie);
+    assert.equal(denied.status, 403);
+    assert.match(await denied.text(), /This email address is not permitted to sign in/);
+    assert.doesNotMatch(denied.headers.get("set-cookie")!, /postplan_session=/);
     const completed = await get("/auth/callback?state=expected&code=valid-code", authCookie);
     assert.equal(completed.status, 303);
     assert.equal(completed.headers.get("location"), "/dashboard");
-    assert.equal(exchanges, 1);
+    assert.equal(exchanges, 2);
     assert.match(completed.headers.get("set-cookie")!, /postplan_auth_state=;[^,]*Max-Age=0/);
     const sessionCookie = completed.headers
       .getSetCookie()
