@@ -8,22 +8,22 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root.js";
-import { Route as IndexRouteImport } from "./routes/index.js";
-import { Route as DashboardRouteRouteImport } from "./routes/dashboard/route.js";
-import { Route as HealthzRouteImport } from "./routes/healthz.js";
-import { Route as ApiIndexRouteImport } from "./routes/api/index.js";
-import { Route as ApiSplatRouteImport } from "./routes/api/$.js";
-import { Route as AuthCallbackRouteImport } from "./routes/auth/callback.js";
-import { Route as AuthSignInRouteImport } from "./routes/auth/sign-in.js";
-import { Route as AuthSignOutRouteImport } from "./routes/auth/sign-out.js";
-import { Route as CliAuthRouteRouteImport } from "./routes/cli/auth/route.js";
-import { Route as DashboardIndexRouteImport } from "./routes/dashboard/index.js";
-import { Route as CliAuthIndexRouteImport } from "./routes/cli/auth/index.js";
-import { Route as CliAuthKeysIndexRouteImport } from "./routes/cli/auth/keys/index.js";
-import { Route as DashboardDraftsDraftIdIndexRouteImport } from "./routes/dashboard/drafts/$draftId/index.js";
-import { Route as DashboardDraftsDraftIdActionRouteImport } from "./routes/dashboard/drafts/$draftId/$action.js";
-import { Route as CliAuthKeysKeyIdRevokeRouteImport } from "./routes/cli/auth/keys/$keyId/revoke.js";
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as IndexRouteImport } from "./routes/index";
+import { Route as DashboardRouteRouteImport } from "./routes/dashboard/route";
+import { Route as HealthzRouteImport } from "./routes/healthz";
+import { Route as ApiIndexRouteImport } from "./routes/api/index";
+import { Route as ApiSplatRouteImport } from "./routes/api/$";
+import { Route as AuthCallbackRouteImport } from "./routes/auth/callback";
+import { Route as AuthSignInRouteImport } from "./routes/auth/sign-in";
+import { Route as AuthSignOutRouteImport } from "./routes/auth/sign-out";
+import { Route as CliAuthRouteRouteImport } from "./routes/cli/auth/route";
+import { Route as DashboardIndexRouteImport } from "./routes/dashboard/index";
+import { Route as CliAuthIndexRouteImport } from "./routes/cli/auth/index";
+import { Route as CliAuthKeysIndexRouteImport } from "./routes/cli/auth/keys/index";
+import { Route as DashboardDraftsDraftIdIndexRouteImport } from "./routes/dashboard/drafts/$draftId/index";
+import { Route as DashboardDraftsDraftIdActionRouteImport } from "./routes/dashboard/drafts/$draftId/$action";
+import { Route as CliAuthKeysKeyIdRevokeRouteImport } from "./routes/cli/auth/keys/$keyId/revoke";
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
