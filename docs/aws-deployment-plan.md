@@ -4,7 +4,7 @@ Status: planning only. No AWS resources have been created or changed. Deployment
 
 ## Proposed architecture
 
-Use an internet-facing Application Load Balancer (ALB), ECS Fargate, private RDS PostgreSQL, and private S3. This fits the existing Express process and PostgreSQL transactions. Reuse the organisation's VPC, DNS and CI identity where appropriate. Account, region, domain and sizes are unconfirmed; `ap-southeast-2` is an example.
+Use an internet-facing Application Load Balancer (ALB), ECS Fargate, private RDS PostgreSQL, and private S3. This fits the Bun SSR process and PostgreSQL transactions. Reuse the organisation's VPC, DNS and CI identity where appropriate. Account, region, domain and sizes are unconfirmed; `ap-southeast-2` is an example.
 
 | Component   | Proposed configuration                                                                                                                                        |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -13,7 +13,7 @@ Use an internet-facing Application Load Balancer (ALB), ECS Fargate, private RDS
 | Compute     | ECR image by digest; Linux x86_64 Fargate; initially 0.5 vCPU / 1 GiB per task, two production tasks across two AZs; measure before final sizing              |
 | Network     | Public ALB subnets; private tasks without public IPs; task port 3000 only from ALB security group; private RDS port 5432 only from task security group        |
 | Database    | Supported RDS PostgreSQL version tested in staging; encryption, verified TLS, Multi-AZ production, PITR/backups, deletion protection and final snapshot       |
-| Storage     | S3 Block Public Access, encryption, versioning, deny non-TLS access; HTML served through Express to preserve access checks and CSP                            |
+| Storage     | S3 Block Public Access, encryption, versioning, deny non-TLS access; HTML served through Bun to preserve access checks and CSP                                |
 | Secrets     | Secrets Manager injection for database URL, bootstrap API key and optional session secret                                                                     |
 | Operations  | CloudWatch logs with retention; alarms for unhealthy targets, 5xx, latency, restarts, CPU/memory, RDS connections/storage; ALB access logs in separate bucket |
 
@@ -47,10 +47,10 @@ Secret rotation requires new tasks; [ECS does not refresh injected values automa
 
 ## Delivery stages
 
-1. **Local validation:** `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm pack:cli`, then `docker build --tag postplan:local .`. CI performs these without AWS access. Pin the reviewed base image by digest and retain scanning/SBOM results before production.
+1. **Local validation:** `pnpm install --frozen-lockfile`, `pnpm check`, `pnpm pack:cli`, then `docker build --tag postplan:local .`. CI performs these without AWS access. The image runs Bun 1.3.14 and the contract uses oRPC 2.0.0-beta.35; validate dependency upgrades before promotion. Pin the reviewed base image by digest and retain scanning/SBOM results before production.
 2. **Infrastructure preparation:** create Terraform/CDK in the chosen infrastructure repository for the resources above, with separate staging/production state and deletion safeguards. Review its plan and cost estimate before any apply. No apply is part of this change.
 3. **Delivery pipeline:** use short-lived CI OIDC credentials scoped to the environment, ECR repository, ECS service and exact `iam:PassRole` roles. Build once, scan, push and promote the same digest. Production deployment remains separately authorised. Checked-in CI validates and builds only.
-4. **Staging, when authorised:** start one task against an empty database/bucket. Target type `ip`, port 3000, health path `/healthz`, expected 200, initial startup grace 120 seconds. Health checks cover PostgreSQL, not S3. Run the reviewed Drizzle migrations as a one-off task before starting the service, using the same image and a migration-specific database secret: `node node_modules/@postplan/database/dist/src/migrate.js`. The migration command acquires an advisory lock; startup only seeds accounts and keys. Future destructive changes need expand/contract migrations.
+4. **Staging, when authorised:** start one task against an empty database/bucket. Target type `ip`, port 3000, health path `/healthz`, expected 200, initial startup grace 120 seconds. Health checks cover PostgreSQL, not S3. Run the reviewed Drizzle migrations as a one-off task before starting the service, using the same image and a migration-specific database secret: `bun node_modules/@postplan/database/dist/src/migrate.js`. The migration command acquires an advisory lock; startup only seeds accounts and keys. Future destructive changes need expand/contract migrations.
 5. **Acceptance:** run the checklist below with real staging dependencies; tune sizes, timeouts and alarms from measurements.
 6. **Production cutover, after approval:** for an existing installation, freeze old-service writes, back up/restore PostgreSQL, copy all referenced objects with unchanged keys, verify row counts and content hashes, then set DNS/TLS and public URL. Preserve API-key hashes and session secret where appropriate. A domain change can change Shoo pairwise identities: test account continuity and define re-authentication/account-linking before cutover. Deploy the approved digest, rerun acceptance, then reopen writes. Skip migration for an empty installation.
 
@@ -59,7 +59,7 @@ Secret rotation requires new tasks; [ECS does not refresh injected values automa
 - `/healthz` returns 200; unavailable PostgreSQL returns 503. Invalid RDS CA/hostname fails rather than connecting without verification.
 - CLI upload to custom `--api-url` succeeds; canonical and raw URLs return byte-identical HTML with CSP/version headers. Repeat upload, retrieve old/new versions, and exercise concurrent uploads to one draft.
 - Test authenticated listing, ownership boundaries, key creation/revocation, draft disable/delete, anonymous uploads and blocked HTML against real PostgreSQL/S3.
-- If sign-in is enabled, exercise broker callback, dashboard and `/cli/auth`; ensure draft subdomains cannot host account pages and sessions work across tasks.
+- If sign-in is enabled, exercise broker callback, SSR search/edit/access/delete forms and `/cli/auth`; ensure draft subdomains cannot host account pages and sessions work across tasks.
 - Forge forwarding headers and confirm the recorded source IP remains the observed client. Confirm tasks and S3 cannot be reached publicly.
 - Stop a task under traffic, check draining and availability, then perform a rolling release. Validate task-role access without static keys and no secrets in logs.
 - Restore a backup into a separate staging instance and verify it against retained objects. Do not expire current objects or shorten S3 history below the recovery window.

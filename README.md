@@ -7,20 +7,19 @@ Postplan is a small service and CLI for publishing static HTML drafts from agent
 ```text
 apps/
   cli/             CLI source, agent skill, tsdown output in bin/
-  frontend/        Typed client boundary for the future draft-management UI
-  server/          Express host: tRPC/REST transports, OAuth, HTML views and S3
+  server/          Bun host: Preact SSR, oRPC implementation, OAuth and S3
 packages/
-  api/             tRPC procedures and draft services
+  api/             oRPC contract: HTTP routes, input/output schemas and client types
   core/            Shared HTML policy and public URL construction
   database/        Drizzle schema, PostgreSQL access and versioned migrations
 scripts/           Workspace build helpers
 ```
 
-The API package exports its router type for browser consumers. Business operations live in tRPC procedures and shared services; HTTP handlers contain no database queries. Drizzle keeps existing table/column names and supplies inferred row types. The server-rendered dashboard remains available until the frontend application is built.
+`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/rpc` implements it using Drizzle-backed services; the OpenAPI handler exposes the contract at `/api`, and the RPC handler at `/rpc`. Preact pages in `apps/server/src/views` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
 
 ## Development
 
-Use Node 22.20+ and pnpm 11.22.0. Turborepo builds dependencies before their consumers. oxfmt and oxlint run across the workspace; tsdown bundles the CLI.
+Use Node 22.20+, Bun 1.3.14, and pnpm 11.22.0. Bun runs the server; Node runs the CLI and workspace tooling. Turborepo builds dependencies before their consumers. oxfmt and oxlint run across the workspace; tsdown bundles the CLI.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -32,18 +31,20 @@ Copy `.env.example` to `.env` and configure PostgreSQL and S3-compatible storage
 
 ```sh
 pnpm db:migrate
-node --env-file=.env --enable-source-maps apps/server/dist/src/server.js
+bun --env-file=.env apps/server/dist/src/server.js
 ```
 
-For development, build once and run `node --env-file=.env --import tsx --watch apps/server/src/server.ts`. `pnpm dev` uses environment variables already set in the shell. Shared package changes need `pnpm build` to refresh their exports. Startup seeds account/key records but does not run DDL.
+For development, build once, then run `pnpm --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `pnpm build` to refresh their exports. Startup seeds account/key records but does not run DDL.
 
-`pnpm check` covers formatting, lint, strict types, and tests. Tests include embedded PostgreSQL migration and HTTP/tRPC integration checks, without AWS access. Use `pnpm format`, `pnpm lint:fix`, and `pnpm db:generate` while editing. See [database migration guidance](packages/database/README.md).
+`pnpm check` covers formatting, lint, strict types, and tests. Tests include embedded PostgreSQL migration and HTTP/oRPC and SSR form integration checks, without AWS access. Use `pnpm format`, `pnpm lint:fix`, and `pnpm db:generate` while editing. See [database migration guidance](packages/database/README.md).
 
 Build the portable CLI tarball with `pnpm pack:cli`. The executable is `apps/cli/bin/postplan.js`. This fork is not published to the package registry; the published package in the examples below remains upstream. See [CLI development](apps/cli/README.md).
 
 ## Typed API
 
-The server mounts tRPC at `/trpc`, using the [Express adapter](https://trpc.io/docs/server/adapters/express). The REST endpoints remain compatibility adapters to the same procedures.
+The server follows the Fetch host pattern in the [oRPC Bun playground](https://github.com/middleapi/orpc/tree/main/playgrounds/bun), using its pinned oRPC `2.0.0-beta.35` generation. All oRPC packages must stay on the same version. Its API is still prerelease; review upgrades together with contract and transport tests.
+
+The [contract](packages/api/src/index.ts) defines the REST routes; the server uses `OpenAPIHandler` without a manual REST dispatcher. `RPCHandler` exposes the same implementation for typed oRPC clients. Dates are native `Date` values over RPC and ISO strings in REST JSON. Uploads return HTTP 201 for a new draft, 200 for a version, and 422 with validation errors for rejected HTML.
 
 | Router    | Procedures                                                          |
 | --------- | ------------------------------------------------------------------- |
@@ -51,11 +52,26 @@ The server mounts tRPC at `/trpc`, using the [Express adapter](https://trpc.io/d
 | `drafts`  | `list`, `detail`, `upload`, `update`, `disable`, `enable`, `delete` |
 | `apiKeys` | `list`, `create`, `revoke`                                          |
 
-Protected procedures derive ownership from the bearer API key or verified session, never an input account ID. Browser session mutations require the application's exact Origin. tRPC is unavailable on draft subdomains. Batch requests are disabled; rate limits run per procedure and are shared with the REST and dashboard adapters. Invalid bearer keys are rejected rather than falling back to anonymous uploads.
+Protected procedures derive ownership from the bearer API key or verified session, never an input account ID. Browser session mutations require the application's exact Origin. The API is unavailable on draft subdomains. No batch handler is installed; rate limits run per procedure and are shared with the REST and dashboard adapters. Invalid bearer keys are rejected rather than falling back to anonymous uploads.
 
 Draft updates lock the owned draft row before allocating a version, preserving unique monotonically increasing version numbers across concurrent uploads. Database writes roll back on storage failure; if S3 succeeds and the later transaction fails, the unreferenced object may remain for later cleanup.
 
-[Frontend preparation](apps/frontend/README.md) includes a typed client and the intended same-origin deployment. It does not yet include a management UI.
+```ts
+import { createORPCClient } from "@orpc/client";
+import { RPCLink } from "@orpc/client/fetch";
+import type { ApiClient } from "@postplan/api";
+
+const api = createORPCClient<ApiClient>(
+  new RPCLink({
+    origin: "http://localhost:3000",
+    url: "/rpc",
+    headers: { authorization: `Bearer ${token}` },
+  }),
+);
+const { drafts } = await api.drafts.list();
+```
+
+The shared Preact `Layout` supplies navigation and styling. The dashboard supports search, status filters, title/description edits, version history, public access controls, and confirmed deletion. `/cli/auth` creates named keys, shows each token once, and revokes keys.
 
 ## CLI
 
@@ -121,9 +137,9 @@ Uploads are public by default. Bearer API keys are still used for admin endpoint
 
 ## Dashboard & web sign-in
 
-With `POSTPLAN_SESSION_SECRET` set, `/dashboard` lists the signed-in account's drafts (grouped by git repo, with descriptions and version history) and `/cli/auth` mints API keys for `postplan auth login`. Sign-in is delegated to [shoo](https://github.com/pingdotgg/shoo) — postplan is auto-registered as a client by its origin, exchanges the OAuth code server-side (PKCE S256), verifies the ES256 `id_token` against shoo's JWKS, and keys accounts off the stable `pairwise_sub` claim (stored in the `identities` table). Postplan then runs its own 30-day HMAC-signed session cookie; it never sees Google credentials. Dashboard pages are apex-domain only — draft subdomains cannot serve them.
+With `POSTPLAN_SESSION_SECRET` set, `/dashboard` lists the signed-in account's drafts (with search, descriptions and version history) and `/cli/auth` mints API keys for `postplan auth login`. Sign-in is delegated to [shoo](https://github.com/pingdotgg/shoo) — postplan is auto-registered as a client by its origin, exchanges the OAuth code server-side (PKCE S256), verifies the ES256 `id_token` against shoo's JWKS, and keys accounts off the stable `pairwise_sub` claim (stored in the `identities` table). Postplan then runs its own 30-day HMAC-signed session cookie; it never sees Google credentials. Dashboard pages are apex-domain only — draft subdomains cannot serve them.
 
-Sign-in requests shoo's `pii` consent, so each user approves sharing their email, name, and profile picture once. Those claims are stored on `identities` and overwritten from the token at every login — removing your picture or email at Google clears it here too (only the stable `pii_subject` identifier is retained across logins). The header shows the avatar and email. To find the email behind an upload, join `draft_versions.created_by_api_key_id → api_keys.account_id → identities.email` — nothing is denormalized onto version rows. Declining consent denies the sign-in.
+Sign-in requests shoo's `pii` consent, so each user approves sharing their email, name, and profile picture once. Those claims are stored on `identities` and overwritten from the token at every login — removing your picture or email at Google clears it here too (only the stable `pii_subject` identifier is retained across logins). The header shows the email or account name. To find the email behind an upload, join `draft_versions.created_by_api_key_id → api_keys.account_id → identities.email` — nothing is denormalized onto version rows. Declining consent denies the sign-in.
 
 An uploaded draft is attributed to whichever account's API key published it (anonymous uploads still work and stay public, but are not attributed to any account). `GET /api/drafts` returns the authenticated account's drafts — newest first, with each draft's description, auto-linked git repo, latest version number, and total version count — which is what `postplan list` and the dashboard read.
 
@@ -152,4 +168,4 @@ See [the AWS deployment plan](docs/aws-deployment-plan.md) for the proposed ECS 
 docker build --tag postplan:local .
 ```
 
-The image runs compiled JavaScript as a non-root user and includes the RDS CA bundle. CI checks formatting, lint, types, tests, CLI packaging and the container build; it has no AWS deployment step.
+The image runs compiled JavaScript with Bun as a non-root user and includes the RDS CA bundle. CI checks formatting, lint, types, tests, CLI packaging and the container build; it has no AWS deployment step.
