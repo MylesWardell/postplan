@@ -27,7 +27,7 @@ import type { ServerDependencies } from "./http/context.js";
 import { onlyApplication } from "./http/response.js";
 import { createFrontend } from "./frontend/index.js";
 import { notFoundResponse } from "./frontend/pages.js";
-import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
+import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./lib/s3.js";
 
 export function createServerOptions(deps: ServerDependencies) {
   const context = createContextFactory(deps);
