@@ -71,7 +71,11 @@
     "dev": "bun --bun vite dev",
     "db:generate": "bun run --filter @postplan/store-drizzle db:generate",
     "db:migrate": "bun dist/src/db/migrate.js",
-    "preview": "bun --bun vite preview"
+    "preview": "bun --bun vite preview",
+    "cf:types": "wrangler types --config cloudflare/wrangler.jsonc cloudflare/env.d.ts",
+    "cf:build": "vite build --config vite.cloudflare.config.ts",
+    "cf:dev": "vite --config vite.cloudflare.config.ts",
+    "cf:test": "vitest run --config vitest.cloudflare.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",
@@ -103,11 +107,15 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.54.9",
+    "@cloudflare/vitest-plugin": "1.1.9",
     "@types/bun": "1.4.2",
     "@types/proxy-addr": "^2.0.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "4.1.0",
+    "wrangler": "4.131.2"
   }
 }

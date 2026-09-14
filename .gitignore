@@ -5,6 +5,11 @@ dist/
 !.env.example
 *.tgz
 .turbo/
+.wrangler/
+.dev.vars
+.dev.vars.*
+apps/server/cloudflare/generated/
+apps/server/cloudflare/dist/
 apps/cli/bin/
 data/
 *.sqlite
@@ -25,3 +30,5 @@ crash.*.log
 
 # Recreated by scripts/setup/link-skills.ts, points at .agents/skills.
 .claude/skills
+
+apps/server/cloudflare/env.d.ts

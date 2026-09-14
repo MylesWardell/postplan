@@ -182,4 +182,6 @@ Keep the previous Worker artifact and stable D1/R2/limiter bindings. Code rollba
 | Missing observability     | Native logs/traces, sampling and per-product usage targets, including trace-accounting changes.                                              |
 | Cleanup and snapshot gaps | Five-minute resumable scheduler, D1 leases/fencing, immutable keys, byte reservations and fenced manifest-based exports.                     |
 
-This plan does not provision infrastructure, publish a deployment, change DNS, move data or implement the adapters. The next deliverable is the portable gateway and early Cloudflare compatibility spike.
+The [compatibility experiment](../apps/server/cloudflare/README.md) now implements the portable application entry, Cloudflare request normalization and bounded D1/R2/Durable Object probes. Local and remote HTTP tests passed on 14 September 2026; public access was disabled afterward. This is evidence for the initial runtime spike, not completion of the Store adapter or the free-tier promotion gate.
+
+For the personal test account, do not enable WAF or upgrade Workers. Keep the R2 bucket private and limit the protected experiment to 20 lifetime probes of at most 512 KiB, using a persistent atomic D1 counter. Verify remaining account allowances before remote work and bucket emptiness afterward. Disable public and preview URLs when testing ends. R2 remains usage billed beyond its free allowance; this experiment's bound does not constrain other applications in the account.

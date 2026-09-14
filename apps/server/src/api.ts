@@ -18,7 +18,7 @@ import type { ContextFactory } from "./context";
 import { onlyApplication } from "#lib/host-guard";
 import { notFoundResponse } from "#frontend/response.server";
 
-export function createApiHandler(context: ContextFactory) {
+export function createApiHandler(context: ContextFactory, compressResponse = true) {
   const zodConverter = new ZodToJsonSchemaConverter();
   const openapiGenerator = new OpenAPIGenerator({
     converters: [zodConverter],
@@ -29,7 +29,7 @@ export function createApiHandler(context: ContextFactory) {
       new RequestLimitHandlerPlugin({ maxBodySize: 2 * 1024 * 1024 }),
       new ResponseHeadersHandlerPlugin(),
       new RateLimitHandlerPlugin(),
-      new ResponseCompressionHandlerPlugin(),
+      ...(compressResponse ? [new ResponseCompressionHandlerPlugin()] : []),
       new CORSHandlerPlugin({
         allowHeaders: [
           "Content-Disposition",
