@@ -1,6 +1,6 @@
-import { getOnly } from "../methods.js";
+import { getOnly } from "#frontend/methods";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Layout } from "../layout.js";
+import { Layout } from "#frontend/layout";
 
 export const Route = createFileRoute("/")({
   server: { middleware: [getOnly] },

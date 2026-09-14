@@ -1,10 +1,10 @@
-import { postOnly } from "../../../../../methods.js";
-import { notFoundResponse } from "../../../../../response.server.js";
-import { authenticated } from "../../../../../auth.js";
+import { postOnly } from "#frontend/methods";
+import { notFoundResponse } from "#frontend/response.server";
+import { authenticated } from "#frontend/auth";
 import { createFileRoute } from "@tanstack/react-router";
 import { redirect } from "#lib/redirect";
-import { webAction } from "../../../../../web.js";
-import { authenticatedContext } from "../../../../../context.server.js";
+import { webAction } from "#frontend/web";
+import { authenticatedContext } from "#frontend/context.server";
 export const Route = createFileRoute("/cli/auth/keys/$keyId/revoke")({
   server: {
     middleware: [postOnly, authenticated],

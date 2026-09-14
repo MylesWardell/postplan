@@ -1,12 +1,12 @@
-import { postOnly } from "../../../../methods.js";
-import { notFoundResponse } from "../../../../response.server.js";
-import { authenticated } from "../../../../auth.js";
+import { postOnly } from "#frontend/methods";
+import { notFoundResponse } from "#frontend/response.server";
+import { authenticated } from "#frontend/auth";
 import { createFileRoute } from "@tanstack/react-router";
 import { parseFormData } from "@orpc/openapi/helpers";
-import { KeysPage } from "../index.js";
-import { authenticatedContext } from "../../../../context.server.js";
-import { webAction } from "../../../../web.js";
-import { page } from "../../../../response.server.js";
+import { KeysPage } from "#frontend/routes/cli/auth/index";
+import { authenticatedContext } from "#frontend/context.server";
+import { webAction } from "#frontend/web";
+import { page } from "#frontend/response.server";
 
 export const Route = createFileRoute("/cli/auth/keys/")({
   server: {

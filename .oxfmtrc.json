@@ -6,6 +6,7 @@
     "**/node_modules/**",
     "**/.turbo/**",
     "bun.lock",
-    "**/routeTree.gen.ts"
+    "**/routeTree.gen.ts",
+    ".claude/**"
   ]
 }

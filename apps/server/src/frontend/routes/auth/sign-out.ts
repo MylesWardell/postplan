@@ -1,7 +1,7 @@
-import { postOnly } from "../../methods.js";
-import { notFoundResponse } from "../../response.server.js";
+import { postOnly } from "#frontend/methods";
+import { notFoundResponse } from "#frontend/response.server";
 import { createFileRoute } from "@tanstack/react-router";
-import { authenticated } from "../../auth.js";
+import { authenticated } from "#frontend/auth";
 import { clearSessionCookie } from "#auth/session";
 import { redirect } from "#lib/redirect";
 export const Route = createFileRoute("/auth/sign-out")({

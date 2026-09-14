@@ -1,4 +1,4 @@
-import { notFoundResponse } from "../response.server.js";
+import { notFoundResponse } from "#frontend/response.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { sql } from "drizzle-orm";
 export const Route = createFileRoute("/healthz")({

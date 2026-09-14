@@ -1,8 +1,8 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { getAuth } from "../auth.js";
-import type { AuthState } from "../auth.js";
+import { getAuth } from "#frontend/auth";
+import type { AuthState } from "#frontend/auth";
 import type { ReactNode } from "react";
-import { Layout } from "../layout.js";
+import { Layout } from "#frontend/layout";
 
 export const Route = createRootRoute({
   beforeLoad: async (): Promise<{ auth: AuthState }> => ({ auth: await getAuth() }),

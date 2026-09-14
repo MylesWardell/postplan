@@ -1,8 +1,8 @@
-import { notFoundResponse } from "../../response.server.js";
+import { notFoundResponse } from "#frontend/response.server";
 import { createFileRoute } from "@tanstack/react-router";
-import { requireConfiguredSignIn } from "../../context.server.js";
+import { requireConfiguredSignIn } from "#frontend/context.server";
 import { signIn } from "#auth/handlers";
-import { webAction } from "../../web.js";
+import { webAction } from "#frontend/web";
 export const Route = createFileRoute("/auth/sign-in")({
   server: {
     handlers: {

@@ -4,7 +4,7 @@ import type { ServerDependencies } from "#context";
 
 // Exercise Start's transformed production routes and server functions, not uncompiled source.
 const entry = new URL("../dist/server/server.js", import.meta.url).href;
-const start: typeof import("../src/server.js") = await import(entry);
+const start: typeof import("#server") = await import(entry);
 
 export function createServerOptions(deps: ServerDependencies) {
   return bunOptions(

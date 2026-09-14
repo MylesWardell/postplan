@@ -1,8 +1,8 @@
-import { getOnly } from "../../../../methods.js";
-import { authenticated } from "../../../../auth.js";
+import { getOnly } from "#frontend/methods";
+import { authenticated } from "#frontend/auth";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { authenticatedContext } from "../../../../context.server.js";
+import { authenticatedContext } from "#frontend/context.server";
 import { z } from "zod";
 
 const loadDraft = createServerFn({ method: "GET" })
@@ -19,8 +19,8 @@ const loadDraft = createServerFn({ method: "GET" })
 
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
 import { ORPCError } from "@orpc/server";
-import { Layout } from "../../../../layout.js";
-import { date, Status } from "../../../../shared.js";
+import { Layout } from "#frontend/layout";
+import { date, Status } from "#frontend/shared";
 
 export const Route = createFileRoute("/dashboard/drafts/$draftId/")({
   server: { middleware: [getOnly, authenticated] },

@@ -1,8 +1,8 @@
-import { getOnly } from "../../methods.js";
-import { authenticated } from "../../auth.js";
+import { getOnly } from "#frontend/methods";
+import { authenticated } from "#frontend/auth";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { authenticatedContext } from "../../context.server.js";
+import { authenticatedContext } from "#frontend/context.server";
 
 const loadDashboard = createServerFn({ method: "GET" }).handler(async ({ context }) => {
   const { session, caller } = await authenticatedContext(getRequest(), context);
@@ -10,8 +10,8 @@ const loadDashboard = createServerFn({ method: "GET" }).handler(async ({ context
 });
 
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Layout } from "../../layout.js";
-import { date, Status } from "../../shared.js";
+import { Layout } from "#frontend/layout";
+import { date, Status } from "#frontend/shared";
 
 export const Route = createFileRoute("/dashboard/")({
   server: { middleware: [getOnly, authenticated] },

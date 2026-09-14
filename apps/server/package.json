@@ -21,7 +21,10 @@
       "default": "./dist/src/frontend/response.server.js"
     },
     "#frontend/*": {
-      "source": "./src/frontend/*.ts",
+      "source": {
+        "bun": "./src/frontend/*.ts",
+        "default": "./src/frontend/*"
+      },
       "default": "./dist/src/frontend/*.js"
     },
     "#lib/*": {
@@ -51,6 +54,10 @@
     "#index": {
       "source": "./src/index.ts",
       "default": "./dist/src/index.js"
+    },
+    "#server": {
+      "source": "./src/server.ts",
+      "default": "./dist/src/server.js"
     },
     "#orpc": {
       "source": "./src/orpc.ts",

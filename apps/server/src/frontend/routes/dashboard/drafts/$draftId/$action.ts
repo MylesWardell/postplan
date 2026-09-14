@@ -1,13 +1,13 @@
-import { postOnly } from "../../../../methods.js";
-import { authenticated } from "../../../../auth.js";
+import { postOnly } from "#frontend/methods";
+import { authenticated } from "#frontend/auth";
 import { createFileRoute } from "@tanstack/react-router";
 import { ORPCError } from "@orpc/server";
 import { parseFormData } from "@orpc/openapi/helpers";
 import { redirect } from "#lib/redirect";
-import { notFoundResponse } from "../../../../response.server.js";
+import { notFoundResponse } from "#frontend/response.server";
 
-import { authenticatedContext } from "../../../../context.server.js";
-import { webAction } from "../../../../web.js";
+import { authenticatedContext } from "#frontend/context.server";
+import { webAction } from "#frontend/web";
 
 export const Route = createFileRoute("/dashboard/drafts/$draftId/$action")({
   server: {
