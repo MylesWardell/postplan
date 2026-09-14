@@ -1,0 +1,31 @@
+name: Terraform
+on:
+  pull_request:
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [master]
+    paths:
+      - "infra/terraform/**"
+      - ".github/workflows/terraform.yml"
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        root: [bootstrap, app]
+    defaults:
+      run:
+        working-directory: infra/terraform/${{ matrix.root }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.2
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -lockfile=readonly
+      - run: terraform validate
+      - run: terraform test

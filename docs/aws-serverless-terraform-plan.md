@@ -1,6 +1,6 @@
 # Terraform serverless deployment plan
 
-Proposed deployment for three developers publishing at most one plan each per hour. This planning PR does not implement the database migration, add runnable Terraform resources, or deploy AWS infrastructure. The [EC2 alternative](aws-deployment-plan.md) remains available for the existing SQLite application.
+Deployment design for three developers publishing at most one plan each per hour. The [Terraform infrastructure and runbook](../infra/terraform/README.md) now implement the resources below. The DynamoDB application migration and cleanup executable remain prerequisites; nothing has been deployed to AWS. The [EC2 alternative](aws-deployment-plan.md) remains available for the existing SQLite application.
 
 ## Architecture and cost
 
@@ -69,10 +69,10 @@ Retain `POSTPLAN_ALLOWED_LOGIN_DOMAINS` from current master. Propose authenticat
 
 ## Terraform layout and resources
 
-Create the following during implementation; this PR adds no executable `.tf` files:
+The infrastructure is implemented in these roots:
 
 ```text
-infra/terraform/bootstrap/   # Remote state, ECR and GitHub OIDC deployment role
+infra/terraform/bootstrap/   # Remote state, ECR and GitHub OIDC image-publishing role
 infra/terraform/app/         # API, functions, data, cleanup, DNS and monitoring
 infra/terraform/app/production.tfvars.example
 ```

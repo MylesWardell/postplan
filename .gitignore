@@ -10,3 +10,15 @@ data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Terraform state, local configuration and downloaded providers
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+**/backend.hcl
+infra/terraform/bootstrap/backend.tf
+crash.log
+crash.*.log
