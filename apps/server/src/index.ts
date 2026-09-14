@@ -1,112 +1,46 @@
-import { RateLimitHandlerPlugin } from "@orpc/ratelimit";
 import { shutdownInstrumentation } from "./instrumentation.js";
 import { serve } from "bun";
 import type { Server } from "bun";
-import { OpenAPIHandler } from "@orpc/openapi/fetch";
-import { OpenAPIGenerator } from "@orpc/openapi";
-import { OpenAPIReferenceHandlerPlugin } from "@orpc/openapi/plugins";
-import {
-  RequestLimitHandlerPlugin,
-  RequestCompressionHandlerPlugin,
-  ResponseCompressionHandlerPlugin,
-  ResponseHeadersHandlerPlugin,
-  CORSHandlerPlugin,
-} from "@orpc/server/plugins";
-import { EvlogHandlerPlugin } from "@orpc/evlog";
-import { SmartCoercionHandlerPlugin } from "@orpc/json-schema";
-import { ZodToJsonSchemaConverter } from "@orpc/zod";
-import { contract } from "@postplan/api";
-import { sql } from "drizzle-orm";
+import { fileURLToPath } from "node:url";
 import { createDatabase } from "./db/client.js";
 import { seedAccounts } from "./routers/account-store.js";
-import { router } from "./routers/index.js";
 import { config } from "./config.js";
-import { createContextFactory } from "./http/context.js";
 import type { ServerDependencies } from "./http/context.js";
-
+import type { createApplication } from "./server.js";
 import { onlyApplication } from "./http/response.js";
-import { createFrontend } from "./frontend/index.js";
-import { notFoundResponse } from "./frontend/pages.js";
+import { notFoundResponse } from "./frontend/response.server.js";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
 
-export function createServerOptions(deps: ServerDependencies) {
-  const context = createContextFactory(deps);
-  const index = createFrontend(deps, context);
-  const zodConverter = new ZodToJsonSchemaConverter();
-  const openapiGenerator = new OpenAPIGenerator({
-    converters: [zodConverter],
-  });
-  const openapiHandler = new OpenAPIHandler(router, {
-    plugins: [
-      new RequestCompressionHandlerPlugin(),
-      new RequestLimitHandlerPlugin({ maxBodySize: 2 * 1024 * 1024 }),
-      new ResponseHeadersHandlerPlugin(),
-      new RateLimitHandlerPlugin(),
-      new ResponseCompressionHandlerPlugin(),
-      new CORSHandlerPlugin({
-        allowHeaders: [
-          "Content-Disposition",
-          "Standard-Server",
-          "Content-Type",
-          "Content-Encoding",
-          "Authorization",
-        ],
-        exposeHeaders: [
-          "Content-Disposition",
-          "Standard-Server",
-          "Retry-After",
-          "X-Request-Id",
-          "RateLimit-Limit",
-          "RateLimit-Remaining",
-          "RateLimit-Reset",
-        ],
-      }),
-      new EvlogHandlerPlugin({ logAbort: true }),
-      new SmartCoercionHandlerPlugin({ converters: [zodConverter] }),
-      new OpenAPIReferenceHandlerPlugin({
-        spec: () =>
-          openapiGenerator.generate(contract, {
-            base: {
-              info: { title: "Postplan API", version: "1.0.0" },
-              servers: [{ url: "/api" }],
-              components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } } },
-            },
-          }),
-        providerConfig: { authentication: { securitySchemes: { bearerAuth: {} } } },
-      }),
-    ],
-  });
-  function handleOpenAPIRequest(request: Request, server: Server<undefined>) {
-    return onlyApplication(request, async () => {
-      const { response } = await openapiHandler.handle(request, {
-        prefix: "/api",
-        context: {
-          resolveContext: () => context(request, false, server.requestIP(request)?.address ?? null),
-        },
-      });
-      return response ?? notFoundResponse();
-    });
-  }
-
+export function createServerOptions(
+  deps: ServerDependencies,
+  start: { createApplication: typeof createApplication },
+  clientDirectory = new URL("../client/", import.meta.url),
+) {
+  const application = start.createApplication(deps);
+  const assets = new Map<string, ReturnType<typeof Bun.file>>();
+  const directory = fileURLToPath(clientDirectory);
+  for (const file of new Bun.Glob("**/*").scanSync({ cwd: directory, onlyFiles: true }))
+    assets.set("/" + file.replaceAll("\\", "/"), Bun.file(directory + "/" + file));
   return {
     maxRequestBodySize: 2 * 1024 * 1024,
-    routes: {
-      "/*": (req: Request, server: Server<undefined>) =>
-        index(req, server.requestIP(req)?.address ?? null),
-      "/api": handleOpenAPIRequest,
-      "/api/*": handleOpenAPIRequest,
-      "/healthz": (req: Request) =>
-        onlyApplication(req, async () => {
-          if (req.method !== "GET") return notFoundResponse();
-          try {
-            await deps.db.get(sql`select 1`);
-            return Response.json({ ok: true });
-          } catch {
-            return Response.json({ ok: false }, { status: 503 });
-          }
-        }),
+    fetch: (request: Request, server: Server<undefined>) => {
+      const pathname = new URL(request.url).pathname;
+      const asset = assets.get(pathname);
+      if (asset)
+        return onlyApplication(request, () =>
+          request.method === "GET" || request.method === "HEAD"
+            ? new Response(request.method === "HEAD" ? null : asset, {
+                headers: {
+                  "Content-Type": asset.type,
+                  "Cache-Control": /-[\w-]{8,}\.(js|css)$/.test(pathname)
+                    ? "public, max-age=31536000, immutable"
+                    : "no-cache",
+                },
+              })
+            : notFoundResponse(),
+        );
+      return application(request, server.requestIP(request)?.address ?? null);
     },
-    development: process.env.NODE_ENV !== "production" && { hmr: true, console: true },
   };
 }
 
@@ -114,9 +48,11 @@ async function main(): Promise<void> {
   assertStorageConfigured();
   const { db, client } = createDatabase(config.databasePath);
   await seedAccounts(db, config.bootstrapApiKey);
+  const entry = new URL("../server/server.js", import.meta.url).href;
+  const start: { createApplication: typeof createApplication } = await import(entry);
   const server = serve({
     port: config.port,
-    ...createServerOptions({ db, putHtml: putHtmlObject, getHtml: getHtmlObject }),
+    ...createServerOptions({ db, putHtml: putHtmlObject, getHtml: getHtmlObject }, start),
   });
   console.log(`Postplan listening at ${server.url}`);
   let stopping = false;

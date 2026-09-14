@@ -1,0 +1,47 @@
+import { postOnly } from "../../../../methods.js";
+import { authenticated } from "../../../../auth.js";
+import { createFileRoute } from "@tanstack/react-router";
+import { ORPCError } from "@orpc/server";
+import { parseFormData } from "@orpc/openapi/helpers";
+import { redirect } from "../../../../../http/redirect.js";
+import { notFoundResponse } from "../../../../response.server.js";
+
+import { authenticatedContext } from "../../../../context.server.js";
+import { webAction } from "../../../../../http/web.js";
+
+export const Route = createFileRoute("/dashboard/drafts/$draftId/$action")({
+  server: {
+    middleware: [postOnly, authenticated],
+    handlers: {
+      ANY: () => notFoundResponse(),
+      POST: ({ request, context, params: { draftId, action } }) =>
+        webAction(async () => {
+          const { caller } = await authenticatedContext(request, context);
+          const form = parseFormData(await request.formData());
+          switch (action) {
+            case "update":
+              await caller.drafts.update({
+                draftId,
+                title: form.title ?? "",
+                description: form.description || null,
+              });
+              break;
+            case "disable":
+              await caller.drafts.disable({ draftId });
+              break;
+            case "enable":
+              await caller.drafts.enable({ draftId });
+              break;
+            case "delete":
+              if (form.confirmation !== "DELETE")
+                throw new ORPCError("BAD_REQUEST", { message: "Type DELETE to confirm deletion." });
+              await caller.drafts.delete({ draftId });
+              return redirect("/dashboard");
+            default:
+              throw notFoundResponse();
+          }
+          return redirect(`/dashboard/drafts/${draftId}?saved=1`);
+        }),
+    },
+  },
+});

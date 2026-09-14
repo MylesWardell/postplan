@@ -18,7 +18,7 @@ FROM bun AS runtime
 WORKDIR /app
 ENV NODE_ENV=production DATABASE_PATH=/data/postplan.sqlite
 COPY --from=dependencies /app /app
-COPY --from=build /workspace/apps/server/dist/src ./apps/server/dist/src
+COPY --from=build /workspace/apps/server/dist ./apps/server/dist
 COPY --from=build /workspace/apps/server/drizzle ./apps/server/drizzle
 COPY --from=build /workspace/packages/api/dist/src ./packages/api/dist/src
 RUN mkdir /data && chown bun:bun /data

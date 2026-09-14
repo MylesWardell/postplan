@@ -8,7 +8,7 @@ import { OpenAPILink } from "@orpc/openapi/fetch";
 import { accounts } from "../src/db/schema.js";
 import { createApiKey, seedAccounts } from "../src/routers/account-store.js";
 import { contract, type ApiClient } from "@postplan/api";
-import { createServerOptions } from "../src/index.js";
+import { createServerOptions } from "./start-server.js";
 import { config } from "../src/config.js";
 import { createSessionCookie } from "../src/auth/session.js";
 

@@ -7,19 +7,20 @@ Postplan is a small service and CLI for publishing static HTML drafts from agent
 ```text
 apps/
   cli/             CLI source, agent skill, tsdown output in bin/
-  server/          Bun host: Preact SSR, oRPC implementation, OAuth and S3
+  server/          Bun host: TanStack Start, oRPC implementation, OAuth and S3
 packages/
   api/             oRPC contract: HTTP routes, input/output schemas and client types
 scripts/           Workspace build helpers
 ```
 
-`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/routers` implements it using Drizzle-backed domain procedures; the OpenAPI handler exposes the contract at `/api`, for HTTP clients. Preact pages in `apps/server/src/frontend` call the implementation directly and submit native forms. There is no separate frontend application or browser JavaScript bundle.
+`packages/api` describes the complete API contract, including HTTP methods, paths, status codes, and validation schemas. `apps/server/src/routers` implements it with Drizzle. [TanStack Start](https://tanstack.com/start/latest/docs/framework/react/overview) owns file-based routing, SSR, hydration, and server functions. Page components and their data functions live together in `apps/server/src/frontend/routes`. Server functions call oRPC directly on the server; browser navigation invokes Start's generated endpoints. The bearer API remains at `/api`, mounted through [oRPC's Start adapter pattern](https://orpc.dev/docs/adapters/tanstack-start).
 
 The server follows the [Bun playground's router composition](https://github.com/middleapi/orpc/blob/main/playgrounds/bun/src/routers/index.ts):
 
 ```text
 apps/server/src/
-  index.ts          Bun entry point and Fetch transport wiring
+  index.ts          Bun production host and static assets
+  server.ts         TanStack Start entry and request-scoped dependencies
   context.ts        Database/storage context type
   orpc.ts           implement(contract), public and authenticated middleware
   routers/
@@ -30,11 +31,11 @@ apps/server/src/
   client.ts         Direct server-side caller for SSR
   db/               Drizzle connection, table schema and migration runner
   lib/              HTML policy and public URL helpers
-  frontend/         Preact SSR pages and shared Layout
+  frontend/         Start router, nested file routes and shared Layout
   instrumentation.ts Optional OTLP tracing
 ```
 
-Schemas and HTTP route metadata stay in the exported `contract` from `packages/api`; server procedures only implement it. `index.ts` starts Bun when executed directly, while tests import its request handler without starting infrastructure.
+Schemas and HTTP route metadata stay in the exported `contract` from `packages/api`; server procedures only implement it. `index.ts` starts Bun when executed directly. Integration tests exercise Start's production build with in-memory SQLite and local storage/OAuth fixtures.
 
 ## Development
 
@@ -53,7 +54,7 @@ bun run db:migrate
 bun run start
 ```
 
-For development, use an absolute `DATABASE_PATH` in the shell so migrations and watch mode share the same file. Build once, then run `bun run --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its Preact JSX configuration. Shared package changes need `bun run build` to refresh their exports. Startup seeds account/key records but does not run DDL.
+For development, use an absolute `DATABASE_PATH` in the shell so migrations and Vite share the same file. Build once, then run `bun run --filter @postplan/server dev`. Set environment variables in the shell or create `apps/server/.env` for Bun's automatic loading. Run source commands from `apps/server` so Bun loads its React JSX configuration. Shared package changes need `bun run build` to refresh their exports. Startup seeds account/key records but does not run DDL.
 
 `bun run check` covers formatting, lint, strict types, and tests. Tests include native SQLite migration and HTTP/oRPC and SSR form integration checks, without AWS access. Use `bun run format`, `bun run lint:fix`, and `bun run db:generate` while editing. See [database migration guidance](apps/server/DATABASE.md).
 
@@ -90,15 +91,21 @@ const api = createORPCClient<ApiClient>(
 const { drafts } = await api.drafts.list();
 ```
 
-The native Bun `routes` map mounts SSR at `/*`, the HTTP API at `/api` and `/api/*`, and health checks at `/healthz`. There is no WebSocket transport.
+Start server routes mount the HTTP API at `/api` and `/api/$`, and health checks at `/healthz`. Bun serves the generated client assets and delegates application requests to Start. Public draft HTML is handled before Start, keeping draft hosts isolated from application assets, server functions, and API routes.
 
-The OpenAPI handler uses `RequestLimitHandlerPlugin` (2 MiB after decompression), `RequestCompressionHandlerPlugin`, `ResponseCompressionHandlerPlugin`, `ResponseHeadersHandlerPlugin`, `CORSHandlerPlugin`, `EvlogHandlerPlugin`, `SmartCoercionHandlerPlugin`, and `OpenAPIReferenceHandlerPlugin`, using `ZodToJsonSchemaConverter`. Visit `/api` for the interactive reference and `/api/spec.json` for the contract-generated specification. REST uses bearer authentication; CORS permits bearer clients without credentialed cookies. Bun development mode enables HMR and browser console forwarding; SSR pages need no browser bundle.
+The OpenAPI handler uses `RequestLimitHandlerPlugin` (2 MiB after decompression), `RequestCompressionHandlerPlugin`, `ResponseCompressionHandlerPlugin`, `ResponseHeadersHandlerPlugin`, `CORSHandlerPlugin`, `EvlogHandlerPlugin`, `SmartCoercionHandlerPlugin`, and `OpenAPIReferenceHandlerPlugin`, using `ZodToJsonSchemaConverter`. Visit `/api` for the interactive reference and `/api/spec.json` for the contract-generated specification. REST uses bearer authentication; CORS permits bearer clients without credentialed cookies. Bun runs Vite for development and production builds, following the [Bun Start guide](https://bun.com/guides/ecosystem/tanstack-start).
 
 `instrumentation.ts` follows the example's NodeSDK, auto-instrumentation and oRPC instrumentation setup. Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to your collector's trace endpoint to enable export; `OTEL_SERVICE_NAME` defaults to `postplan`. The app does not assume the example's local Jaeger collector. The playground's sample planet/file/message domains and fake authentication are replaced by real draft/account procedures, Drizzle persistence and signed sessions.
 
 HTML validation is authoritative on the server. The CLI uploads the file and reports the server's validation errors; it no longer bundles a second copy of the policy.
 
-The shared Preact `Layout` supplies navigation and styling. The dashboard supports search, status filters, title/description edits, version history, public access controls, and confirmed deletion. `/cli/auth` creates named keys, shows each token once, and revokes keys.
+`frontend/routes` uses nested folders for pages and form actions: `dashboard/drafts/$draftId/`, `cli/auth/keys/`, and the Shoo endpoints in `auth/`. Each route keeps its API loader beside its UI; auth state does not determine the folder structure. `tsr.config.json` configures the Router CLI, which generates `frontend/routeTree.gen.ts` before builds and type checks. Development watches both the routes and the Bun server. Commit the generated tree; do not edit it manually.
+
+`frontend/router.tsx` creates a fresh router for each SSR request. Authentication state lives in `context.auth`; protected `dashboard/route.tsx` and `cli/auth/route.tsx` layouts apply `beforeLoad: requireAuth` for browser navigation. Protected document/form routes also use shared server middleware, and every data function verifies its session independently. Shoo sign-in and callback remain public server endpoints. Native form handlers preserve statuses, redirects, and cookies; newly minted API keys are displayed once without entering router hydration data.
+
+The root route owns the document shell, `HeadContent`, and `Scripts`. Shared `Layout` supplies the header, navigation, and footer. Styles live in `public/assets/styles.css`. Start builds route chunks into `dist/client` and server code into `dist/server`; Bun's host and migration runner are compiled into `dist/src`. Database, S3, and OAuth code stay behind server functions or server handlers. Application hydration scripts use a per-response CSP nonce; public drafts retain their separate restrictive policy.
+
+The dashboard supports search, status filters, title/description edits, version history, public access controls, and confirmed deletion. `/cli/auth` creates named keys, shows each token once, and revokes keys.
 
 ## CLI
 

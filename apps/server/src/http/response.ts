@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { getDraftIdFromHost } from "./public-url.js";
 import { toORPCError, COMMON_ERROR_STATUS_MAP } from "@orpc/server";
-import { notFoundResponse } from "../frontend/pages.js";
+import { notFoundResponse } from "../frontend/response.server.js";
 
 export function hostDraftId(request: Request): string | null {
   return getDraftIdFromHost({
@@ -21,7 +21,7 @@ export async function respond(action: () => Promise<Response> | Response): Promi
     response = Response.json(failure.toJSON(), { status });
   }
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("Cache-Control", "no-store");
+  if (!response.headers.has("Cache-Control")) response.headers.set("Cache-Control", "no-store");
   response.headers.set("Referrer-Policy", "same-origin");
   return response;
 }

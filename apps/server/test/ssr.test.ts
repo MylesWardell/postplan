@@ -3,17 +3,25 @@ import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "bun:test";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { accounts } from "../src/db/schema.js";
 import { seedAccounts } from "../src/routers/account-store.js";
-import { createServerOptions } from "../src/index.js";
+import { createServerOptions } from "./start-server.js";
 import { config } from "../src/config.js";
-import { createAuthStateCookie, createSessionCookie } from "../src/auth/session.js";
+import {
+  createAuthStateCookie,
+  createSessionCookie,
+  readAuthState,
+  readSession,
+} from "../src/auth/session.js";
+import { resetShooCaches } from "../src/auth/shoo.js";
 
-// Exercise rendered pages and native forms against SQLite, without S3 or OAuth calls.
+// Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
   const { db, client: sqlite } = createDatabase(":memory:");
   let server: ReturnType<typeof Bun.serve> | undefined;
+  let shoo: ReturnType<typeof Bun.serve> | undefined;
   const original = { ...config };
   try {
     await migrate(db, {
@@ -105,6 +113,15 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.equal(preflight.status, 204);
     assert.match(preflight.headers.get("access-control-allow-headers") ?? "", /authorization/i);
     assert.match(await (await get("/dashboard", "")).text(), /Continue with Shoo/);
+    assert.match(
+      await (await get("/dashboard?q=roadmap&status=published", "")).text(),
+      /next=%2Fdashboard%3Fq%3Droadmap%26status%3Dpublished/,
+    );
+    assert.match(await (await get("/", "")).text(), /Good work deserves/);
+    for (const path of ["/missing", "/dashboard/missing", "/cli/auth/missing"]) {
+      assert.equal((await get(path)).status, 404);
+      assert.equal((await get(path, "")).status, 404);
+    }
     assert.match(await (await get("/dashboard")).text(), /Your next idea starts here/);
     const html = "<!doctype html><title>Project roadmap</title><p>First version</p>";
     // Published CLI sends draftId:null for its first upload.
@@ -128,8 +145,81 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.equal(dashboard.status, 200);
     assert.match(dashboard.headers.get("content-security-policy")!, /form-action 'self'/);
     const dashboardHtml = await dashboard.text();
+    assert.match(dashboardHtml, /<link rel="stylesheet" href="\/assets\/styles.css"[^>]*>/);
+    assert.doesNotMatch(dashboardHtml, /<style[\s>]/);
+    assert.match(dashboard.headers.get("content-security-policy")!, /style-src 'self'/);
+    const stylesheet = await get("/assets/styles.css", "");
+    assert.equal(stylesheet.status, 200);
+    assert.match(stylesheet.headers.get("content-type")!, /^text\/css/);
+    const css = await stylesheet.text();
+    assert.match(css, /:root\s*\{/);
+    assert.match(css, /@media/);
+    assert.doesNotMatch(css, /&quot;/);
+    assert.equal((await post("/assets/styles.css")).status, 404);
+    assert.equal((dashboardHtml.match(/<html\b/g) ?? []).length, 1);
+    const nonce = dashboard.headers.get("content-security-policy")!.match(/'nonce-([^']+)'/)?.[1];
+    assert.ok(nonce);
+    const scripts = [...dashboardHtml.matchAll(/<script\b[^>]*>/g)];
+    assert.ok(scripts.length > 0);
+    for (const [tag] of scripts) assert.ok(tag.includes(`nonce="${nonce}"`), tag);
     assert.match(dashboardHtml, /Project roadmap/);
-    assert.doesNotMatch(dashboardHtml.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "", /&quot;/);
+    const concurrentPages = await Promise.all([
+      get("/dashboard").then((response) => response.text()),
+      get("/dashboard", otherCookie).then((response) => response.text()),
+      get(path).then((response) => response.text()),
+      get("/cli/auth").then((response) => response.text()),
+    ]);
+    assert.match(concurrentPages[0]!, /Project roadmap/);
+    assert.doesNotMatch(concurrentPages[1]!, /Project roadmap/);
+    assert.match(concurrentPages[1]!, /Your next idea starts here/);
+    assert.match(concurrentPages[2]!, /Version history/);
+    assert.match(concurrentPages[3]!, /Create a key/);
+    const serverBundle = await Bun.file(
+      new URL("../dist/server/server.js", import.meta.url),
+    ).text();
+    const functionId = serverBundle.match(
+      /"([a-f0-9]+)":\s*\{\s*functionName: "loadDashboard_createServerFn_handler"/,
+    )?.[1];
+    assert.ok(functionId);
+    const functionPath = `/_serverFn/${functionId}`;
+    const loadInBrowser = (sessionCookie: string, site = "same-origin", origin = base) =>
+      app(
+        new Request(base + functionPath, {
+          headers: {
+            cookie: sessionCookie,
+            "sec-fetch-site": site,
+            origin,
+            "x-tsr-serverFn": "true",
+          },
+        }),
+      );
+    const ownerData = await loadInBrowser(cookie);
+    assert.equal(ownerData.status, 200);
+    assert.equal(ownerData.headers.get("cache-control"), "no-store");
+    assert.match(await ownerData.text(), /Project roadmap/);
+    assert.doesNotMatch(await (await loadInBrowser(otherCookie)).text(), /Project roadmap/);
+    assert.doesNotMatch(await (await loadInBrowser("")).text(), /Project roadmap/);
+    assert.equal((await loadInBrowser(cookie, "cross-site", "https://evil.example")).status, 403);
+    assert.equal(
+      (
+        await app(
+          new Request(publicUrl + functionPath, {
+            headers: { cookie, "sec-fetch-site": "same-origin", "x-tsr-serverFn": "true" },
+          }),
+        )
+      ).status,
+      404,
+    );
+    for (const [tag] of scripts) {
+      const source = tag.match(/src="([^"]+)"/)?.[1];
+      if (!source) continue;
+      const asset = await get(source, "");
+      assert.equal(asset.status, 200);
+      assert.match(asset.headers.get("content-type")!, /javascript/);
+      assert.match(asset.headers.get("cache-control")!, /immutable/);
+      assert.equal((await app(new Request(publicUrl + source))).status, 404);
+    }
+    assert.match(await (await get("/dashboard/")).text(), /Project roadmap/);
     assert.match(await (await get("/dashboard?q=absent")).text(), /No drafts match your filters/);
     assert.equal((await get(path, otherCookie)).status, 404);
     assert.equal(
@@ -142,6 +232,14 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     );
     assert.equal((await post(path + "/update", { title: "Stolen" }, publicUrl)).status, 403);
     assert.equal((await post(path + "/update", { title: "" })).status, 400);
+    for (const action of ["update", "disable", "enable", "delete"]) {
+      assert.equal((await get(`${path}/${action}`)).status, 404);
+      assert.equal((await get(`${path}/${action}`, "")).status, 404);
+    }
+    for (const page of ["/", "/dashboard", path, "/cli/auth"]) {
+      assert.equal((await post(page)).status, 404);
+      assert.equal((await post(page, {}, base, "")).status, 404);
+    }
     const edited = await post(path + "/update", {
       title: '<script>alert("x")</script>',
       description: '<img src=x onerror="alert(1)">',
@@ -149,7 +247,7 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.equal(edited.status, 303);
     const detail = await (await get(path + "?saved=1")).text();
     assert.match(detail, /Your changes have been saved/);
-    assert.match(detail, /&lt;script>/);
+    assert.match(detail, /&lt;script&gt;/);
     assert.doesNotMatch(detail, /<script>alert/);
     assert.match(detail, /Version history/);
     assert.match(detail, /--draft /);
@@ -167,6 +265,7 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       "/api/drafts",
       "/ws/rpc",
       "/api/spec.json",
+      "/assets/styles.css",
     ]) {
       assert.equal(
         (await app(new Request(publicUrl + forbidden, { headers: { cookie } }))).status,
@@ -211,6 +310,9 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
       name: string;
     }[];
     const keyId = keys.find((key) => key.name === "Work laptop")!.id;
+    assert.equal(keys.filter((key) => key.name === "Work laptop").length, 1);
+    assert.equal((await get("/cli/auth/keys")).status, 404);
+    assert.equal((await get(`/cli/auth/keys/${keyId}/revoke`)).status, 404);
     assert.equal((await post(`/cli/auth/keys/${keyId}/revoke`, {}, base, otherCookie)).status, 404);
     assert.equal((await post(`/cli/auth/keys/${keyId}/revoke`)).status, 303);
     assert.equal(
@@ -225,6 +327,16 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     const signIn = await get("/auth/sign-in?next=https://evil.example");
     assert.equal(signIn.status, 303);
     assert.match(signIn.headers.get("set-cookie")!, /HttpOnly/);
+    const initialAuthState = readAuthState(
+      new Request(base, {
+        headers: { cookie: signIn.headers.get("set-cookie")! },
+      }),
+    );
+    assert.equal(initialAuthState?.next, "/dashboard");
+    assert.equal(
+      new URL(signIn.headers.get("location")!).searchParams.get("state"),
+      initialAuthState?.state,
+    );
     assert.equal(
       new URL(signIn.headers.get("location")!).searchParams.get("redirect_uri"),
       base + "/auth/callback",
@@ -237,11 +349,76 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     const callback = await get("/auth/callback?state=wrong&code=bad", authCookie);
     assert.equal(callback.status, 400);
     assert.match(callback.headers.get("set-cookie")!, /Max-Age=0/);
+    const cancelled = await get("/auth/callback?error=access_denied", authCookie);
+    assert.equal(cancelled.status, 403);
+    assert.match(cancelled.headers.get("set-cookie")!, /Max-Age=0/);
+    assert.equal((await get("/auth/callback?state=expected", authCookie)).status, 400);
+
+    const { publicKey, privateKey } = await generateKeyPair("ES256");
+    const jwk = { ...(await exportJWK(publicKey)), kid: "test-key", alg: "ES256" };
+    let exchanges = 0;
+    shoo = Bun.serve({
+      hostname: "127.0.0.1",
+      port: 0,
+      async fetch(req) {
+        const path = new URL(req.url).pathname;
+        if (path === "/.well-known/openid-configuration")
+          return Response.json({ issuer: config.shooBaseUrl });
+        if (path === "/.well-known/jwks.json") return Response.json({ keys: [jwk] });
+        if (path === "/token" && req.method === "POST") {
+          exchanges++;
+          const form = await req.formData();
+          assert.equal(form.get("code"), "valid-code");
+          assert.equal(form.get("code_verifier"), "verifier");
+          assert.equal(form.get("redirect_uri"), base + "/auth/callback");
+          const token = await new SignJWT({ pairwise_sub: "iso-user", email: "iso@example.com" })
+            .setProtectedHeader({ alg: "ES256", kid: "test-key" })
+            .setIssuer(config.shooBaseUrl)
+            .setAudience(`origin:${base}`)
+            .setExpirationTime("5m")
+            .sign(privateKey);
+          return Response.json({ id_token: token });
+        }
+        return new Response(null, { status: 404 });
+      },
+    });
+    config.shooBaseUrl = shoo.url.origin;
+    resetShooCaches();
+    const completed = await get("/auth/callback?state=expected&code=valid-code", authCookie);
+    assert.equal(completed.status, 303);
+    assert.equal(completed.headers.get("location"), "/dashboard");
+    assert.equal(exchanges, 1);
+    assert.match(completed.headers.get("set-cookie")!, /postplan_auth_state=;[^,]*Max-Age=0/);
+    const sessionCookie = completed.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("postplan_session="))!;
+    assert.equal(
+      readSession(new Request(base, { headers: { cookie: sessionCookie } }))?.email,
+      "iso@example.com",
+    );
+    assert.match(await (await get("/dashboard", sessionCookie)).text(), /iso@example.com/);
+    assert.equal((await get("/auth/sign-out")).status, 404);
+    assert.equal((await get("/auth/sign-out", "")).status, 404);
+    assert.equal((await post("/auth/sign-in")).status, 404);
+    assert.equal((await post("/auth/callback")).status, 404);
+    const rejectedSignOut = await post("/auth/sign-out", {}, "https://evil.example");
+    assert.equal(rejectedSignOut.status, 403);
+    assert.equal(rejectedSignOut.headers.get("set-cookie"), null);
     const signOut = await post("/auth/sign-out");
     assert.equal(signOut.status, 303);
     assert.match(signOut.headers.get("set-cookie")!, /Max-Age=0/);
+    config.sessionSecret = "";
+    assert.equal((await get("/", "")).status, 200);
+    assert.equal((await get("/dashboard", "")).status, 503);
+    assert.equal((await get("/cli/auth", "")).status, 503);
+    assert.equal((await get("/auth/sign-in", "")).status, 503);
+    assert.equal((await get("/auth/callback", "")).status, 503);
+    assert.equal((await post("/auth/sign-out")).status, 503);
+    assert.equal((await get("/dashboard/missing", "")).status, 404);
   } finally {
     Object.assign(config, original);
+    resetShooCaches();
+    await shoo?.stop(true);
     await server?.stop(true);
     sqlite.close();
   }
