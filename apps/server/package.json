@@ -9,22 +9,29 @@
   "scripts": {
     "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/test/*.test.js",
-    "start": "node --enable-source-maps dist/src/server.js",
-    "dev": "node --import tsx --watch src/server.ts"
+    "test": "bun test ./test",
+    "start": "bun dist/src/server.js",
+    "dev": "bun --watch src/server.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.835.0",
+    "@orpc/client": "2.0.0-beta.35",
+    "@orpc/contract": "2.0.0-beta.35",
+    "@orpc/openapi": "2.0.0-beta.35",
+    "@orpc/server": "2.0.0-beta.35",
     "@postplan/api": "workspace:*",
     "@postplan/core": "workspace:*",
     "@postplan/database": "workspace:*",
-    "@trpc/server": "^11.0.0",
     "drizzle-orm": "^0.45.1",
-    "express": "^5.1.0",
-    "jose": "^6.2.3"
+    "jose": "^6.2.3",
+    "nanoid": "^5.1.5",
+    "preact": "10.29.8",
+    "preact-render-to-string": "^6.6.0",
+    "proxy-addr": "^2.0.7"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
-    "@trpc/client": "^11.18.0"
+    "@types/bun": "1.3.14",
+    "@types/proxy-addr": "^2.0.3"
   }
 }

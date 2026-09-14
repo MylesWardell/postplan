@@ -1,27 +1,25 @@
 import assert from "node:assert/strict";
-import { once } from "node:events";
 import { fileURLToPath } from "node:url";
-import { test } from "node:test";
+import { test } from "bun:test";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { createTRPCClient, httpLink } from "@trpc/client";
+import { createORPCClient } from "@orpc/client";
+import { RPCLink } from "@orpc/client/fetch";
 import { accounts, createApiKey, schema, seedAccounts } from "@postplan/database";
-import type { AppRouter } from "@postplan/api";
+import type { ApiClient } from "@postplan/api";
 import { createApp } from "../src/app.js";
 import { config } from "../src/config.js";
 import { createSessionCookie } from "../src/auth/session.js";
 
-test("tRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
+test("oRPC and REST share draft ownership, versions, storage and session boundaries", async () => {
   const postgres = new PGlite();
   const db = drizzle(postgres, { schema });
   const objects = new Map<string, string>();
   const originalConfig = { ...config };
   let failStorage = false;
   await migrate(db, {
-    migrationsFolder: fileURLToPath(
-      new URL("../../../../packages/database/drizzle", import.meta.url),
-    ),
+    migrationsFolder: fileURLToPath(new URL("../../../packages/database/drizzle", import.meta.url)),
   });
   await seedAccounts(db, "owner-key");
   await db.insert(accounts).values({ id: "other", name: "Other" });
@@ -38,30 +36,30 @@ test("tRPC and REST share draft ownership, versions, storage and session boundar
       return html;
     },
   });
-  const server = app.listen(0, "127.0.0.1");
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: (req) => app(req, "127.0.0.1"),
+  });
   try {
-    await once(server, "listening");
-    const address = server.address();
-    assert.ok(address && typeof address !== "string");
-    const base = `http://127.0.0.1:${address.port}`;
+    const base = server.url.origin;
     config.publicBaseUrl = base;
     config.sessionSecret = "test-session-secret";
     const client = (token?: string, headers: Record<string, string> = {}) =>
-      createTRPCClient<AppRouter>({
-        links: [
-          httpLink({
-            url: `${base}/trpc`,
-            headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
-          }),
-        ],
-      });
+      createORPCClient<ApiClient>(
+        new RPCLink({
+          origin: base,
+          url: "/rpc",
+          headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
+        }),
+      );
     const owner = client("owner-key");
     const other = client(otherKey.token);
     const anonymous = client();
     const html = "<!doctype html><html><head><title>Draft</title></head><body>Résumé</body></html>";
     assert.equal((await fetch(`${base}/healthz`)).status, 200);
-    await assert.rejects(anonymous.drafts.list.query(), /Sign in/);
-    const upload = await owner.drafts.upload.mutate({ html, description: "Original" });
+    await assert.rejects(anonymous.drafts.list(), /Sign in/);
+    const { body: upload } = await owner.drafts.upload({ html, description: "Original" });
     assert.equal(upload.ok, true);
     if (!upload.ok) throw new Error("Upload failed");
     const { draftId } = upload;
@@ -70,7 +68,7 @@ test("tRPC and REST share draft ownership, versions, storage and session boundar
     const raw = await fetch(upload.rawUrl);
     assert.match(raw.headers.get("content-security-policy") ?? "", /script-src 'none'/);
     assert.equal(raw.headers.get("x-postplan-draft-version"), "1");
-    assert.equal((await owner.drafts.list.query()).drafts[0]?.description, "Original");
+    assert.equal((await owner.drafts.list()).drafts[0]?.description, "Original");
     const listed = await fetch(`${base}/api/drafts`, {
       headers: { authorization: "Bearer owner-key" },
     });
@@ -79,14 +77,11 @@ test("tRPC and REST share draft ownership, versions, storage and session boundar
       ((await listed.json()) as { drafts: { draftId: string }[] }).drafts[0]?.draftId,
       draftId,
     );
-    await assert.rejects(other.drafts.detail.query({ draftId }), /Draft not found/);
-    await assert.rejects(
-      other.drafts.update.mutate({ draftId, title: "Stolen" }),
-      /Draft not found/,
-    );
-    await assert.rejects(other.drafts.delete.mutate({ draftId }), /Draft not found/);
-    await assert.rejects(other.drafts.upload.mutate({ html, draftId }), /Draft not found/);
-    assert.equal((await other.drafts.list.query()).drafts.length, 0);
+    await assert.rejects(other.drafts.detail({ draftId }), /Draft not found/);
+    await assert.rejects(other.drafts.update({ draftId, title: "Stolen" }), /Draft not found/);
+    await assert.rejects(other.drafts.delete({ draftId }), /Draft not found/);
+    await assert.rejects(other.drafts.upload({ html, draftId }), /Draft not found/);
+    assert.equal((await other.drafts.list()).drafts.length, 0);
     const updated = await fetch(`${base}/api/uploads`, {
       method: "POST",
       headers: { authorization: "Bearer owner-key", "content-type": "application/json" },
@@ -94,15 +89,15 @@ test("tRPC and REST share draft ownership, versions, storage and session boundar
     });
     assert.equal(updated.status, 200);
     assert.equal(((await updated.json()) as { versionNumber: number }).versionNumber, 2);
-    await owner.drafts.update.mutate({ draftId, title: "Renamed", description: null });
-    const detail = await owner.drafts.detail.query({ draftId });
+    await owner.drafts.update({ draftId, title: "Renamed", description: null });
+    const detail = await owner.drafts.detail({ draftId });
     assert.equal(detail.draft.title, "Renamed");
     assert.equal(detail.draft.description, null);
     assert.equal(detail.versions.length, 2);
-    await owner.drafts.disable.mutate({ draftId });
+    await owner.drafts.disable({ draftId });
     assert.equal((await fetch(upload.publicUrl)).status, 404);
     assert.equal((await fetch(`${base}/d/${draftId}/v/1/raw`)).status, 404);
-    await owner.drafts.enable.mutate({ draftId });
+    await owner.drafts.enable({ draftId });
     assert.equal((await fetch(`${base}/d/${draftId}/v/1/raw`)).status, 200);
     const cookie = createSessionCookie({
       accountId: "acct_bootstrap",
@@ -111,45 +106,36 @@ test("tRPC and REST share draft ownership, versions, storage and session boundar
       pictureUrl: null,
     }).split(";")[0]!;
     const session = client(undefined, { cookie, origin: base });
-    await session.drafts.update.mutate({ draftId, description: "From frontend" });
-    assert.equal(
-      (await session.drafts.detail.query({ draftId })).draft.description,
-      "From frontend",
-    );
+    await session.drafts.update({ draftId, description: "From frontend" });
+    assert.equal((await session.drafts.detail({ draftId })).draft.description, "From frontend");
     await assert.rejects(
-      client(undefined, { cookie, origin: "https://evil.example" }).drafts.delete.mutate({
+      client(undefined, { cookie, origin: "https://evil.example" }).drafts.delete({
         draftId,
       }),
       /application origin/,
     );
     await assert.rejects(
-      client(undefined, { cookie }).drafts.delete.mutate({ draftId }),
+      client(undefined, { cookie }).drafts.delete({ draftId }),
       /application origin/,
     );
     await assert.rejects(
-      client("invalid", { cookie, origin: base }).drafts.list.query(),
+      client("invalid", { cookie, origin: base }).drafts.list(),
       /Invalid API key/,
     );
     assert.equal((await fetch(`${base}/api/drafts`, { headers: { cookie } })).status, 401);
-    assert.equal((await anonymous.drafts.upload.mutate({ html })).ok, true);
-    assert.equal((await owner.drafts.upload.mutate({ html: "<form></form>" })).ok, false);
-    const before = (await owner.drafts.detail.query({ draftId })).versions.length;
+    assert.equal((await anonymous.drafts.upload({ html })).body.ok, true);
+    await assert.rejects(owner.drafts.upload({ html: "<form></form>" }), /HTML validation failed/);
+    const before = (await owner.drafts.detail({ draftId })).versions.length;
     failStorage = true;
-    await assert.rejects(owner.drafts.upload.mutate({ html, draftId }), /Internal server error/);
+    await assert.rejects(owner.drafts.upload({ html, draftId }), /Internal server error/i);
     failStorage = false;
-    assert.equal((await owner.drafts.detail.query({ draftId })).versions.length, before);
-    const key = await owner.apiKeys.create.mutate({ name: "temporary" });
-    await assert.rejects(
-      other.apiKeys.revoke.mutate({ apiKeyId: key.apiKey.id }),
-      /API key not found/,
-    );
-    await owner.apiKeys.revoke.mutate({ apiKeyId: key.apiKey.id });
-    await assert.rejects(client(key.token).account.me.query(), /Invalid API key/);
-    for (let i = 0; i < 9; i++) await owner.apiKeys.create.mutate({ name: "Rate test" });
-    await assert.rejects(
-      owner.apiKeys.create.mutate({ name: "Over limit" }),
-      /Rate limit exceeded/,
-    );
+    assert.equal((await owner.drafts.detail({ draftId })).versions.length, before);
+    const key = await owner.apiKeys.create({ name: "temporary" });
+    await assert.rejects(other.apiKeys.revoke({ apiKeyId: key.apiKey.id }), /API key not found/);
+    await owner.apiKeys.revoke({ apiKeyId: key.apiKey.id });
+    await assert.rejects(client(key.token).account.me(), /Invalid API key/);
+    for (let i = 0; i < 9; i++) await owner.apiKeys.create({ name: "Rate test" });
+    await assert.rejects(owner.apiKeys.create({ name: "Over limit" }), /Rate limit exceeded/);
     assert.equal(
       (
         await fetch(`${base}/api/api-keys`, {
@@ -160,15 +146,12 @@ test("tRPC and REST share draft ownership, versions, storage and session boundar
       ).status,
       429,
     );
-    await owner.drafts.delete.mutate({ draftId });
+    await owner.drafts.delete({ draftId });
     assert.equal((await fetch(upload.publicUrl)).status, 404);
-    assert.equal((await owner.drafts.list.query()).drafts.length, 0);
+    assert.equal((await owner.drafts.list()).drafts.length, 0);
   } finally {
     Object.assign(config, originalConfig);
-    server.closeAllConnections();
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    );
+    await server.stop(true);
     await postgres.close();
   }
-});
+}, 30_000);

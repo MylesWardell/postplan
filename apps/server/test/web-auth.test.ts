@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
-import type { Request } from "express";
+import { test } from "bun:test";
 import { readCookie, signToken, verifyToken } from "../src/auth/session.js";
 
 const secret = "test-secret";
@@ -27,8 +26,7 @@ test("rejects tampered, wrong-secret, expired, and malformed tokens", () => {
 });
 
 test("readCookie finds the named cookie and tolerates bad escapes", () => {
-  const req = (cookie: string) =>
-    ({ get: (name: string) => (name === "cookie" ? cookie : undefined) }) as unknown as Request;
+  const req = (cookie: string) => new Request("http://localhost", { headers: { cookie } });
   assert.equal(
     readCookie(req("a=1; postplan_session=abc%2Edef; b=2"), "postplan_session"),
     "abc.def",

@@ -1,48 +1,43 @@
-import type { Server } from "node:http";
+import { serve } from "bun";
 import { createApp } from "./app.js";
 import { config } from "./config.js";
+import { maxBodyBytes } from "./http/body.js";
 import { createDatabase, seedAccounts } from "@postplan/database";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
 
 const { db, pool } = createDatabase(config);
-
-// How long to let in-flight requests finish after SIGTERM before forcing exit.
-// Keep below the orchestrator's stop timeout (ECS stopTimeout defaults to 30s).
-const SHUTDOWN_GRACE_MS = Number(process.env.SHUTDOWN_GRACE_MS || 20_000);
-
 async function main(): Promise<void> {
   assertStorageConfigured();
   await seedAccounts(db, config.bootstrapApiKey);
-
   const app = createApp({ db, putHtml: putHtmlObject, getHtml: getHtmlObject });
-  const server = app.listen(config.port, () => {
-    console.log(`Postplan listening on port ${config.port}`);
+  const server = serve({
+    port: config.port,
+    maxRequestBodySize: maxBodyBytes,
+    fetch: (req, server) => app(req, server.requestIP(req)?.address ?? null),
   });
-
-  for (const signal of ["SIGTERM", "SIGINT"] as const) {
-    process.once(signal, () => shutdown(server, signal));
-  }
+  console.log(`Postplan listening on port ${server.port}`);
+  let stopping = false;
+  for (const signal of ["SIGTERM", "SIGINT"] as const)
+    process.once(signal, async () => {
+      if (stopping) return;
+      stopping = true;
+      console.log(`Received ${signal}; shutting down.`);
+      // Drain before closing PostgreSQL; keep below ECS's task stop timeout.
+      const force = setTimeout(
+        () => process.exit(1),
+        Number(process.env.SHUTDOWN_GRACE_MS || 20_000),
+      );
+      force.unref();
+      try {
+        await server.stop();
+        await pool.end();
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        process.exit(1);
+      }
+    });
 }
-
-// Rolling deploys (ECS, Railway) send SIGTERM and deregister the task from the
-// load balancer; stop accepting connections, drain, then close the pool.
-function shutdown(server: Server, signal: string): void {
-  console.log(`Received ${signal}; shutting down.`);
-  const force = setTimeout(() => {
-    console.error("Graceful shutdown timed out; exiting.");
-    process.exit(1);
-  }, SHUTDOWN_GRACE_MS);
-  force.unref();
-
-  server.close(() => {
-    pool
-      .end()
-      .catch((error: unknown) => console.error(error))
-      .finally(() => process.exit(0));
-  });
-  server.closeIdleConnections();
-}
-
 main().catch((error: unknown) => {
   console.error(error);
   process.exit(1);

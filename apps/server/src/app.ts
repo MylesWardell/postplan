@@ -1,67 +1,78 @@
-import express from "express";
-import type { ErrorRequestHandler, Express } from "express";
-import { TRPCError } from "@trpc/server";
-import { getHTTPStatusCodeFromError } from "@trpc/server/http";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "@postplan/api/server";
+import { RPCHandler } from "@orpc/server/fetch";
 import { sql } from "drizzle-orm";
+import { router } from "./rpc/router.js";
 import { config } from "./config.js";
 import { createContextFactory } from "./http/context.js";
 import type { ServerDependencies } from "./http/context.js";
-import { registerRestRoutes } from "./http/rest.js";
-import { registerDraftRoutes } from "./http/drafts.js";
-import { registerWebRoutes } from "./http/web.js";
-import { renderNotFound } from "./views/home.js";
-import { errorMessage, statusCodeOf } from "./http/errors.js";
+import { OpenAPIHandler } from "@orpc/openapi/fetch";
+import { uploadRejected } from "@postplan/api";
+import { draftResponse } from "./http/drafts.js";
+import { webResponse } from "./http/web.js";
+import { errorResponse } from "./http/errors.js";
+import { boundedRequest } from "./http/body.js";
 import { getDraftIdFromHost } from "./http/public-url.js";
+import { notFoundResponse } from "./views/pages.js";
 
-export function createApp(deps: ServerDependencies): Express {
-  const app = express();
+// Bun Fetch entry point, also callable directly by integration tests.
+export function createApp(deps: ServerDependencies) {
   const context = createContextFactory(deps);
-  app.set("trust proxy", config.trustProxy);
-  app.use((_req, res, next) => {
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Cache-Control", "no-store");
-    next();
-  });
-  app.get("/healthz", async (_req, res) => {
-    try {
-      await deps.db.execute(sql`select 1`);
-      res.json({ ok: true });
-    } catch {
-      res.status(503).json({ ok: false });
-    }
-  });
-  app.use(["/api", "/trpc"], express.json({ limit: process.env.UPLOAD_BODY_LIMIT || "2mb" }));
-  app.use(
-    "/trpc",
-    (req, res, next) => {
-      if (getDraftIdFromHost({ publicBaseUrl: config.publicBaseUrl, host: req.hostname })) {
-        res.status(404).end();
-        return;
+  const rpc = new RPCHandler(router);
+  const api = new OpenAPIHandler(router, {
+    customErrorResponseBodyEncoder: (error) => {
+      if (error.code === "UNPROCESSABLE_ENTITY") {
+        const result = uploadRejected.safeParse(error.data);
+        if (result.success) return result.data;
       }
-      next();
+      return { ok: false, error: error.message };
     },
-    createExpressMiddleware({
-      router: appRouter,
-      createContext: ({ req }) => context(req),
-      allowBatching: false,
-    }),
-  );
-  registerRestRoutes(app, context);
-  registerWebRoutes(app, deps.db, context);
-  registerDraftRoutes(app, deps);
-  app.use((_req, res) => res.status(404).type("html").send(renderNotFound()));
-  const errors: ErrorRequestHandler = (error, _req, res, _next) => {
-    const status =
-      error instanceof TRPCError ? getHTTPStatusCodeFromError(error) : statusCodeOf(error);
-    if (status >= 500) console.error(error);
-    if (error instanceof TRPCError && error.code === "TOO_MANY_REQUESTS")
-      res.setHeader("Retry-After", "60");
-    res
-      .status(status)
-      .json({ ok: false, error: status >= 500 ? "Internal server error." : errorMessage(error) });
+  });
+  return async (request: Request, peerIp: string | null = null): Promise<Response> => {
+    let response: Response;
+    try {
+      const url = new URL(request.url);
+      const draftId = getDraftIdFromHost({
+        publicBaseUrl: config.publicBaseUrl,
+        host: url.hostname,
+      });
+      if (url.pathname === "/healthz" && request.method === "GET" && !draftId) {
+        try {
+          await deps.db.execute(sql`select 1`);
+          response = Response.json({ ok: true });
+        } catch {
+          response = Response.json({ ok: false }, { status: 503 });
+        }
+      } else if (!draftId && (url.pathname === "/rpc" || url.pathname.startsWith("/rpc/"))) {
+        const req = await boundedRequest(request);
+        response =
+          (
+            await rpc.handle(req, {
+              prefix: "/rpc",
+              context: { resolveContext: () => context(req, true, peerIp) },
+            })
+          ).response ?? notFoundResponse();
+      } else if (!draftId && url.pathname.startsWith("/api/")) {
+        const req = await boundedRequest(request);
+        response =
+          (
+            await api.handle(req, {
+              prefix: "/api",
+              context: { resolveContext: () => context(req, false, peerIp) },
+            })
+          ).response ?? notFoundResponse();
+      } else {
+        response =
+          (await draftResponse(request, deps, draftId)) ??
+          (!draftId
+            ? await webResponse(await boundedRequest(request), deps.db, context, peerIp)
+            : undefined) ??
+          notFoundResponse();
+      }
+    } catch (error) {
+      response = errorResponse(error);
+    }
+    response.headers.set("X-Content-Type-Options", "nosniff");
+    response.headers.set("Cache-Control", "no-store");
+    response.headers.set("Referrer-Policy", "same-origin");
+    return response;
   };
-  app.use(errors);
-  return app;
 }

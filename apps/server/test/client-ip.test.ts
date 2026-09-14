@@ -1,30 +1,22 @@
 import assert from "node:assert/strict";
-import { once } from "node:events";
-import { test } from "node:test";
-import express from "express";
+import { test } from "bun:test";
 import { clientIp } from "../src/http/client-ip.js";
 import { config } from "../src/config.js";
-
-test("ALB configuration ignores forged X-Real-IP and prepended forwarding entries", async () => {
-  const previous = config.clientIpSource;
-  config.clientIpSource = "req-ip";
-  const app = express();
-  app.set("trust proxy", 1);
-  app.get("/", (req, res) => res.json({ ip: clientIp(req) }));
-  const server = app.listen(0, "127.0.0.1");
+test("ALB ignores forged X-Real-IP and prepended forwarding entries", () => {
+  const previous = { ...config };
   try {
-    await once(server, "listening");
-    const address = server.address();
-    assert.ok(address && typeof address !== "string");
-    const response = await fetch(`http://127.0.0.1:${address.port}/`, {
+    config.clientIpSource = "req-ip";
+    config.trustProxy = 1;
+    const req = new Request("http://localhost", {
       headers: { "X-Real-IP": "192.0.2.66", "X-Forwarded-For": "192.0.2.66, 198.51.100.42" },
     });
-    assert.deepEqual(await response.json(), { ip: "198.51.100.42" });
+    assert.equal(clientIp(req, "10.0.0.1"), "198.51.100.42");
+    config.trustProxy = false;
+    assert.equal(clientIp(req, "10.0.0.1"), "10.0.0.1");
+    config.trustProxy = "10.0.0.0/8";
+    assert.equal(clientIp(req, "10.0.0.1"), "198.51.100.42");
+    assert.equal(clientIp(req, "203.0.113.1"), "203.0.113.1");
   } finally {
-    config.clientIpSource = previous;
-    server.closeAllConnections();
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    );
+    Object.assign(config, previous);
   }
 });

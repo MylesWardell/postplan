@@ -1,12 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
+import { ORPCError } from "@orpc/server";
 import { drafts, draftVersions, uploadEvents, publicUploadAuth } from "@postplan/database";
 import type { Database } from "@postplan/database";
 import { validateHtml } from "@postplan/core";
 import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/core/public-url";
-import type { ApiContext } from "./context.js";
+import type { ApiContext } from "../rpc/context.js";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 export function cleanText(value: unknown, maxLength = 255): string | null {
@@ -88,6 +88,7 @@ export async function getAccountDraftWithVersions(
       draftId,
       title: draft.title,
       description: draft.description,
+      disabled: Boolean(draft.disabled_at),
       ...urls(draftId, context),
     },
     versions,
@@ -135,7 +136,7 @@ export async function updateOwnedDraft(
     .set({ ...values, updated_at: new Date() })
     .where(and(eq(drafts.id, draftId), eq(drafts.account_id, accountId), isNull(drafts.deleted_at)))
     .returning({ id: drafts.id });
-  if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found." });
+  if (!draft) throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
   return { ok: true as const };
 }
 
@@ -171,7 +172,7 @@ export async function uploadDraft(ctx: ApiContext, input: UploadInput) {
           .for("update")
       : [];
     if (input.draftId && !existing)
-      throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found." });
+      throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
     const draftId = existing?.id ?? newDraftId();
     const [latest] = existing
       ? await tx

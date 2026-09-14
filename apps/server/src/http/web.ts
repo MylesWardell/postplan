@@ -1,11 +1,12 @@
-import type { Express, NextFunction, Request, Response } from "express";
+import { ORPCError } from "@orpc/server";
 import { config } from "../config.js";
 import { findOrCreateAccountForIdentity } from "@postplan/database";
 import type { Database } from "@postplan/database";
-import { appRouter } from "@postplan/api/server";
+import { createCaller } from "../rpc/router.js";
 import type { ContextFactory } from "./context.js";
-import { errorMessage, routeParam } from "./errors.js";
-import { getDraftIdFromHost, getHomeUrl } from "./public-url.js";
+import { formBody } from "./body.js";
+import { errorMessage, errorStatus } from "./errors.js";
+import { getHomeUrl } from "./public-url.js";
 import { buildAuthorizeUrl, buildPkce, exchangeCode, verifyIdToken } from "../auth/shoo.js";
 import {
   clearAuthStateCookie,
@@ -16,218 +17,163 @@ import {
   readSession,
 } from "../auth/session.js";
 import {
-  renderAuthError,
-  renderCliAuth,
-  renderCliAuthKey,
-  renderDashboard,
-  renderDraftDetail,
-  renderSignIn,
-} from "../views/dashboard.js";
+  homeResponse,
+  signInResponse,
+  messageResponse,
+  dashboardResponse,
+  detailResponse,
+  keysResponse,
+} from "../views/pages.js";
 
-// Server-rendered web UI: shoo sign-in, the drafts dashboard, and the /cli/auth
-// key page. Apex-domain only — on draft subdomains these paths fall through to
-// the 404 handler so a draft origin can never serve dashboard UI.
-export function registerWebRoutes(app: Express, db: Database, context: ContextFactory): void {
-  const web = [onlyApex, requireConfigured];
-  app.get("/auth/sign-in", ...web, (req, res) => {
+function redirect(path: string, cookies: string[] = []): Response {
+  const headers = new Headers({ Location: path });
+  for (const cookie of cookies) headers.append("Set-Cookie", cookie);
+  return new Response(null, { status: 303, headers });
+}
+
+export async function webResponse(
+  req: Request,
+  db: Database,
+  context: ContextFactory,
+  peerIp: string | null,
+): Promise<Response | undefined> {
+  const url = new URL(req.url);
+  const path = url.pathname;
+  if (req.method === "GET" && path === "/") return homeResponse(readSession(req));
+  if (!/^\/(auth|dashboard|cli\/auth)(\/|$)/.test(path)) return;
+  if (!config.sessionSecret || !config.publicBaseUrl)
+    return messageResponse(
+      "Sign-in unavailable",
+      "Web sign-in has not been configured for this deployment.",
+      503,
+    );
+  if (req.method === "GET" && path === "/auth/sign-in") {
     const { verifier, challenge, state } = buildPkce();
-    const nextPath = safeNextPath(req.query.next);
-    res.append("Set-Cookie", createAuthStateCookie({ state, verifier, next: nextPath }));
-    res.redirect(buildAuthorizeUrl({ redirectUri: callbackUrl(), state, challenge }));
-  });
-
-  app.get("/auth/callback", ...web, async (req, res, next) => {
-    try {
-      res.append("Set-Cookie", clearAuthStateCookie());
-
-      // The only error shoo redirects back is user consent denial.
-      if (req.query.error === "access_denied") {
-        return res
-          .status(403)
-          .type("html")
-          .send(
-            renderAuthError({
-              message:
-                "Sign-in was cancelled or consent was declined. Postplan uses your email and profile picture to identify your account — retry and approve to continue.",
-            }),
-          );
-      }
-
-      const authState = readAuthState(req);
-      const { code, state } = req.query;
-      if (!authState || typeof state !== "string" || state !== authState.state) {
-        return res
-          .status(400)
-          .type("html")
-          .send(renderAuthError({ message: "Sign-in expired or state mismatch. Please retry." }));
-      }
-      if (typeof code !== "string" || !code) {
-        return res
-          .status(400)
-          .type("html")
-          .send(renderAuthError({ message: "Missing authorization code." }));
-      }
-
-      // Exchange/verification failures are expected OAuth outcomes (expired
-      // or replayed 120s codes, shoo hiccups) — render a retryable page, not
-      // the JSON 500 handler.
-      let claims;
-      try {
-        const tokens = await exchangeCode({
-          code,
-          verifier: authState.verifier,
-          redirectUri: callbackUrl(),
-        });
-        claims = await verifyIdToken(tokens.id_token, { audOrigin: webOrigin() });
-      } catch (error) {
-        console.error("shoo sign-in failed:", errorMessage(error));
-        return res
-          .status(502)
-          .type("html")
-          .send(renderAuthError({ message: "Sign-in could not be completed. Please retry." }));
-      }
-
-      const account = await findOrCreateAccountForIdentity(db, {
-        provider: "shoo",
-        subject: claims.pairwise_sub,
-        // Profile claims are present only with pii consent, and each is
-        // individually optional (depends on the Google profile). Blank or
-        // whitespace-only strings mean "absent", never a stored value.
-        profile: {
-          email: claimText(claims.email),
-          emailVerified: typeof claims.email_verified === "boolean" ? claims.email_verified : null,
-          displayName: claimText(claims.name),
-          pictureUrl: claimText(claims.picture),
-          piiSubject: claimText(claims.pii_sub),
-        },
-      });
-
-      res.append("Set-Cookie", createSessionCookie(account));
-      res.redirect(safeNextPath(authState.next));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.post("/auth/sign-out", onlyApex, async (req, res) => {
-    await context(req);
-    res.append("Set-Cookie", clearSessionCookie());
-    res.redirect("/");
-  });
-
-  app.get("/dashboard", ...web, async (req, res, next) => {
-    try {
-      const session = readSession(req);
-      if (!session) {
-        return res.type("html").send(renderSignIn({ next: "/dashboard" }));
-      }
-      const { drafts } = await appRouter.createCaller(await context(req)).drafts.list();
-      res.type("html").send(renderDashboard({ session, drafts }));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.get("/dashboard/drafts/:draftId", ...web, async (req, res, next) => {
-    try {
-      const session = readSession(req);
-      if (!session) {
-        return res.type("html").send(renderSignIn({ next: "/dashboard" }));
-      }
-      const result = await appRouter
-        .createCaller(await context(req))
-        .drafts.detail({ draftId: routeParam(req, "draftId") });
-      if (!result) return next();
-      res.type("html").send(
-        renderDraftDetail({
-          session,
-          draft: result.draft,
-          versions: result.versions,
-        }),
-      );
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.get("/cli/auth", ...web, async (req, res, next) => {
-    try {
-      const session = readSession(req);
-      if (!session) {
-        return res.type("html").send(renderSignIn({ next: "/cli/auth" }));
-      }
-      res.type("html").send(
-        renderCliAuth({
-          session,
-          keys: await appRouter.createCaller(await context(req)).apiKeys.list(),
-        }),
-      );
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Mints a fresh named key for the signed-in account and shows it once.
-  // POST + SameSite=Lax session cookie keeps cross-site requests out.
-  app.post("/cli/auth/keys", ...web, async (req, res, next) => {
-    try {
-      const session = readSession(req);
-      if (!session) {
-        return res.type("html").send(renderSignIn({ next: "/cli/auth" }));
-      }
-
-      const keyName = `CLI · ${new Date().toISOString().slice(0, 10)}`;
-      const { token } = await appRouter
-        .createCaller(await context(req))
-        .apiKeys.create({ name: keyName });
-
-      res.type("html").send(renderCliAuthKey({ session, token, keyName }));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.post("/cli/auth/keys/:apiKeyId/revoke", ...web, async (req, res, next) => {
-    try {
-      const session = readSession(req);
-      if (!session) {
-        return res.type("html").send(renderSignIn({ next: "/cli/auth" }));
-      }
-      await appRouter
-        .createCaller(await context(req))
-        .apiKeys.revoke({ apiKeyId: routeParam(req, "apiKeyId") });
-      res.redirect("/cli/auth");
-    } catch (error) {
-      next(error);
-    }
-  });
-}
-
-// Web sign-in needs a session secret and a configured public base URL (the
-// shoo redirect_uri must be a stable, exact string — never request-derived).
-function requireConfigured(req: Request, res: Response, next: NextFunction): void {
-  if (!config.sessionSecret || !config.publicBaseUrl) {
-    res
-      .status(503)
-      .type("html")
-      .send(
-        renderAuthError({
-          message:
-            "Web sign-in is not configured on this deployment (POSTPLAN_SESSION_SECRET / POSTPLAN_PUBLIC_BASE_URL).",
-        }),
-      );
-    return;
+    return redirect(buildAuthorizeUrl({ redirectUri: callbackUrl(), state, challenge }), [
+      createAuthStateCookie({ state, verifier, next: safeNextPath(url.searchParams.get("next")) }),
+    ]);
   }
-  next();
+  if (req.method === "GET" && path === "/auth/callback") {
+    const response = await authCallback(req, db);
+    response.headers.append("Set-Cookie", clearAuthStateCookie());
+    return response;
+  }
+  const session = readSession(req);
+  if (!session) return signInResponse(safeNextPath(path));
+  try {
+    const caller = createCaller(await context(req, true, peerIp));
+    if (req.method === "POST" && path === "/auth/sign-out")
+      return redirect("/", [clearSessionCookie()]);
+    if (req.method === "GET" && path === "/dashboard")
+      return dashboardResponse(
+        session,
+        (await caller.drafts.list()).drafts,
+        url.searchParams.get("q") ?? "",
+        url.searchParams.get("status") ?? "all",
+      );
+    if (req.method === "GET" && path === "/cli/auth")
+      return keysResponse(session, await caller.apiKeys.list());
+    if (req.method === "POST" && path === "/cli/auth/keys") {
+      const form = await formBody(req);
+      const keyName = form.get("name") || `CLI · ${new Date().toISOString().slice(0, 10)}`;
+      const { token } = await caller.apiKeys.create({ name: keyName });
+      return keysResponse(session, await caller.apiKeys.list(), token, keyName);
+    }
+    const key = path.match(/^\/cli\/auth\/keys\/([^/]+)\/revoke$/);
+    if (req.method === "POST" && key) {
+      await caller.apiKeys.revoke({ apiKeyId: key[1]! });
+      return redirect("/cli/auth");
+    }
+    const draft = path.match(/^\/dashboard\/drafts\/([^/]+)(?:\/(update|disable|enable|delete))?$/);
+    if (draft) {
+      const draftId = draft[1]!;
+      if (req.method === "GET" && !draft[2])
+        return detailResponse(
+          session,
+          await caller.drafts.detail({ draftId }),
+          url.searchParams.get("saved") === "1",
+        );
+      if (req.method === "POST" && draft[2]) {
+        const form = await formBody(req);
+        switch (draft[2]) {
+          case "update":
+            await caller.drafts.update({
+              draftId,
+              title: form.get("title") ?? "",
+              description: form.get("description") || null,
+            });
+            break;
+          case "disable":
+            await caller.drafts.disable({ draftId });
+            break;
+          case "enable":
+            await caller.drafts.enable({ draftId });
+            break;
+          case "delete":
+            if (form.get("confirmation") !== "DELETE")
+              throw new ORPCError("BAD_REQUEST", { message: "Type DELETE to confirm deletion." });
+            await caller.drafts.delete({ draftId });
+            return redirect("/dashboard");
+        }
+        return redirect(`/dashboard/drafts/${draftId}?saved=1`);
+      }
+    }
+  } catch (error) {
+    const status = errorStatus(error);
+    if (status >= 500) console.error(error);
+    return messageResponse(
+      "Request could not be completed",
+      status >= 500 ? "Please try again in a moment." : errorMessage(error),
+      status,
+    );
+  }
 }
 
-function onlyApex(req: Request, _res: Response, next: NextFunction): void {
-  const draftId = getDraftIdFromHost({
-    publicBaseUrl: config.publicBaseUrl,
-    host: req.hostname || req.get("host"),
+async function authCallback(req: Request, db: Database): Promise<Response> {
+  const params = new URL(req.url).searchParams;
+  if (params.get("error") === "access_denied")
+    return messageResponse(
+      "Sign-in cancelled",
+      "Consent was declined. Retry sign-in and approve to continue.",
+      403,
+    );
+  const state = readAuthState(req);
+  if (!state || params.get("state") !== state.state)
+    return messageResponse(
+      "Sign-in expired",
+      "The sign-in state did not match. Please retry.",
+      400,
+    );
+  const code = params.get("code");
+  if (!code) return messageResponse("Sign-in incomplete", "Missing authorization code.", 400);
+  let claims;
+  try {
+    const tokens = await exchangeCode({
+      code,
+      verifier: state.verifier,
+      redirectUri: callbackUrl(),
+    });
+    claims = await verifyIdToken(tokens.id_token, { audOrigin: webOrigin() });
+  } catch (error) {
+    console.error("shoo sign-in failed:", errorMessage(error));
+    return messageResponse(
+      "Sign-in unavailable",
+      "Sign-in could not be completed. Please retry.",
+      502,
+    );
+  }
+  const account = await findOrCreateAccountForIdentity(db, {
+    provider: "shoo",
+    subject: claims.pairwise_sub,
+    profile: {
+      email: claimText(claims.email),
+      emailVerified: typeof claims.email_verified === "boolean" ? claims.email_verified : null,
+      displayName: claimText(claims.name),
+      pictureUrl: claimText(claims.picture),
+      piiSubject: claimText(claims.pii_sub),
+    },
   });
-  if (draftId) return next("route");
-  next();
+  return redirect(safeNextPath(state.next), [createSessionCookie(account)]);
 }
 
 function webOrigin(): string {

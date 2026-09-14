@@ -10,14 +10,6 @@
     ".": {
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
-    },
-    "./server": {
-      "types": "./dist/src/router.d.ts",
-      "default": "./dist/src/router.js"
-    },
-    "./drafts": {
-      "types": "./dist/src/drafts.d.ts",
-      "default": "./dist/src/drafts.js"
     }
   },
   "scripts": {
@@ -25,11 +17,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@postplan/core": "workspace:*",
-    "@postplan/database": "workspace:*",
-    "@trpc/server": "^11.0.0",
-    "drizzle-orm": "^0.45.1",
-    "nanoid": "^5.1.5",
+    "@orpc/contract": "2.0.0-beta.35",
+    "@orpc/openapi": "2.0.0-beta.35",
     "zod": "^4.0.0"
   }
 }

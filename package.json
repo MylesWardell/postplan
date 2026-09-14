@@ -18,7 +18,6 @@
     "db:migrate": "pnpm --filter @postplan/database build && node --env-file-if-exists=.env packages/database/dist/src/migrate.js"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "@types/node": "^22.20.2",
     "@types/pg": "^8.23.1",
     "oxfmt": "0.67.0",
@@ -29,6 +28,7 @@
     "typescript": "^5.9.3"
   },
   "engines": {
+    "bun": ">=1.3.14",
     "node": ">=22.20.0",
     "pnpm": ">=11 <12"
   },

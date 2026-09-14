@@ -1,20 +1,22 @@
-import type { Request } from "express";
-
-// Express 5 types every route param as `string | string[]` (the array form is
-// only produced by `*splat` segments, which postplan does not use).
-export function routeParam(req: Request, name: string): string {
-  const value = req.params[name];
-  return typeof value === "string" ? value : "";
-}
-
+import { COMMON_ERROR_STATUS_MAP } from "@orpc/client";
+import { ORPCError } from "@orpc/server";
 export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
+export function errorResponse(error: unknown): Response {
+  const status = errorStatus(error);
+  if (status >= 500) console.error(error);
+  return Response.json(
+    { ok: false, error: status >= 500 ? "Internal server error." : errorMessage(error) },
+    {
+      status,
+      headers: status === 429 ? { "Retry-After": "60" } : {},
+    },
+  );
+}
 
-export function statusCodeOf(error: unknown): number {
-  if (typeof error === "object" && error !== null) {
-    const status = (error as { statusCode?: unknown }).statusCode;
-    if (typeof status === "number" && status > 0) return status;
-  }
-  return 500;
+export function errorStatus(error: unknown): number {
+  return error instanceof ORPCError
+    ? ((COMMON_ERROR_STATUS_MAP as Record<string, number>)[error.code] ?? 500)
+    : 500;
 }

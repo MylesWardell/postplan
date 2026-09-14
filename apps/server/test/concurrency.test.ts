@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
-import { test } from "node:test";
+import { test } from "bun:test";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import {
   createDatabase,
@@ -8,11 +8,10 @@ import {
   findOrCreateAccountForIdentity,
   seedAccounts,
 } from "@postplan/database";
-import { appRouter } from "@postplan/api/server";
+import { createCaller } from "../src/rpc/router.js";
 
-test(
+(process.env.TEST_DATABASE_URL ? test : test.skip)(
   "separate PostgreSQL connections serialize draft versions and concurrent first logins",
-  { skip: !process.env.TEST_DATABASE_URL },
   async () => {
     const { db, pool } = createDatabase({
       databaseUrl: process.env.TEST_DATABASE_URL,
@@ -21,11 +20,11 @@ test(
     try {
       await migrate(db, {
         migrationsFolder: fileURLToPath(
-          new URL("../../../../packages/database/drizzle", import.meta.url),
+          new URL("../../../packages/database/drizzle", import.meta.url),
         ),
       });
       await seedAccounts(db, "concurrency-key");
-      const caller = appRouter.createCaller({
+      const caller = createCaller({
         db,
         apiKey: await findApiKeyByToken(db, "concurrency-key"),
         session: null,
@@ -39,14 +38,14 @@ test(
         limit: () => {},
       });
       const html = "<!doctype html><title>Concurrent</title><p>Versions</p>";
-      const first = await caller.drafts.upload({ html });
+      const { body: first } = await caller.drafts.upload({ html });
       assert.ok(first.ok);
       if (!first.ok) throw new Error("Upload failed");
       const versions = await Promise.all(
         Array.from({ length: 6 }, () => caller.drafts.upload({ html, draftId: first.draftId })),
       );
       assert.deepEqual(
-        versions.map((version) => (version.ok ? version.versionNumber : -1)).sort((a, b) => a - b),
+        versions.map((version) => version.body.versionNumber).sort((a, b) => a - b),
         [2, 3, 4, 5, 6, 7],
       );
       assert.equal(

@@ -22,7 +22,7 @@ export interface Config {
   sessionSecret: string | undefined;
   shooBaseUrl: string;
   // Edge/proxy topology. Defaults preserve the Railway behaviour; see
-  // src/client-ip.ts and docs/aws-deployment-plan.md for the AWS (ALB) values.
+  // src/http/client-ip.ts and docs/aws-deployment-plan.md for the AWS (ALB) values.
   trustProxy: TrustProxySetting;
   clientIpSource: ClientIpSource;
   requestIdHeader: string;
@@ -66,7 +66,7 @@ export function requireEnv(name: string, value: string | undefined): string {
   return value;
 }
 
-// Mirrors Express's own "trust proxy" forms: true/false, a hop count, or a
+// Accepts the proxy-addr trust forms: true/false, a hop count, or a
 // comma-separated list of trusted addresses/subnets. Defaults to true, which
 // is what the Railway deployment has always used.
 function parseTrustProxy(value: string | undefined): TrustProxySetting {

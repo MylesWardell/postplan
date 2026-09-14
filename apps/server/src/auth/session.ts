@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { Request } from "express";
 import { config } from "../config.js";
 import type { Session } from "./types.js";
 
@@ -97,7 +96,7 @@ export function readAuthState(req: Request): AuthState | null {
 }
 
 export function readCookie(req: Request, name: string): string | null {
-  const header = req.get("cookie") || "";
+  const header = req.headers.get("cookie") || "";
   for (const part of header.split(";")) {
     const eq = part.indexOf("=");
     if (eq === -1) continue;

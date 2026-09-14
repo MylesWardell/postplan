@@ -1,8 +1,7 @@
-import { TRPCError } from "@trpc/server";
+import { ORPCError } from "@orpc/server";
 import { findApiKeyByToken } from "@postplan/database";
 import type { Database } from "@postplan/database";
-import type { ApiContext } from "@postplan/api/server";
-import type { Request } from "express";
+import type { ApiContext } from "../rpc/context.js";
 import { config } from "../config.js";
 import { clientIp } from "./client-ip.js";
 import { getHomeUrl, getRequestBaseUrl } from "./public-url.js";
@@ -43,37 +42,38 @@ export function createContextFactory(deps: ServerDependencies) {
     if (!bucket || bucket.resetAt <= now) {
       // Bound memory even when many unique identities arrive in one window.
       if (buckets.size >= 100_000)
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
+        throw new ORPCError("TOO_MANY_REQUESTS", {
           message: "Rate limiter capacity reached.",
         });
       bucket = { count: 0, resetAt: now + rule.window };
       buckets.set(key, bucket);
     }
     if (++bucket.count > rule.max)
-      throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
+      throw new ORPCError("TOO_MANY_REQUESTS", {
         message: "Rate limit exceeded.",
         cause: { retryAfter: Math.ceil((bucket.resetAt - now) / 1000) },
       });
   };
-  return async function createContext(req: Request, allowSession = true): Promise<ApiContext> {
-    const authorization = req.get("authorization");
+  return async function createContext(
+    req: Request,
+    allowSession = true,
+    peerIp: string | null = null,
+  ): Promise<ApiContext> {
+    const authorization = req.headers.get("authorization");
     const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
     const apiKey = token ? await findApiKeyByToken(deps.db, token) : null;
     if (authorization && !apiKey)
-      throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid API key." });
+      throw new ORPCError("UNAUTHORIZED", { message: "Invalid API key." });
     const session = allowSession && !authorization ? readSession(req) : null;
     if (session) {
       const home = new URL(
         getHomeUrl({ publicBaseUrl: config.publicBaseUrl, requestBaseUrl: getRequestBaseUrl(req) }),
       );
       if (
-        req.hostname !== home.hostname ||
-        (req.method !== "GET" && req.get("origin") !== home.origin)
+        new URL(req.url).hostname !== home.hostname ||
+        (req.method !== "GET" && req.headers.get("origin") !== home.origin)
       ) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
+        throw new ORPCError("FORBIDDEN", {
           message: "Session requests must use the application origin.",
         });
       }
@@ -84,9 +84,9 @@ export function createContextFactory(deps: ServerDependencies) {
       session,
       requestBaseUrl: getRequestBaseUrl(req),
       publicBaseUrl: config.publicBaseUrl,
-      sourceIp: clientIp(req),
-      userAgent: req.get("user-agent") ?? null,
-      requestId: req.get(config.requestIdHeader)?.slice(0, 255) ?? null,
+      sourceIp: clientIp(req, peerIp),
+      userAgent: req.headers.get("user-agent") ?? null,
+      requestId: req.headers.get(config.requestIdHeader)?.slice(0, 255) ?? null,
       maxHtmlBytes: config.maxHtmlBytes,
       putHtml: deps.putHtml,
       limit,
