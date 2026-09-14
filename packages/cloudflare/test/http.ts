@@ -5,7 +5,7 @@ import { z } from "zod";
 // Deliberately local-only: these checks create application records.
 const base = "http://localhost:5173";
 const token = "local-application-test";
-const html = "<!doctype html><title>Connector acceptance</title><p>Local only â€” ä¸–ç•Œ</p>";
+const html = "<!doctype html><title>Connector acceptance</title><p>Local only — 世界</p>";
 const upload = z.object({
   ok: z.literal(true),
   draftId: z.string(),

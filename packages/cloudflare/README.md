@@ -1,5 +1,7 @@
 # Cloudflare application connector
 
+The [optimization investigation](../../docs/cloudflare-optimization-investigation.md) includes the latest remote CPU comparison. The current build still exceeds Workers Free's CPU allowance on dashboard renders and uploads; public access remains disabled.
+
 The selectable Worker serves the shared API and TanStack Start dashboard using D1, private R2 Standard storage and a SQLite Durable Object limiter. Application routes are opt-in with `POSTPLAN_APPLICATION_ENABLED=true`; the checked-in configuration keeps them disabled. The existing remote experiment remains stopped.
 
 ## Package layout

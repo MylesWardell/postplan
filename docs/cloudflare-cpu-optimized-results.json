@@ -1,0 +1,668 @@
+{
+  "testedAt": "2026-09-14",
+  "commit": "61f815d",
+  "workerVersion": "9f352233-4b87-4279-bfdd-d26d947d78fd",
+  "source": "Cloudflare Workers Observability invocation CPU; exact version, request index and case within test timeframe",
+  "plan": "Workers Free",
+  "requests": 92,
+  "measuredInvocations": 88,
+  "applicationInvocations": 87,
+  "summary": {
+    "homepage": {
+      "samples": 8,
+      "medianMs": 15.0,
+      "minMs": 4,
+      "maxMs": 49,
+      "over10Ms": 4
+    },
+    "upload-5356": {
+      "samples": 3,
+      "medianMs": 29,
+      "minMs": 13,
+      "maxMs": 46,
+      "over10Ms": 3
+    },
+    "upload-65536": {
+      "samples": 3,
+      "medianMs": 31,
+      "minMs": 30,
+      "maxMs": 81,
+      "over10Ms": 3
+    },
+    "upload-524288": {
+      "samples": 3,
+      "medianMs": 88,
+      "minMs": 79,
+      "maxMs": 122,
+      "over10Ms": 3
+    },
+    "health": {
+      "samples": 8,
+      "medianMs": 3.0,
+      "minMs": 2,
+      "maxMs": 10,
+      "over10Ms": 0
+    },
+    "api-me": {
+      "samples": 6,
+      "medianMs": 5.5,
+      "minMs": 4,
+      "maxMs": 19,
+      "over10Ms": 1
+    },
+    "api-list-58": {
+      "samples": 8,
+      "medianMs": 10.5,
+      "minMs": 7,
+      "maxMs": 35,
+      "over10Ms": 4
+    },
+    "dashboard-58": {
+      "samples": 8,
+      "medianMs": 20.5,
+      "minMs": 15,
+      "maxMs": 52,
+      "over10Ms": 8
+    },
+    "dashboard-detail": {
+      "samples": 8,
+      "medianMs": 6.5,
+      "minMs": 5,
+      "maxMs": 15,
+      "over10Ms": 1
+    },
+    "public-5356": {
+      "samples": 10,
+      "medianMs": 3.0,
+      "minMs": 2,
+      "maxMs": 5,
+      "over10Ms": 0
+    },
+    "public-65536": {
+      "samples": 9,
+      "medianMs": 2,
+      "minMs": 2,
+      "maxMs": 5,
+      "over10Ms": 0
+    },
+    "public-524288": {
+      "samples": 10,
+      "medianMs": 3.0,
+      "minMs": 2,
+      "maxMs": 6,
+      "over10Ms": 0
+    },
+    "unauth-upload": {
+      "samples": 3,
+      "medianMs": 4,
+      "minMs": 4,
+      "maxMs": 6,
+      "over10Ms": 0
+    }
+  },
+  "perRequest": [
+    {
+      "case": "ingress-readiness",
+      "httpStatus": 404,
+      "cpuMs": null,
+      "outcome": null
+    },
+    {
+      "case": "ingress-readiness",
+      "httpStatus": 503,
+      "cpuMs": 1,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 49,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 31,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 46,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 24,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "homepage",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-5356",
+      "httpStatus": 201,
+      "cpuMs": 46,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-65536",
+      "httpStatus": 201,
+      "cpuMs": 81,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-524288",
+      "httpStatus": 201,
+      "cpuMs": 122,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 10,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "health",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": 19,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": null,
+      "outcome": null
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": null,
+      "outcome": null
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-me",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 14,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 35,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 11,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 8,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 13,
+      "outcome": "ok"
+    },
+    {
+      "case": "api-list-58",
+      "httpStatus": 200,
+      "cpuMs": 10,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 28,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 25,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 18,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 52,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 22,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 19,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 15,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-58",
+      "httpStatus": 200,
+      "cpuMs": 18,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 15,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 8,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 9,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 7,
+      "outcome": "ok"
+    },
+    {
+      "case": "dashboard-detail",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-5356",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": null,
+      "outcome": null
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-65536",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 5,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 3,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "public-524288",
+      "httpStatus": 200,
+      "cpuMs": 2,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-5356",
+      "httpStatus": 200,
+      "cpuMs": 29,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-5356",
+      "httpStatus": 200,
+      "cpuMs": 13,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-65536",
+      "httpStatus": 200,
+      "cpuMs": 31,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-65536",
+      "httpStatus": 200,
+      "cpuMs": 30,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-524288",
+      "httpStatus": 200,
+      "cpuMs": 88,
+      "outcome": "ok"
+    },
+    {
+      "case": "upload-524288",
+      "httpStatus": 200,
+      "cpuMs": 79,
+      "outcome": "ok"
+    },
+    {
+      "case": "unauth-upload",
+      "httpStatus": 401,
+      "cpuMs": 6,
+      "outcome": "ok"
+    },
+    {
+      "case": "unauth-upload",
+      "httpStatus": 401,
+      "cpuMs": 4,
+      "outcome": "ok"
+    },
+    {
+      "case": "unauth-upload",
+      "httpStatus": 401,
+      "cpuMs": 4,
+      "outcome": "ok"
+    }
+  ],
+  "cleanup": {
+    "newObjectsDeletedAndVerifiedAbsent": 9,
+    "activeDrafts": 0,
+    "versionRows": 0,
+    "testKeyRevoked": true,
+    "stopLatched": true,
+    "publicIngressDisabled": true,
+    "cumulativeReservedWrites": 18,
+    "cumulativeReservedReads": 58,
+    "cumulativeReservedBytes": 3571080
+  }
+}

@@ -1,5 +1,7 @@
 # Workers Free CPU test
 
+Follow-up: the [optimization investigation](./cloudflare-optimization-investigation.md) records the cleaned package and a second bounded remote run. Dashboard median CPU was 20.5 ms and upload medians were 29–88 ms; the Free CPU release gate remains unmet.
+
 **Result: the current application does not reliably fit the 10 ms CPU allowance.** All eight renders of the 58-plan dashboard and all nine uploads exceeded it. Low daily traffic provides ample request/storage headroom, but does not reduce CPU work per request.
 
 Tested 14 September 2026 on the existing personal-account `postplan-clone` Worker, Workers Free, version `f29190e2-2e2b-45f9-942f-0ff4eda7873e`, built from commit `7c81b8cb038ce0cd5e7eab3e3e376a1b8a91ef76`. Measurements come from Cloudflare Workers Observability invocation logs (`$workers.cpuTimeMs`), matched to unique request markers and the exact deployed version. The [sanitized per-request results](./cloudflare-cpu-results.json) preserve the evidence without credentials or content.

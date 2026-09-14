@@ -38,7 +38,7 @@ test("concurrent writes cannot cross lifetime capacity and exhausted reads never
 
 test("stop latch blocks both storage directions, and oversized UTF-8 does not reserve", async () => {
   const storage = applicationStorage(env.POSTPLAN_DB, env.HTML_BUCKET);
-  await expect(storage.putHtml("big", "Ã©".repeat(262145))).rejects.toMatchObject({
+  await expect(storage.putHtml("big", "é".repeat(262145))).rejects.toMatchObject({
     code: "PAYLOAD_TOO_LARGE",
   });
   expect(

@@ -69,7 +69,7 @@ Recovery is manual: investigate the report, fix the cause, confirm usage headroo
 
 GitHub can delay or drop scheduled runs. An unavailable runner, missing/expired token, malformed local policy, Cloudflare control-plane outage or cancellation can prevent shutdown; inspect failed/missing runs. The monitor cannot stop already-running requests, internal recursive calls, Durable Object alarms, direct authenticated R2 clients or unrelated resources. Stored data can continue accruing storage charges after traffic stops. Removing a Worker route can expose its underlying origin, so the zone allowlist must only contain routes whose origins are independently safe. [GitHub schedule limitations](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
 
-The experiment's private bucket and hard 20-probe × 512 KiB lifetime budget remain its immediate R2 safeguard. This workflow is additional protection; it cannot guarantee zero account-wide overages. The [PizzaConsole article](https://pizzaconsole.com/blog/posts/programming/cf-overage) motivated the monitor/disconnect/manual-recovery approach, adapted here to GitHub Actions and the Free-plan experiment.
+The application's private bucket and lifetime limits of 2,000 writes, 1 GiB of cumulative HTML and 250,000 reads provide its immediate R2 safeguard. This workflow is additional protection; it cannot guarantee zero account-wide overages. The [PizzaConsole article](https://pizzaconsole.com/blog/posts/programming/cf-overage) motivated the monitor/disconnect/manual-recovery approach, adapted here to GitHub Actions and Workers Free.
 
 ## Validation: 14 September 2026
 
