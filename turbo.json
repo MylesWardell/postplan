@@ -3,10 +3,16 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/scripts/clean.ts",
+        "$TURBO_ROOT$/tsconfig.base.json"
+      ],
       "outputs": ["dist/**", "bin/**"]
     },
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/tsconfig.base.json"]
     },
     "test": {
       "dependsOn": ["build"],
@@ -17,6 +23,5 @@
       "cache": false,
       "persistent": true
     }
-  },
-  "globalDependencies": ["tsconfig.base.json", "scripts/**"]
+  }
 }

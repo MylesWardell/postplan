@@ -24,6 +24,12 @@
       "sourceType": "github",
       "skillPath": "skills/orpc-openapi/SKILL.md",
       "computedHash": "1554fc8ba7a7a62c70927f99ed51ff5b6baf613deed092400460bbf9dc4a3927"
+    },
+    "turborepo": {
+      "source": "vercel/turborepo",
+      "sourceType": "github",
+      "skillPath": "skills/turborepo/SKILL.md",
+      "computedHash": "47a3efd6a45597eeff338b218183d4d67c2b99fa085ca255e970f5370dcd9dbd"
     }
   }
 }

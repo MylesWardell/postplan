@@ -22,3 +22,6 @@ data/
 infra/terraform/bootstrap/backend.tf
 crash.log
 crash.*.log
+
+# Recreated by scripts/setup/link-skills.ts, points at .agents/skills.
+.claude/skills

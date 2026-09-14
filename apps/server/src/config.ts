@@ -117,7 +117,7 @@ export function parseAllowedLoginDomains(value: string | undefined): string[] {
   const domains = raw.split(",").map((entry) => entry.trim().toLowerCase().replace(/^@/, ""));
   if (domains.some((domain) => !isDomain(domain))) {
     throw new Error(
-      "Invalid POSTPLAN_ALLOWED_LOGIN_DOMAINS (expected comma-separated domains such as abx.com,kinesis.money).",
+      "Invalid POSTPLAN_ALLOWED_LOGIN_DOMAINS (expected comma-separated domains such as example.com,test.dev).",
     );
   }
   return [...new Set(domains)];
