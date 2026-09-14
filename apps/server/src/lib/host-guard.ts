@@ -1,5 +1,5 @@
 import { config } from "#config";
-import { notFoundResponse } from "#frontend/pages";
+import { notFoundResponse } from "#frontend/response.server";
 import { getDraftIdFromHost } from "./public-url.js";
 import { respond } from "./respond.js";
 

@@ -1,14 +1,33 @@
-import type { Session } from "#auth/types";
-import { Layout, page } from "./layout.js";
-import type { AccountDraft } from "@postplan/api";
-import { date, Status } from "./shared.js";
+import { getOnly } from "#frontend/methods";
+import { authenticated } from "#frontend/auth";
+import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
+import { authenticatedContext } from "#frontend/context.server";
 
-export function dashboardResponse(
-  session: Session,
-  drafts: AccountDraft[],
-  query: string,
-  status: string,
-): Response {
+const loadDashboard = createServerFn({ method: "GET" }).handler(async ({ context }) => {
+  const { session, caller } = await authenticatedContext(getRequest(), context);
+  return { session, drafts: (await caller.drafts.list()).drafts };
+});
+
+import { Link, createFileRoute } from "@tanstack/react-router";
+import { Layout } from "#frontend/layout";
+import { date, Status } from "#frontend/shared";
+
+export const Route = createFileRoute("/dashboard/")({
+  server: { middleware: [getOnly, authenticated] },
+  loader: async ({ location }) => {
+    const url = new URL(location.href, "http://localhost");
+    return {
+      ...(await loadDashboard()),
+      query: url.searchParams.get("q") ?? "",
+      status: url.searchParams.get("status") ?? "all",
+    };
+  },
+  component: DashboardPage,
+});
+
+function DashboardPage() {
+  const { session, drafts, query, status } = Route.useLoaderData();
   const filtered = drafts.filter(
     (draft) =>
       (!query ||
@@ -17,61 +36,61 @@ export function dashboardResponse(
           .includes(query.toLowerCase())) &&
       (status === "disabled" ? draft.disabled : status === "published" ? !draft.disabled : true),
   );
-  return page(
+  return (
     <Layout title="Your drafts" session={session} active="drafts">
-      <p class="eyebrow">Workspace</p>
-      <div class="heading">
+      <p className="eyebrow">Workspace</p>
+      <div className="heading">
         <div>
           <h1>Your drafts</h1>
-          <p class="muted">A little less scattered. All your shared work, in one place.</p>
+          <p className="muted">A little less scattered. All your shared work, in one place.</p>
         </div>
-        <a class="button" href="/cli/auth">
+        <Link className="button" to="/cli/auth">
           Connect your CLI ↗
-        </a>
+        </Link>
       </div>
-      <div class="stats">
-        <div class="stat">
+      <div className="stats">
+        <div className="stat">
           <span>Total drafts</span>
           <strong>{drafts.length}</strong>
         </div>
-        <div class="stat">
+        <div className="stat">
           <span>Published</span>
           <strong>{drafts.filter((draft) => !draft.disabled).length}</strong>
         </div>
-        <div class="stat">
+        <div className="stat">
           <span>Saved versions</span>
           <strong>{drafts.reduce((sum, draft) => sum + draft.versionCount, 0)}</strong>
         </div>
       </div>
-      <section class="panel">
-        <div class="panel-head">
+      <section className="panel">
+        <div className="panel-head">
           <h2>
-            Draft library <span class="muted">· {filtered.length}</span>
+            Draft library <span className="muted">· {filtered.length}</span>
           </h2>
-          <form class="search" method="get" action="/dashboard">
+          <form className="search" method="get" action="/dashboard">
             <input
               type="search"
               name="q"
               aria-label="Search drafts"
               placeholder="Search drafts…"
-              value={query}
+              defaultValue={query}
             />
-            <select name="status" aria-label="Publication status" value={status}>
+            <select name="status" aria-label="Publication status" defaultValue={status}>
               <option value="all">All statuses</option>
               <option value="published">Published</option>
               <option value="disabled">Disabled</option>
             </select>
-            <button class="secondary">Filter</button>
+            <button className="secondary">Filter</button>
           </form>
         </div>
         {filtered.length ? (
-          <div class="table-scroll">
-            <table class="library">
+          <div className="table-scroll">
+            <table className="library">
               <thead>
                 <tr>
                   <th>Draft</th>
                   <th>Status</th>
-                  <th class="hide-small">Versions</th>
+                  <th className="hide-small">Versions</th>
                   <th>Updated · UTC</th>
                   <th>
                     <span aria-label="Actions">↗</span>
@@ -82,28 +101,33 @@ export function dashboardResponse(
                 {filtered.map((draft) => (
                   <tr key={draft.draftId}>
                     <td>
-                      <a class="draft-title" href={`/dashboard/drafts/${draft.draftId}`}>
+                      <Link
+                        className="draft-title"
+                        to="/dashboard/drafts/$draftId/"
+                        params={{ draftId: draft.draftId }}
+                      >
                         {draft.title}
-                      </a>
-                      <span class="description">
+                      </Link>
+                      <span className="description">
                         {draft.description || draft.repoName || "No description yet"}
                       </span>
                     </td>
                     <td>
                       <Status disabled={draft.disabled} />
                     </td>
-                    <td class="hide-small">
+                    <td className="hide-small">
                       v{draft.latestVersionNumber ?? 0}
-                      <span class="repo"> · {draft.versionCount} saved</span>
+                      <span className="repo"> · {draft.versionCount} saved</span>
                     </td>
-                    <td class="nowrap muted">{date(draft.updatedAt)}</td>
+                    <td className="nowrap muted">{date(draft.updatedAt)}</td>
                     <td>
-                      <a
-                        href={`/dashboard/drafts/${draft.draftId}`}
+                      <Link
+                        to="/dashboard/drafts/$draftId/"
+                        params={{ draftId: draft.draftId }}
                         aria-label={`Manage ${draft.title}`}
                       >
                         Manage →
-                      </a>
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -111,8 +135,8 @@ export function dashboardResponse(
             </table>
           </div>
         ) : (
-          <div class="empty">
-            <span class="mark" aria-hidden="true">
+          <div className="empty">
+            <span className="mark" aria-hidden="true">
               p
             </span>
             <h2>{drafts.length ? "No drafts match your filters" : "Your next idea starts here"}</h2>
@@ -121,16 +145,16 @@ export function dashboardResponse(
                 ? "Try another search or clear your filters to see all your drafts."
                 : "Connect your CLI, then publish your first HTML file. Every version will find a home here."}
             </p>
-            <a class="button secondary" href={drafts.length ? "/dashboard" : "/cli/auth"}>
+            <a className="button secondary" href={drafts.length ? "/dashboard" : "/cli/auth"}>
               {drafts.length ? "Clear filters" : "Set up your CLI"}
             </a>
           </div>
         )}
       </section>
-      <div class="hint">
+      <div className="hint">
         <span>Upload a new draft from your terminal.</span>
         <code>postplan upload ./plan.html</code>
       </div>
-    </Layout>,
+    </Layout>
   );
 }
