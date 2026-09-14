@@ -19,7 +19,7 @@ export function createApp(deps: ServerDependencies) {
   const rpc = new RPCHandler(router);
   const api = new OpenAPIHandler(router, {
     customErrorResponseBodyEncoder: (error) => {
-      if (error.code === "UNPROCESSABLE_ENTITY") {
+      if (error.code === "UNPROCESSABLE_CONTENT") {
         const result = uploadRejected.safeParse(error.data);
         if (result.success) return result.data;
       }
@@ -70,6 +70,7 @@ export function createApp(deps: ServerDependencies) {
     } catch (error) {
       response = errorResponse(error);
     }
+    if (response.status === 429) response.headers.set("Retry-After", "60");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("Referrer-Policy", "same-origin");

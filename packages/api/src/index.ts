@@ -105,7 +105,7 @@ export const contract = {
       .output(ok),
     upload: oc
       .meta(openapi({ method: "POST", path: "/uploads", outputStructure: "detailed" }))
-      .errors({ UNPROCESSABLE_ENTITY: { data: uploadRejected } })
+      .errors({ UNPROCESSABLE_CONTENT: { data: uploadRejected } })
       .input(
         z.object({
           html: z.unknown().optional(),

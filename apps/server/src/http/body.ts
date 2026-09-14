@@ -7,19 +7,15 @@ export async function boundedRequest(req: Request): Promise<Request> {
   const reader = req.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > maxBodyBytes) {
-        await reader.cancel();
-        throw new ORPCError("PAYLOAD_TOO_LARGE");
-      }
-      chunks.push(value);
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBodyBytes) {
+      await reader.cancel();
+      throw new ORPCError("PAYLOAD_TOO_LARGE");
     }
-  } finally {
-    reader.releaseLock();
+    chunks.push(value);
   }
   return new Request(req.url, {
     method: req.method,

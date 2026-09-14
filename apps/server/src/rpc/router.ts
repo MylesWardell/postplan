@@ -75,7 +75,7 @@ export const router = base.router({
         throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
       const result = await uploadDraft(ctx, input);
       if (!result.ok)
-        throw new ORPCError("UNPROCESSABLE_ENTITY", {
+        throw new ORPCError("UNPROCESSABLE_CONTENT", {
           message: "HTML validation failed.",
           data: result,
         });
