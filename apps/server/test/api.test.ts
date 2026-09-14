@@ -26,7 +26,9 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
   const options = createServerOptions({
     db,
     putHtml: async (key, html) => {
-      if (failStorage) throw new Error("Storage unavailable");
+      if (failStorage) {
+        throw new Error("Storage unavailable");
+      }
       objects.set(key, html);
     },
     getHtml: async (key) => {
@@ -60,7 +62,9 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     await assert.rejects(anonymous.drafts.list(), /Sign in/);
     const { body: upload } = await owner.drafts.upload({ html, description: "Original" });
     assert.equal(upload.ok, true);
-    if (!upload.ok) throw new Error("Upload failed");
+    if (!upload.ok) {
+      throw new Error("Upload failed");
+    }
     const { draftId } = upload;
     assert.equal(await (await fetch(upload.publicUrl)).text(), html);
     assert.equal(await (await fetch(upload.rawUrl)).text(), html);
@@ -131,7 +135,9 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     await owner.apiKeys.revoke({ apiKeyId: key.apiKey.id });
     await assert.rejects(revokedClient.account.me(), /Invalid API key/);
     await assert.rejects(client(key.token).account.me(), /Invalid API key/);
-    for (let i = 0; i < 9; i++) await owner.apiKeys.create({ name: "Rate test" });
+    for (let i = 0; i < 9; i++) {
+      await owner.apiKeys.create({ name: "Rate test" });
+    }
     await assert.rejects(owner.apiKeys.create({ name: "Over limit" }), {
       code: "TOO_MANY_REQUESTS",
     });

@@ -13,7 +13,9 @@ export const publicOS = implement(contract)
   // Request metadata: echo the edge request id and capture caller details.
   .use(({ context: { request, peerIp, resHeaders }, next }) => {
     const requestId = request.headers.get(config.requestIdHeader)?.slice(0, 255) ?? null;
-    if (requestId) resHeaders?.set("X-Request-Id", requestId);
+    if (requestId) {
+      resHeaders?.set("X-Request-Id", requestId);
+    }
     return next({
       context: {
         requestId,
@@ -31,10 +33,13 @@ export const publicOS = implement(contract)
     const authorization = request.headers.get("authorization");
     const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
     const apiKey = token ? await findApiKeyByToken(db, token) : null;
-    if (authorization && !apiKey)
+    if (authorization && !apiKey) {
       throw new ORPCError("UNAUTHORIZED", { message: "Invalid API key." });
+    }
     const session = allowSession && !authorization ? readSession(request) : null;
-    if (session) assertApplicationOrigin(request);
+    if (session) {
+      assertApplicationOrigin(request);
+    }
     return next({ context: { apiKey, session } });
   });
 
@@ -42,7 +47,8 @@ export const protectedOS = publicOS.use(({ context, next }) => {
   const account = context.apiKey
     ? { accountId: context.apiKey.accountId, accountName: context.apiKey.accountName }
     : context.session;
-  if (!account)
+  if (!account) {
     throw new ORPCError("UNAUTHORIZED", { message: "Sign in or provide a valid API key." });
+  }
   return next({ context: { account } });
 });

@@ -25,8 +25,9 @@ export async function requireAuth({
   location: { href: string };
 }): Promise<{ auth: AuthState }> {
   const { auth } = context;
-  if (!auth.session && typeof window !== "undefined")
+  if (!auth.session && typeof window !== "undefined") {
     throw redirect({ href: location.href, reloadDocument: true });
+  }
   return { auth };
 }
 

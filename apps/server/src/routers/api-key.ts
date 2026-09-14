@@ -21,7 +21,8 @@ export const createApiKey = protectedOS.apiKeys.create
     return insertApiKey(ctx.db, ctx.account.accountId, input.name || "CLI API Key");
   });
 export const revokeApiKey = protectedOS.apiKeys.revoke.handler(async ({ context: ctx, input }) => {
-  if (!(await revokeAccountApiKey(ctx.db, ctx.account.accountId, input.apiKeyId)))
+  if (!(await revokeAccountApiKey(ctx.db, ctx.account.accountId, input.apiKeyId))) {
     throw new ORPCError("NOT_FOUND", { message: "API key not found." });
+  }
   return { ok: true };
 });

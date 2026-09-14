@@ -21,7 +21,9 @@ export const getDraft = protectedOS.drafts.detail.handler(async ({ context: ctx,
     input.draftId,
     ctx,
   );
-  if (!result) throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+  if (!result) {
+    throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+  }
   return result;
 });
 export const updateDraft = protectedOS.drafts.update.handler(
@@ -57,13 +59,15 @@ export const uploadDraft = publicOS.drafts.upload
     }),
   )
   .handler(async ({ context: ctx, input, errors }) => {
-    if (ctx.session && !ctx.apiKey)
+    if (ctx.session && !ctx.apiKey) {
       throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
+    }
     const result = await persistUpload(ctx, input);
-    if (!result.ok)
+    if (!result.ok) {
       throw errors.UNPROCESSABLE_CONTENT({
         message: "HTML validation failed.",
         data: result,
       });
+    }
     return { status: result.versionNumber === 1 ? (201 as const) : (200 as const), body: result };
   });

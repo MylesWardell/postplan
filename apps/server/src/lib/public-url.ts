@@ -79,26 +79,36 @@ export function getDraftIdFromHost({
   host: string | undefined;
 }): string | null {
   const wildcard = parseWildcardBaseUrl(publicBaseUrl);
-  if (!wildcard) return null;
+  if (!wildcard) {
+    return null;
+  }
 
   const rootHost = wildcard.hostname.slice(2).toLowerCase();
   const requestHost = parseHost(host);
-  if (!requestHost || !requestHost.endsWith(`.${rootHost}`)) return null;
+  if (!requestHost || !requestHost.endsWith(`.${rootHost}`)) {
+    return null;
+  }
 
   const draftId = requestHost.slice(0, -(rootHost.length + 1));
-  if (draftId.includes(".") || !DRAFT_ID_PATTERN.test(draftId)) return null;
+  if (draftId.includes(".") || !DRAFT_ID_PATTERN.test(draftId)) {
+    return null;
+  }
   return draftId;
 }
 
 function parseWildcardBaseUrl(value: string | undefined): URL | null {
   const url = parseUrl(value);
-  if (!url || !url.hostname.startsWith("*.")) return null;
+  if (!url || !url.hostname.startsWith("*.")) {
+    return null;
+  }
   return url;
 }
 
 function parseHost(value: string | undefined): string | null {
   const normalized = String(value || "").trim();
-  if (!normalized) return null;
+  if (!normalized) {
+    return null;
+  }
 
   try {
     return new URL(`http://${normalized}`).hostname.toLowerCase();
@@ -109,7 +119,9 @@ function parseHost(value: string | undefined): string | null {
 
 function parseUrl(value: string | undefined): URL | null {
   const normalized = normalizeUrl(value);
-  if (!normalized) return null;
+  if (!normalized) {
+    return null;
+  }
 
   try {
     return new URL(normalized);
@@ -119,7 +131,9 @@ function parseUrl(value: string | undefined): URL | null {
 }
 
 function normalizeUrl(value: string | undefined): string {
-  if (typeof value !== "string") return "";
+  if (typeof value !== "string") {
+    return "";
+  }
   return value.trim().replace(/\/+$/, "");
 }
 

@@ -31,21 +31,25 @@ export async function completeSignIn(req: Request, db: Database): Promise<Respon
 
 async function authCallback(req: Request, db: Database): Promise<Response> {
   const params = new URL(req.url).searchParams;
-  if (params.get("error") === "access_denied")
+  if (params.get("error") === "access_denied") {
     return messageResponse(
       "Sign-in cancelled",
       "Consent was declined. Retry sign-in and approve to continue.",
       403,
     );
+  }
   const state = readAuthState(req);
-  if (!state || params.get("state") !== state.state)
+  if (!state || params.get("state") !== state.state) {
     return messageResponse(
       "Sign-in expired",
       "The sign-in state did not match. Please retry.",
       400,
     );
+  }
   const code = params.get("code");
-  if (!code) return messageResponse("Sign-in incomplete", "Missing authorization code.", 400);
+  if (!code) {
+    return messageResponse("Sign-in incomplete", "Missing authorization code.", 400);
+  }
   let claims;
   try {
     const tokens = await exchangeCode({
@@ -85,7 +89,9 @@ function callbackUrl(): string {
 }
 
 function claimText(value: unknown): string | null {
-  if (typeof value !== "string") return null;
+  if (typeof value !== "string") {
+    return null;
+  }
   const trimmed = value.trim();
   return trimmed || null;
 }
@@ -93,7 +99,9 @@ function claimText(value: unknown): string | null {
 // Only allow same-site relative paths as post-login destinations, so the
 // `next` param can never become an open redirect.
 export function safeNextPath(value: unknown): string {
-  if (typeof value !== "string") return "/dashboard";
+  if (typeof value !== "string") {
+    return "/dashboard";
+  }
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
     return "/dashboard";
   }

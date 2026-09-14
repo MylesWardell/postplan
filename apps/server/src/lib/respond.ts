@@ -9,7 +9,9 @@ export function toHttpError(error: unknown): {
   const failure = toORPCError(error);
   const status =
     COMMON_ERROR_STATUS_MAP[failure.code as keyof typeof COMMON_ERROR_STATUS_MAP] ?? 500;
-  if (status >= 500) console.error(error);
+  if (status >= 500) {
+    console.error(error);
+  }
   return { failure, status };
 }
 
@@ -30,7 +32,9 @@ export async function respond(
     response = renderError(failure, status);
   }
   response.headers.set("X-Content-Type-Options", "nosniff");
-  if (!response.headers.has("Cache-Control")) response.headers.set("Cache-Control", "no-store");
+  if (!response.headers.has("Cache-Control")) {
+    response.headers.set("Cache-Control", "no-store");
+  }
   response.headers.set("Referrer-Policy", "same-origin");
   return response;
 }

@@ -20,8 +20,12 @@ export function createApplication(deps: ServerDependencies) {
     respond(async () => {
       const draftId = hostDraftId(request);
       const draft = await draftResponse(request, deps, draftId);
-      if (draft) return draft;
-      if (draftId) return notFoundResponse();
+      if (draft) {
+        return draft;
+      }
+      if (draftId) {
+        return notFoundResponse();
+      }
       return handler.fetch(request, { context: { deps, createContext, api, peerIp } });
     });
 }

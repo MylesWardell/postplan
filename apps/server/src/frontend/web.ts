@@ -7,7 +7,9 @@ export async function webAction(action: () => Response | Promise<Response>): Pro
   try {
     return await action();
   } catch (error) {
-    if (error instanceof Response) return error;
+    if (error instanceof Response) {
+      return error;
+    }
     const { failure, status } = toHttpError(error);
     return messageResponse(
       "Request could not be completed",

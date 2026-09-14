@@ -18,17 +18,20 @@ declare module "@tanstack/react-router" {
   }
 }
 export function requireConfiguredSignIn() {
-  if (!config.sessionSecret || !config.publicBaseUrl)
+  if (!config.sessionSecret || !config.publicBaseUrl) {
     throw messageResponse(
       "Sign-in unavailable",
       "Web sign-in has not been configured for this deployment.",
       503,
     );
+  }
 }
 export function authenticatedContext(request: Request, context: AppRequestContext) {
   requireConfiguredSignIn();
   const session = readSession(request);
-  if (!session || request.headers.has("authorization")) throw new ORPCError("UNAUTHORIZED");
+  if (!session || request.headers.has("authorization")) {
+    throw new ORPCError("UNAUTHORIZED");
+  }
   assertApplicationOrigin(request);
   return { session, caller: createCaller(context.createContext(request, context.peerIp, true)) };
 }

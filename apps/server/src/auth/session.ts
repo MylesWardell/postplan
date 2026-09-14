@@ -33,18 +33,26 @@ export function signToken(
 }
 
 export function verifyToken(token: unknown, secret: string): TokenPayload | null {
-  if (typeof token !== "string" || !token.includes(".")) return null;
+  if (typeof token !== "string" || !token.includes(".")) {
+    return null;
+  }
   const [body = "", signature] = token.split(".");
   const expected = hmac(body, secret);
   const a = Buffer.from(signature || "");
   const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    return null;
+  }
 
   try {
     const payload: unknown = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-    if (typeof payload !== "object" || payload === null) return null;
+    if (typeof payload !== "object" || payload === null) {
+      return null;
+    }
     const exp = (payload as { exp?: unknown }).exp;
-    if (typeof exp !== "number" || !Number.isFinite(exp) || exp < nowSeconds()) return null;
+    if (typeof exp !== "number" || !Number.isFinite(exp) || exp < nowSeconds()) {
+      return null;
+    }
     return payload as TokenPayload;
   } catch {
     return null;
@@ -84,9 +92,13 @@ export function clearAuthStateCookie(): string {
 }
 
 export function readSession(req: Request): Session | null {
-  if (!config.sessionSecret) return null;
+  if (!config.sessionSecret) {
+    return null;
+  }
   const token = readCookie(req, SESSION_COOKIE);
-  if (!token) return null;
+  if (!token) {
+    return null;
+  }
   const payload = verifyToken(token, config.sessionSecret);
   return payload?.accountId ? (payload as unknown as Session) : null;
 }
@@ -108,7 +120,9 @@ export function assertApplicationOrigin(req: Request): void {
 }
 
 export function readAuthState(req: Request): AuthState | null {
-  if (!config.sessionSecret) return null;
+  if (!config.sessionSecret) {
+    return null;
+  }
   const token = readCookie(req, AUTH_STATE_COOKIE);
   return token ? (verifyToken(token, config.sessionSecret) as AuthState | null) : null;
 }
@@ -117,7 +131,9 @@ export function readCookie(req: Request, name: string): string | null {
   const header = req.headers.get("cookie") || "";
   for (const part of header.split(";")) {
     const eq = part.indexOf("=");
-    if (eq === -1) continue;
+    if (eq === -1) {
+      continue;
+    }
     if (part.slice(0, eq).trim() === name) {
       // A malformed value (bad percent-escape) must read as "no cookie", not
       // throw — otherwise one bad cookie 500s every web page until cleared.
@@ -139,7 +155,9 @@ function serializeCookie(name: string, value: string, { maxAge }: { maxAge: numb
     "SameSite=Lax",
     `Max-Age=${maxAge}`,
   ];
-  if (process.env.NODE_ENV !== "development") attributes.push("Secure");
+  if (process.env.NODE_ENV !== "development") {
+    attributes.push("Secure");
+  }
   return attributes.join("; ");
 }
 

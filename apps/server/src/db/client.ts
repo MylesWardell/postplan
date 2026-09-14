@@ -5,7 +5,9 @@ import { drizzle } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema.js";
 
 export function createDatabase(filename = process.env.DATABASE_PATH || "data/postplan.sqlite") {
-  if (filename !== ":memory:") mkdirSync(dirname(filename), { recursive: true });
+  if (filename !== ":memory:") {
+    mkdirSync(dirname(filename), { recursive: true });
+  }
   const client = new SQLite(filename, { create: true });
   client.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   return { db: drizzle(client, { schema, casing: "snake_case" }), client };

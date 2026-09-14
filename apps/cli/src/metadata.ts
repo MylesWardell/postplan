@@ -57,7 +57,9 @@ function git(args: string[], cwd: string): string | null {
 }
 
 function parseRemote(remote: string | null): { host?: string; org?: string; name?: string } {
-  if (!remote) return {};
+  if (!remote) {
+    return {};
+  }
 
   const cleaned = remote.replace(/\.git$/, "");
   const [, sshHost, sshOrg, sshName] = cleaned.match(/^[^@]+@([^:]+):([^/]+)\/(.+)$/) ?? [];
@@ -85,6 +87,8 @@ function parseRemote(remote: string | null): { host?: string; org?: string; name
 }
 
 function inferOrgFromRoot(repoRoot: string | null): string | null {
-  if (!repoRoot) return null;
+  if (!repoRoot) {
+    return null;
+  }
   return path.basename(path.dirname(repoRoot));
 }
