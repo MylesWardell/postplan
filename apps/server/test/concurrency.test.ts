@@ -10,7 +10,7 @@ import { createCaller } from "#client";
 test("concurrent requests serialize SQLite draft versions and first logins", async () => {
   const { db, client } = createDatabase(":memory:");
   try {
-    await migrate(db, {
+    migrate(db, {
       migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
     });
     await seedAccounts(db, "concurrency-key");

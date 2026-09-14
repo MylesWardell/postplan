@@ -5,7 +5,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { authenticatedContext } from "#frontend/context.server";
 
 const loadDashboard = createServerFn({ method: "GET" }).handler(async ({ context }) => {
-  const { session, caller } = await authenticatedContext(getRequest(), context);
+  const { session, caller } = authenticatedContext(getRequest(), context);
   return { session, drafts: (await caller.drafts.list()).drafts };
 });
 

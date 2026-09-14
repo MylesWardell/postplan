@@ -105,7 +105,7 @@ function parseWildcardBaseUrl(value: string | undefined): URL | null {
 }
 
 function parseHost(value: string | undefined): string | null {
-  const normalized = String(value || "").trim();
+  const normalized = (value || "").trim();
   if (!normalized) {
     return null;
   }

@@ -71,7 +71,7 @@ export function validateHtml(
     // scriptingEnabled: false so <noscript> children parse as real elements:
     // the hosted viewer renders drafts in an iframe without allow-scripts
     // unless consented, and the policy must see what that frame shows.
-    document = parse5.parse(html, { scriptingEnabled: false }) as unknown as TreeNode;
+    document = parse5.parse(html, { scriptingEnabled: false });
   } catch {
     errors.push("HTML document could not be parsed.");
     return { ok: false, errors, warnings, title: null, hasScripts: false, stats: emptyStats() };
@@ -92,10 +92,7 @@ export function validateHtml(
       if (tagName === "script") {
         hasScripts = true;
         const attributes = new Map(
-          (node.attrs || []).map((attr) => [
-            attr.name.toLowerCase(),
-            String(attr.value || "").trim(),
-          ]),
+          (node.attrs || []).map((attr) => [attr.name.toLowerCase(), (attr.value || "").trim()]),
         );
         if (attributes.has("src")) {
           errors.push("External script sources are not allowed.");
@@ -109,7 +106,7 @@ export function validateHtml(
 
       for (const attr of node.attrs || []) {
         const name = attr.name.toLowerCase();
-        const value = String(attr.value || "").trim();
+        const value = (attr.value || "").trim();
 
         if (name.startsWith("on")) {
           errors.push(`Blocked inline event handler attribute "${name}" found.`);
@@ -203,7 +200,7 @@ function emptyStats(): HtmlStats {
 // Returns the lowercased host of an absolute http(s) (or protocol-relative) URL,
 // or null for relative paths, data: URIs, and anything unparseable.
 function externalHost(value: string | undefined): string | null {
-  const raw = String(value || "").trim();
+  const raw = (value || "").trim();
   if (!raw) {
     return null;
   }

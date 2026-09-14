@@ -17,7 +17,7 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
   const objects = new Map<string, string>();
   const originalConfig = { ...config };
   let failStorage = false;
-  await migrate(db, {
+  migrate(db, {
     migrationsFolder: fileURLToPath(new URL("../drizzle", import.meta.url)),
   });
   await seedAccounts(db, "owner-key");

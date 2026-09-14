@@ -51,7 +51,7 @@ export async function listAccountDrafts(db: Database, accountId: string, context
     repoHost: draft.repoHost,
     latestVersionNumber: latest?.number ?? null,
     latestVersionAt: latest?.date ?? null,
-    versionCount: Number(versionCount ?? 0),
+    versionCount: versionCount ?? 0,
     createdAt: draft.createdAt,
     updatedAt: draft.updatedAt,
     disabled: Boolean(draft.disabledAt),

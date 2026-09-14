@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- Bun 1.3.14 or later
-- Node 22.20 or later
+- Bun 1.4.2 or later
+- Node 26.8.2 or later
 
 Bun manages the workspace and runs the server. Node runs the portable CLI and compatible tooling. Turborepo orders package builds, oxfmt formats the workspace, and oxlint checks source files.
 
@@ -42,8 +42,8 @@ scripts/           Workspace and setup helpers
 Useful commands:
 
 ```sh
-bun run format
-bun run lint:fix
+turbo run quality
+turbo run quality:fix
 bun run db:generate
 bun run pack:cli
 ```

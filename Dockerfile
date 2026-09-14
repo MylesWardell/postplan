@@ -1,5 +1,5 @@
-FROM oven/bun:1.3.14-debian AS bun
-FROM node:22-bookworm-slim AS build
+FROM oven/bun:1.4.2-debian AS bun
+FROM node:26-bookworm-slim AS build
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /workspace
 COPY . .

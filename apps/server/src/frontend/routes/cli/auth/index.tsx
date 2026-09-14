@@ -5,7 +5,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import { authenticatedContext } from "#frontend/context.server";
 
 const loadKeys = createServerFn({ method: "GET" }).handler(async ({ context }) => {
-  const { session, caller } = await authenticatedContext(getRequest(), context);
+  const { session, caller } = authenticatedContext(getRequest(), context);
   return { session, keys: await caller.apiKeys.list() };
 });
 
