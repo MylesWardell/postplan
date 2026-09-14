@@ -127,4 +127,3 @@
 --> statement-breakpoint
     ALTER TABLE draft_versions ADD COLUMN IF NOT EXISTS ci_actor TEXT;
 --> statement-breakpoint
-  
