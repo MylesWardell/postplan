@@ -1,0 +1,59 @@
+# Development
+
+## Requirements
+
+- Bun 1.3.14 or later
+- Node 22.20 or later
+
+Bun manages the workspace and runs the server. Node runs the portable CLI and compatible tooling. Turborepo orders package builds, oxfmt formats the workspace, and oxlint checks source files.
+
+```sh
+bun install --frozen-lockfile
+bun run check
+bun run build
+```
+
+`bun run check` runs formatting, lint, strict type checks, and tests. The test suite uses SQLite and local storage and OAuth fixtures; it does not require AWS access.
+
+## Run the server
+
+Copy `.env.example` to `.env`, configure storage, and choose a database path. Use an absolute `DATABASE_PATH` during development so migrations and Vite open the same SQLite file.
+
+```sh
+bun run db:migrate
+bun run --filter @postplan/server dev
+```
+
+Set variables in the shell or create `apps/server/.env` for Bun to load. Run server package commands from `apps/server` when they depend on its React JSX configuration. Rebuild shared packages after changing their exports.
+
+Production startup seeds configured accounts and keys but does not apply schema changes. Review and run migrations before starting the service. See [database operations](../apps/server/DATABASE.md).
+
+## Workspace
+
+```text
+apps/
+  cli/             CLI source, agent skill, and bundled executable
+  server/          Bun host, TanStack Start application, OAuth, and storage
+packages/
+  api/             oRPC contract, schemas, routes, and client types
+scripts/           Workspace and setup helpers
+```
+
+Useful commands:
+
+```sh
+bun run format
+bun run lint:fix
+bun run db:generate
+bun run pack:cli
+```
+
+TanStack Router generates `apps/server/src/frontend/routeTree.gen.ts` before builds and type checks. Commit the generated file and do not edit it by hand.
+
+## Container image
+
+```sh
+docker build --tag postplan:local .
+```
+
+The image runs compiled JavaScript with Bun as a non-root user. Mount persistent storage for SQLite; do not keep the database only in the container layer. CI builds and tests the image but does not deploy it.
