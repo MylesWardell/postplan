@@ -19,6 +19,10 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 const repoRoot = join(import.meta.dirname, "..", "..");
 const agentsSkills = join(repoRoot, ".agents", "skills");
 const claudeDir = join(repoRoot, ".claude");
@@ -60,7 +64,7 @@ try {
   // Never fail an install over a developer convenience. Some filesystems refuse
   // links outright; the repo still works, the project skills just will not load.
   console.warn(
-    `Could not link .claude/skills, run \`bun run link-skills\` to retry: ${error.message}`,
+    `Could not link .claude/skills, run \`bun run link-skills\` to retry: ${errorMessage(error)}`,
   );
 }
 
@@ -79,5 +83,5 @@ try {
     }
   }
 } catch (error) {
-  console.warn(`Could not move CLAUDE.md to AGENTS.md: ${error.message}`);
+  console.warn(`Could not move CLAUDE.md to AGENTS.md: ${errorMessage(error)}`);
 }
