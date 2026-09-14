@@ -1,6 +1,6 @@
-import { postOnly } from "#frontend/methods";
+import { postOnly } from "#frontend/middleware/methods";
 import { notFoundResponse, page } from "#frontend/response.server";
-import { authenticated } from "#frontend/auth";
+import { authenticated } from "#frontend/middleware/authenticated";
 import { createFileRoute } from "@tanstack/react-router";
 import { parseFormData } from "@orpc/openapi/helpers";
 import { KeysPage } from "#frontend/routes/cli/auth/index";
