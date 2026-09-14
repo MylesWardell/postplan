@@ -5,7 +5,7 @@ import {
   getDraftPublicUrl,
   getDraftRawUrl,
   getHomeUrl,
-} from "../src/public-url.js";
+} from "../src/http/public-url.js";
 
 const wildcard = "https://*.postplan.dev";
 const draftId = "abc123def456";

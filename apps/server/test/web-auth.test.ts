@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Request } from "express";
-import { readCookie, signToken, verifyToken } from "../src/web-auth.js";
+import { readCookie, signToken, verifyToken } from "../src/auth/session.js";
 
 const secret = "test-secret";
 

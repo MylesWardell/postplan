@@ -2,9 +2,12 @@
   "name": "@postplan/server",
   "version": "0.0.4",
   "private": true,
+  "files": [
+    "dist/src/"
+  ],
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/test/*.test.js",
     "start": "node --enable-source-maps dist/src/server.js",
@@ -12,11 +15,16 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.835.0",
+    "@postplan/api": "workspace:*",
     "@postplan/core": "workspace:*",
-    "commander": "^14.0.0",
+    "@postplan/database": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "drizzle-orm": "^0.45.1",
     "express": "^5.1.0",
-    "jose": "^6.2.3",
-    "nanoid": "^5.1.5",
-    "pg": "^8.16.2"
+    "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@trpc/client": "^11.18.0"
   }
 }

@@ -1,8 +1,10 @@
 import type { Server } from "node:http";
-import { createApp } from "./api.js";
+import { createApp } from "./app.js";
 import { config } from "./config.js";
-import { ensureBootstrapApiKey, initDb, pool } from "./db.js";
-import { assertStorageConfigured } from "./storage.js";
+import { createDatabase, seedAccounts } from "@postplan/database";
+import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "./storage/s3.js";
+
+const { db, pool } = createDatabase(config);
 
 // How long to let in-flight requests finish after SIGTERM before forcing exit.
 // Keep below the orchestrator's stop timeout (ECS stopTimeout defaults to 30s).
@@ -10,10 +12,9 @@ const SHUTDOWN_GRACE_MS = Number(process.env.SHUTDOWN_GRACE_MS || 20_000);
 
 async function main(): Promise<void> {
   assertStorageConfigured();
-  await initDb();
-  await ensureBootstrapApiKey();
+  await seedAccounts(db, config.bootstrapApiKey);
 
-  const app = createApp();
+  const app = createApp({ db, putHtml: putHtmlObject, getHtml: getHtmlObject });
   const server = app.listen(config.port, () => {
     console.log(`Postplan listening on port ${config.port}`);
   });

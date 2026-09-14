@@ -1,0 +1,35 @@
+{
+  "name": "@postplan/api",
+  "version": "0.0.4",
+  "private": true,
+  "files": [
+    "dist/src/"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./server": {
+      "types": "./dist/src/router.d.ts",
+      "default": "./dist/src/router.js"
+    },
+    "./drafts": {
+      "types": "./dist/src/drafts.d.ts",
+      "default": "./dist/src/drafts.js"
+    }
+  },
+  "scripts": {
+    "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@postplan/core": "workspace:*",
+    "@postplan/database": "workspace:*",
+    "@trpc/server": "^11.0.0",
+    "drizzle-orm": "^0.45.1",
+    "nanoid": "^5.1.5",
+    "zod": "^4.0.0"
+  }
+}

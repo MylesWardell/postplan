@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { test } from "node:test";
 import express from "express";
-import { clientIp } from "../src/client-ip.js";
+import { clientIp } from "../src/http/client-ip.js";
 import { config } from "../src/config.js";
 
 test("ALB configuration ignores forged X-Real-IP and prepended forwarding entries", async () => {

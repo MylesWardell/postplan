@@ -13,7 +13,7 @@
   ],
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && esbuild src/index.ts --bundle --platform=node --format=esm --external:commander --external:parse5 --sourcemap --outfile=bin/postplan.js",
+    "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json && tsdown",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test dist/test/*.test.js",
     "prepack": "pnpm build"

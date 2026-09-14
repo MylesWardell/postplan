@@ -1,0 +1,20 @@
+{
+  "name": "@postplan/frontend",
+  "version": "0.0.4",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@postplan/api": "workspace:*",
+    "@trpc/client": "^11.0.0"
+  }
+}

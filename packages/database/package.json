@@ -1,27 +1,31 @@
 {
-  "name": "@postplan/core",
+  "name": "@postplan/database",
   "version": "0.0.4",
   "private": true,
   "files": [
-    "dist/src/"
+    "dist/src/",
+    "drizzle/"
   ],
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
       "default": "./dist/src/index.js"
-    },
-    "./public-url": {
-      "types": "./dist/src/public-url.d.ts",
-      "default": "./dist/src/public-url.js"
     }
   },
   "scripts": {
     "build": "tsx ../../scripts/clean.ts && tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node dist/src/migrate.js",
     "test": "node --test dist/test/*.test.js"
   },
   "dependencies": {
-    "parse5": "^7.3.0"
+    "drizzle-orm": "^0.45.1",
+    "pg": "^8.16.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "drizzle-kit": "0.31.10"
   }
 }

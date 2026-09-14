@@ -8,20 +8,22 @@
     "test": "turbo run test",
     "dev": "turbo run dev",
     "start": "pnpm --filter @postplan/server start",
-    "lint": "oxlint --deny-warnings apps packages",
-    "lint:fix": "oxlint --fix apps packages",
+    "lint": "oxlint --deny-warnings apps packages scripts",
+    "lint:fix": "oxlint --fix apps packages scripts",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "check": "pnpm format:check && pnpm lint && turbo run typecheck test",
-    "pack:cli": "pnpm --filter postplan pack --pack-destination ../../dist"
+    "pack:cli": "turbo run build --filter=postplan... && pnpm --dir apps/cli pack --pack-destination ../../dist",
+    "db:generate": "pnpm --filter @postplan/database db:generate",
+    "db:migrate": "pnpm --filter @postplan/database build && node --env-file-if-exists=.env packages/database/dist/src/migrate.js"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.2",
     "@types/pg": "^8.23.1",
-    "esbuild": "0.28.2",
     "oxfmt": "0.67.0",
     "oxlint": "1.82.0",
+    "tsdown": "0.23.0",
     "tsx": "4.23.13",
     "turbo": "2.10.12",
     "typescript": "^5.9.3"
