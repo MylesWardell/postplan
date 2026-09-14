@@ -1,16 +1,9 @@
-import { ORPCError } from "@orpc/server";
-import type { Store } from "@postplan/store";
-import { createApplication } from "../src/application";
-import { cloudflareGateway } from "../src/lib/cloudflare-gateway";
+import { createCloudflareStore } from "./database";
+import { createApplication } from "@postplan/server/application";
+import { cloudflareGateway } from "./gateway";
 import { r2Storage } from "./r2";
 import { authorizedProbe, runProbe } from "./probe";
 export { RateLimit } from "./rate-limit";
-
-const unavailable = async (): Promise<never> => {
-  throw new ORPCError("SERVICE_UNAVAILABLE", {
-    message: "The Cloudflare store is not implemented in this compatibility experiment.",
-  });
-};
 
 export default {
   async fetch(incoming, env) {
@@ -72,28 +65,7 @@ export default {
         { status: 503 },
       );
     }
-    const store: Store = {
-      initialize: unavailable,
-      health: async () => {
-        await env.POSTPLAN_DB.prepare("SELECT 1").first();
-      },
-      rateLimit: unavailable,
-      accounts: {
-        seed: unavailable,
-        findApiKey: unavailable,
-        createApiKey: unavailable,
-        revokeApiKey: unavailable,
-        listApiKeys: unavailable,
-        findOrCreateIdentity: unavailable,
-      },
-      drafts: {
-        list: unavailable,
-        detail: unavailable,
-        findPublicVersion: unavailable,
-        update: unavailable,
-        upload: unavailable,
-      },
-    };
+    const { store } = createCloudflareStore(env);
     // The edge handles compression; workerd otherwise strips the plugin's encoding header.
     return createApplication({ store, ...r2Storage(env.HTML_BUCKET) }, false)(request, peerIp);
   },

@@ -13,5 +13,5 @@
     // Resolve package.json "imports" aliases to src/*.ts; runtime without it uses dist.
     "customConditions": ["source"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts"]
 }

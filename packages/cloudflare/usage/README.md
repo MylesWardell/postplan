@@ -1,6 +1,6 @@
 # Cloudflare usage guard
 
-The [GitHub workflow](../../.github/workflows/cloudflare-usage.yml) checks account-wide Workers, D1, SQLite Durable Objects and R2 usage hourly at minute 17. It stops only the experiment resources named in [usage-policy.json](usage-policy.json). It does not deploy code, upgrade a plan, delete stored objects, or automatically restore service.
+The [GitHub workflow](../../../.github/workflows/cloudflare-usage.yml) checks account-wide Workers, D1, SQLite Durable Objects and R2 usage hourly at minute 17. It stops only the experiment resources named in [usage-policy.json](usage-policy.json). It does not deploy code, upgrade a plan, delete stored objects, or automatically restore service.
 
 ## Activation and manual operation
 
@@ -23,8 +23,8 @@ Each run writes a JSON report to its logs and Actions summary. Threshold-trigger
 Local checks use the same script with `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_USAGE_API_TOKEN` in the process environment:
 
 ```sh
-python scripts/cloudflare/usage_guard.py --mode audit
-python -m unittest discover -s scripts/cloudflare -p 'test_*.py' -v
+python packages/cloudflare/usage/usage_guard.py --mode audit
+python -m unittest discover -s packages/cloudflare/usage -p 'test_*.py' -v
 ```
 
 The scheduled job uses Python's standard library, with no package installation or application build. Hourly execution is about 720–744 runs per month. GitHub bills runner time separately, rounding jobs up to minutes; this uses the account's shared Actions allowance in this private repository. Check that allowance before increasing frequency. [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).

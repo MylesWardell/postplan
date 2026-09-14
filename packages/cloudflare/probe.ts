@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { validateHtml } from "@postplan/store/html-policy";
-import { signToken, verifyToken } from "../src/auth/session";
-import { buildPkce } from "../src/auth/shoo";
+import { signToken, verifyToken } from "@postplan/server/auth/session";
+import { buildPkce } from "@postplan/server/auth/shoo";
 import { r2Storage } from "./r2";
 import { limiterName } from "./rate-limit";
 import { reserveProbe } from "./budget";

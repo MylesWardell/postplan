@@ -63,6 +63,16 @@
       "default": "./dist/src/orpc.js"
     }
   },
+  "exports": {
+    "./application": {
+      "source": "./src/application.ts",
+      "default": "./dist/src/application.js"
+    },
+    "./auth/*": {
+      "source": "./src/auth/*.ts",
+      "default": "./dist/src/auth/*.js"
+    }
+  },
   "scripts": {
     "build": "bun ../../scripts/clean.ts && bun --bun vite build && tsc -p tsconfig.json",
     "test": "bun test --preload ../../scripts/testing/drizzle.ts --conditions=source ./test",
@@ -71,15 +81,9 @@
     "dev": "bun --bun vite dev",
     "db:generate": "bun run --filter @postplan/store-drizzle db:generate",
     "db:migrate": "bun dist/src/db/migrate.js",
-    "preview": "bun --bun vite preview",
-    "cf:types": "wrangler types --config cloudflare/wrangler.jsonc cloudflare/env.d.ts",
-    "cf:build": "vite build --config vite.cloudflare.config.ts",
-    "cf:dev": "vite --config vite.cloudflare.config.ts",
-    "cf:test": "vitest run --config vitest.cloudflare.config.ts"
+    "preview": "bun --bun vite preview"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1131.0",
-    "@aws-sdk/client-ssm": "^3.1131.0",
     "@opentelemetry/auto-instrumentations-node": "^0.80.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
     "@opentelemetry/resources": "^2.11.0",
@@ -95,9 +99,9 @@
     "@orpc/server": "2.0.0-beta.35",
     "@orpc/zod": "2.0.0-beta.35",
     "@postplan/api": "workspace:*",
+    "@postplan/lambda": "workspace:*",
     "@postplan/store": "workspace:*",
     "@postplan/store-drizzle": "workspace:*",
-    "@postplan/store-dynamodb": "workspace:*",
     "@tanstack/react-router": "^1.170.36",
     "@tanstack/react-start": "^1.168.54",
     "jose": "^6.2.12",
@@ -107,15 +111,11 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.54.9",
-    "@cloudflare/vitest-plugin": "1.1.9",
     "@types/bun": "1.4.2",
     "@types/proxy-addr": "^2.0.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
-    "vite": "^8.3.0",
-    "vitest": "4.1.0",
-    "wrangler": "4.131.2"
+    "vite": "^8.3.0"
   }
 }

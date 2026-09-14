@@ -1,5 +1,5 @@
 {
-  "$schema": "../node_modules/wrangler/config-schema.json",
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "postplan-cloudflare-experiment",
   "main": "worker.ts",
   "compatibility_date": "2026-09-14",
@@ -22,6 +22,7 @@
       "binding": "POSTPLAN_DB",
       "database_name": "postplan-cloudflare-experiment",
       "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "../store-drizzle/drizzle",
     },
   ],
   "r2_buckets": [

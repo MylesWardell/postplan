@@ -1,6 +1,6 @@
 import { implement } from "@orpc/server";
 import { accountStoreContract } from "@postplan/store";
-import type { Database } from "./client";
+import type { Database } from "./database";
 import * as queries from "./account-queries";
 
 export function accountStore(db: Database) {

@@ -23,7 +23,7 @@
     "pnpm-lock.yaml",
     "**/routeTree.gen.ts",
     "**/.wrangler/**",
-    "apps/server/cloudflare/generated/**",
-    "apps/server/cloudflare/env.d.ts"
+    "packages/cloudflare/generated/**",
+    "packages/cloudflare/env.d.ts"
   ]
 }

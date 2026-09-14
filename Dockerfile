@@ -12,6 +12,8 @@ COPY package.json bun.lock ./
 COPY apps/server/package.json ./apps/server/package.json
 COPY apps/cleanup/package.json ./apps/cleanup/package.json
 COPY apps/cli/package.json ./apps/cli/package.json
+COPY packages/cloudflare/package.json ./packages/cloudflare/package.json
+COPY packages/lambda/package.json ./packages/lambda/package.json
 COPY packages/api/package.json ./packages/api/package.json
 COPY packages/store/package.json ./packages/store/package.json
 COPY packages/store-drizzle/package.json ./packages/store-drizzle/package.json
@@ -24,6 +26,7 @@ ENV NODE_ENV=production DATABASE_PATH=/data/postplan.sqlite
 COPY --from=dependencies /app /app
 COPY --from=build /workspace/apps/server/dist ./apps/server/dist
 COPY --from=build /workspace/packages/store-drizzle/drizzle ./packages/store-drizzle/drizzle
+COPY --from=build /workspace/packages/lambda/dist/src ./packages/lambda/dist/src
 COPY --from=build /workspace/packages/api/dist/src ./packages/api/dist/src
 COPY --from=build /workspace/packages/store/dist/src ./packages/store/dist/src
 COPY --from=build /workspace/packages/store-drizzle/dist/src ./packages/store-drizzle/dist/src

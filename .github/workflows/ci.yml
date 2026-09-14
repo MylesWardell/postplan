@@ -28,10 +28,10 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run check
-      - run: bunx --no-install turbo run cf:test --filter=@postplan/server
+      - run: bunx --no-install turbo run cf:build cf:test --filter=@postplan/cloudflare
         env:
           EXPERIMENT_TOKEN: local-test-only
-      - run: bunx --no-install tsc -p apps/server/cloudflare/tsconfig.json
+      - run: bunx --no-install tsc -p packages/cloudflare/tsconfig.json
       - run: bun run pack:cli
       - run: node apps/cli/bin/postplan.js --help
       - run: docker build --tag postplan:ci .

@@ -53,8 +53,6 @@
       "name": "@postplan/server",
       "version": "0.0.4",
       "dependencies": {
-        "@aws-sdk/client-s3": "^3.1131.0",
-        "@aws-sdk/client-ssm": "^3.1131.0",
         "@opentelemetry/auto-instrumentations-node": "^0.80.0",
         "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
         "@opentelemetry/resources": "^2.11.0",
@@ -70,9 +68,9 @@
         "@orpc/server": "2.0.0-beta.35",
         "@orpc/zod": "2.0.0-beta.35",
         "@postplan/api": "workspace:*",
+        "@postplan/lambda": "workspace:*",
         "@postplan/store": "workspace:*",
         "@postplan/store-drizzle": "workspace:*",
-        "@postplan/store-dynamodb": "workspace:*",
         "@tanstack/react-router": "^1.170.36",
         "@tanstack/react-start": "^1.168.54",
         "jose": "^6.2.12",
@@ -82,16 +80,12 @@
         "zod": "^4.6.5",
       },
       "devDependencies": {
-        "@cloudflare/vite-plugin": "1.54.9",
-        "@cloudflare/vitest-plugin": "1.1.9",
         "@types/bun": "1.4.2",
         "@types/proxy-addr": "^2.0.3",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
         "@vitejs/plugin-react": "^6.1.1",
         "vite": "^8.3.0",
-        "vitest": "4.1.0",
-        "wrangler": "4.131.2",
       },
     },
     "packages/api": {
@@ -101,6 +95,40 @@
         "@orpc/contract": "2.0.0-beta.35",
         "@orpc/openapi": "2.0.0-beta.35",
         "zod": "^4.6.5",
+      },
+    },
+    "packages/cloudflare": {
+      "name": "@postplan/cloudflare",
+      "version": "0.0.4",
+      "dependencies": {
+        "@orpc/server": "2.0.0-beta.35",
+        "@postplan/server": "workspace:*",
+        "@postplan/store": "workspace:*",
+        "@postplan/store-drizzle": "workspace:*",
+        "drizzle-orm": "^0.45.2",
+      },
+      "devDependencies": {
+        "@cloudflare/vite-plugin": "1.54.9",
+        "@cloudflare/vitest-plugin": "1.1.9",
+        "@types/node": "^26.5.1",
+        "vite": "^8.3.0",
+        "vitest": "4.1.0",
+        "wrangler": "4.131.2",
+        "zod": "^4.6.5",
+      },
+    },
+    "packages/lambda": {
+      "name": "@postplan/lambda",
+      "version": "0.0.4",
+      "dependencies": {
+        "@aws-sdk/client-s3": "^3.1131.0",
+        "@aws-sdk/client-ssm": "^3.1131.0",
+        "@postplan/store": "workspace:*",
+        "@postplan/store-drizzle": "workspace:*",
+        "@postplan/store-dynamodb": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/bun": "1.4.2",
       },
     },
     "packages/store": {
@@ -714,6 +742,10 @@
     "@postplan/api": ["@postplan/api@workspace:packages/api"],
 
     "@postplan/cleanup": ["@postplan/cleanup@workspace:apps/cleanup"],
+
+    "@postplan/cloudflare": ["@postplan/cloudflare@workspace:packages/cloudflare"],
+
+    "@postplan/lambda": ["@postplan/lambda@workspace:packages/lambda"],
 
     "@postplan/server": ["@postplan/server@workspace:apps/server"],
 

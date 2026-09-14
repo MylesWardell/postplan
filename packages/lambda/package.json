@@ -1,0 +1,25 @@
+{
+  "name": "@postplan/lambda",
+  "version": "0.0.4",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": {
+      "source": "./src/*.ts",
+      "default": "./dist/src/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1131.0",
+    "@aws-sdk/client-ssm": "^3.1131.0",
+    "@postplan/store": "workspace:*",
+    "@postplan/store-drizzle": "workspace:*",
+    "@postplan/store-dynamodb": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2"
+  }
+}

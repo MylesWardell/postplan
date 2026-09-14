@@ -1,6 +1,7 @@
+import { statement } from "./database";
 import { createHash, randomUUID } from "node:crypto";
-import { and, desc, eq, isNull, ne } from "drizzle-orm";
-import type { Database } from "./client";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import type { Database } from "./database";
 import { accounts, apiKeys, identities } from "./schema";
 
 import { publicUploadAuth } from "@postplan/store";
@@ -9,41 +10,49 @@ import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "@postplan/store
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function seedAccounts(db: Database, bootstrapKey?: string): Promise<void> {
-  db.transaction((tx) => {
-    for (const [auth, token] of [
-      [publicUploadAuth, "postplan-public-upload-sentinel"],
-      ...(bootstrapKey
-        ? [
-            [
-              {
-                id: "key_bootstrap",
-                accountId: "acct_bootstrap",
-                name: "Bootstrap API Key",
-                accountName: "Bootstrap Account",
-              },
-              bootstrapKey,
-            ] as const,
-          ]
-        : []),
-    ] as const) {
-      tx.insert(accounts)
-        .values({ id: auth.accountId, name: auth.accountName })
-        .onConflictDoUpdate({ target: accounts.id, set: { updatedAt: new Date() } })
-        .run();
-      tx.insert(apiKeys)
-        .values({
-          id: auth.id,
-          accountId: auth.accountId,
-          name: auth.name,
-          keyHash: hash(token),
-        })
-        .onConflictDoUpdate({
-          target: apiKeys.id,
-          set: { keyHash: hash(token), name: auth.name, revokedAt: null },
-        })
-        .run();
-    }
-  });
+  const statements = [];
+  for (const [auth, token] of [
+    [publicUploadAuth, "postplan-public-upload-sentinel"],
+    ...(bootstrapKey
+      ? [
+          [
+            {
+              id: "key_bootstrap",
+              accountId: "acct_bootstrap",
+              name: "Bootstrap API Key",
+              accountName: "Bootstrap Account",
+            },
+            bootstrapKey,
+          ] as const,
+        ]
+      : []),
+  ] as const) {
+    statements.push(
+      statement(
+        db
+          .insert(accounts)
+          .values({ id: auth.accountId, name: auth.accountName })
+          .onConflictDoUpdate({ target: accounts.id, set: { updatedAt: new Date() } }),
+      ),
+    );
+    statements.push(
+      statement(
+        db
+          .insert(apiKeys)
+          .values({
+            id: auth.id,
+            accountId: auth.accountId,
+            name: auth.name,
+            keyHash: hash(token),
+          })
+          .onConflictDoUpdate({
+            target: apiKeys.id,
+            set: { keyHash: hash(token), name: auth.name, revokedAt: null },
+          }),
+      ),
+    );
+  }
+  await db.atomic(statements);
 }
 
 export async function findApiKeyByToken(db: Database, token: string): Promise<ApiKeyAuth | null> {
@@ -102,38 +111,58 @@ export async function findOrCreateAccountForIdentity(
   db: Database,
   { provider, subject, profile = {} }: IdentityInput,
 ): Promise<IdentityAccount> {
-  return db.transaction(
-    (tx) => {
-      const [existing] = tx
-        .select()
-        .from(identities)
-        .where(and(eq(identities.provider, provider), eq(identities.subject, subject)))
-        .limit(1)
-        .all();
-      const accountId = existing?.accountId ?? `acct_${randomUUID()}`;
-      const accountName = profile.displayName || profile.email || `Postplan ${subject.slice(-6)}`;
-      const values = {
-        email: profile.email ?? null,
-        emailVerified: profile.emailVerified ?? null,
-        displayName: profile.displayName ?? null,
-        pictureUrl: profile.pictureUrl ?? null,
-        piiSubject: profile.piiSubject ?? existing?.piiSubject ?? null,
-        lastLoginAt: new Date(),
-      };
-      if (existing) {
-        tx.update(identities).set(values).where(eq(identities.id, existing.id)).run();
-        tx.update(accounts)
-          .set({ name: accountName, updatedAt: new Date() })
-          .where(eq(accounts.id, accountId))
-          .run();
-      } else {
-        tx.insert(accounts).values({ id: accountId, name: accountName }).run();
-        tx.insert(identities)
-          .values({ id: randomUUID(), accountId: accountId, provider, subject, ...values })
-          .run();
-      }
-      return { accountId, accountName, email: values.email, pictureUrl: values.pictureUrl };
-    },
-    { behavior: "immediate" },
-  );
+  const candidate = `acct_${randomUUID()}`;
+  const accountName = profile.displayName || profile.email || `Postplan ${subject.slice(-6)}`;
+  const match = and(eq(identities.provider, provider), eq(identities.subject, subject));
+  const identityAccount = db.select({ id: identities.accountId }).from(identities).where(match);
+  const values = {
+    email: profile.email ?? null,
+    emailVerified: profile.emailVerified ?? null,
+    displayName: profile.displayName ?? null,
+    pictureUrl: profile.pictureUrl ?? null,
+    piiSubject: profile.piiSubject ?? null,
+    lastLoginAt: new Date(),
+  };
+  await db.atomic([
+    statement(sql`insert into ${accounts} (id, name) select ${candidate}, ${accountName}
+        where not exists ${identityAccount}`),
+    statement(
+      db
+        .insert(identities)
+        .values({
+          id: randomUUID(),
+          accountId: candidate,
+          provider,
+          subject,
+          ...values,
+        })
+        .onConflictDoUpdate({
+          target: [identities.provider, identities.subject],
+          set: {
+            ...values,
+            piiSubject: sql`coalesce(${profile.piiSubject ?? null}, ${identities.piiSubject})`,
+          },
+        }),
+    ),
+    statement(
+      db
+        .update(accounts)
+        .set({ name: accountName, updatedAt: new Date() })
+        .where(eq(accounts.id, identityAccount)),
+    ),
+  ]);
+  const [identity] = await db
+    .select({
+      accountId: identities.accountId,
+      accountName: accounts.name,
+      email: identities.email,
+      pictureUrl: identities.pictureUrl,
+    })
+    .from(identities)
+    .innerJoin(accounts, eq(accounts.id, identities.accountId))
+    .where(match);
+  if (!identity) {
+    throw new Error("Identity missing after atomic write");
+  }
+  return identity;
 }

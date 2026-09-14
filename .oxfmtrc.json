@@ -11,7 +11,7 @@
     ".agents/skills/**",
     ".claude/**",
     "**/.wrangler/**",
-    "apps/server/cloudflare/generated/**",
-    "apps/server/cloudflare/env.d.ts"
+    "packages/cloudflare/generated/**",
+    "packages/cloudflare/env.d.ts"
   ]
 }

@@ -1,6 +1,6 @@
 # Cloudflare gateway and hosting plan
 
-Status: implementation plan updated after the Cloudflare skill review, 14 September 2026. Planning only; no application changes or Cloudflare resources created. Architecture decisions below are resolved; runtime and free-tier acceptance remain to be demonstrated.
+Status: bounded runtime experiment and package separation implemented, 14 September 2026. The shared Drizzle store passes local Bun SQLite and D1 tests. The remote experiment remains stopped; full application rollout and sustained free-tier acceptance are still pending. See [runtime validation and operations](../packages/cloudflare/README.md).
 
 ## Decision
 
@@ -37,14 +37,14 @@ No distributed account directory, cross-object database transaction, global limi
 
 Cloudflare documents an existing-app TanStack Start integration using its Vite plugin and Wrangler. Adapt that integration to this repository's custom server entry, rather than replacing the app with a template. [TanStack Start on Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/).
 
-## Current code and required seams
+## Original implementation and required seams
 
 | Current implementation                                                                                                                | Planned change                                                                                                                                                          |
 | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/server/src/lib/gateway.ts` normalizes AWS invocation context; `config.ts`, `index.ts` and `client-ip.ts` branch on `apiGateway` | Introduce a gateway interface and `direct`, `aws-api-gateway`, `cloudflare` adapters; keep selection at the runtime boundary.                                           |
 | `apps/server/src/server.ts` exposes `createApplication(deps)` but also imports concrete store/storage factories                       | Extract the portable application factory from runtime composition so Cloudflare cannot import Bun SQLite or AWS clients transitively.                                   |
 | `apps/server/src/db/client.ts` selects SQLite/DynamoDB from environment variables                                                     | Add explicit provider selection with compatibility for existing deployments; Cloudflare receives typed bindings.                                                        |
-| `packages/store` defines a contract consumed by the application                                                                       | Add `packages/store-cloudflare` implementing that contract using D1 plus scoped limiter RPC. Preserve public CLI/API schemas.                                           |
+| `packages/store` defines a contract consumed by the application                                                                       | Use `packages/store-drizzle` for shared queries, with the D1 driver and limiter RPC in `packages/cloudflare`. Preserve public CLI/API schemas.                          |
 | `packages/store-drizzle` uses `bun:sqlite` and synchronous transactions                                                               | Implement a D1 adapter using prepared SQL and atomic batches; do not reuse Bun transaction callbacks. Reuse portable models and semantics, not the Bun database client. |
 | `apps/server/src/lib/s3.ts` uses the AWS SDK; app dependencies already expose `putHtml`/`getHtml`                                     | Define an object-storage interface and add native R2 binding operations. Retain the S3 adapter for other runtimes.                                                      |
 | `apps/server/src/index.ts` uses Bun serving and filesystem asset discovery                                                            | Add a Worker entry exporting fetch, scheduled cleanup and the Durable Object class. Serve built files through the asset binding.                                        |
@@ -85,7 +85,7 @@ For the first private experiment, use the existing `/d/<id>` path mode on `worke
 
 Implement the existing Store contract through D1 prepared statements and typed conversion of dates, booleans and JSON. Preserve oRPC/public CLI schemas, ownership, unique identity/key hashes, version ordering and deduplication. All account lookups remain SQL: unique `(provider, subject)` for sign-in, unique key hash for authentication, primary draft ID for public reads and an account index for dashboard lists. No request-supplied account identifier bypasses authorization. Include the existing shared public-upload account in concurrency and ownership tests.
 
-Create separate D1 migrations derived from the portable schema; do not run `bun:sqlite` initialization or a synchronous Drizzle/Bun transaction callback against D1. Use parameterized SQL and D1 atomic batches. A batch is not an interactive JavaScript transaction: no network work or read/await/write decision may be assumed atomic. Validate the pinned API's transactional behavior and errors. [D1 Database API](https://developers.cloudflare.com/d1/worker-api/d1-database/).
+Reuse the SQLite SQL migrations in `packages/store-drizzle/drizzle`; do not run `bun:sqlite` initialization or a synchronous Drizzle/Bun transaction callback against D1. Use parameterized SQL and D1 atomic batches. A batch is not an interactive JavaScript transaction: no network work or read/await/write decision may be assumed atomic. Validate the pinned API's transactional behavior and errors. [D1 Database API](https://developers.cloudflare.com/d1/worker-api/d1-database/).
 
 `store.drafts.upload` keeps its existing in-process storage callback. No callback crosses RPC. The Cloudflare adapter executes a local prepare/write/commit protocol:
 
@@ -159,7 +159,7 @@ Workers/D1/DO free quota exhaustion causes failed requests/operations. R2 has me
 6. **Deployed free-tier experiment:** deploy a separate preview Worker/D1 database/limiter namespace/R2 bucket using an existing account after implementation. Configure secrets and permitted Shoo callback origin. Run the same flows remotely, restart/redeploy, benchmark cold/warm SSR and maximum-size uploads, and observe daily usage including cleanup. Local emulation does not prove provider CPU/free-tier acceptance.
 7. **Promotion decision:** deliver measured CPU, latency, request/row amplification, storage growth, backup restore evidence and remaining account headroom. Mark the option ready only when all application flows and the cost envelope pass. Until then the existing deployment remains the default.
 
-Likely additions: `apps/server/src/runtime/`, `apps/server/src/gateways/`, `apps/server/src/storage/`, `apps/server/wrangler.jsonc`, a Cloudflare Vite configuration, `packages/store-cloudflare/`, and provider integration tests. Exact filenames can follow the existing module aliases during implementation. Wrangler owns the experimental Worker, bindings, D1 migrations, limiter class registration and schedule; leave existing AWS Terraform state independent.
+Runtime layout: `packages/cloudflare` owns the Worker, D1 driver, R2 adapter, Durable Object, Vite plugin, Wrangler configuration, tests and usage guard. `packages/lambda` owns AWS adapters and default build options. `apps/server/vite.config.ts` selects runtime options using `POSTPLAN_RUNTIME` (`aws` by default, or `cloudflare`) while sharing TanStack/React configuration. `packages/store-drizzle` contains portable SQLite queries and an atomic batch interface, with Bun access isolated behind `/client`. Wrangler owns experimental Cloudflare resources; existing AWS Terraform state remains independent.
 
 ## Recovery and scope
 
@@ -182,6 +182,6 @@ Keep the previous Worker artifact and stable D1/R2/limiter bindings. Code rollba
 | Missing observability     | Native logs/traces, sampling and per-product usage targets, including trace-accounting changes.                                              |
 | Cleanup and snapshot gaps | Five-minute resumable scheduler, D1 leases/fencing, immutable keys, byte reservations and fenced manifest-based exports.                     |
 
-The [compatibility experiment](../apps/server/cloudflare/README.md) now implements the portable application entry, Cloudflare request normalization and bounded D1/R2/Durable Object probes. Local and remote HTTP tests passed on 14 September 2026; public access was disabled afterward. This is evidence for the initial runtime spike, not completion of the Store adapter or the free-tier promotion gate.
+The [compatibility experiment](../packages/cloudflare/README.md) now implements the portable application entry, Cloudflare request normalization and bounded D1/R2/Durable Object probes. Local and remote HTTP tests passed on 14 September 2026; public access was disabled afterward. This is evidence for the initial runtime spike, not completion of the Store adapter or the free-tier promotion gate.
 
 For the personal test account, do not enable WAF or upgrade Workers. Keep the R2 bucket private and limit the protected experiment to 20 lifetime probes of at most 512 KiB, using a persistent atomic D1 counter. Verify remaining account allowances before remote work and bucket emptiness afterward. Disable public and preview URLs when testing ends. R2 remains usage billed beyond its free allowance; this experiment's bound does not constrain other applications in the account.

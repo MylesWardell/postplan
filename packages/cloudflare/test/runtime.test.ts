@@ -6,7 +6,7 @@ import {
   runDurableObjectAlarm,
 } from "cloudflare:test";
 import { afterEach, expect, test } from "vitest";
-import { cloudflareGateway } from "../../src/lib/cloudflare-gateway";
+import { cloudflareGateway } from "../gateway";
 import { limiterName, validateRule } from "../rate-limit";
 import { r2Storage } from "../r2";
 import { authorizedProbe, runProbe } from "../probe";

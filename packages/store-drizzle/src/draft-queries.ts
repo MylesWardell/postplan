@@ -1,10 +1,11 @@
+import { statement } from "./database";
 import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import { drafts, draftVersions, uploadEvents } from "./schema";
 import { publicUploadAuth } from "@postplan/store";
-import type { Database } from "./client";
+import type { Database } from "./database";
 import { validateHtml } from "@postplan/store/html-policy";
 import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
 import type { UploadContext, UploadInput } from "@postplan/store";
@@ -150,120 +151,132 @@ export async function uploadDraft(db: Database, ctx: UploadContext, input: Uploa
   const draftId = input.draftId ?? newDraftId();
   if (
     input.draftId &&
-    !db
+    !(await db
       .select({ id: drafts.id })
       .from(drafts)
       .where(
         and(eq(drafts.id, draftId), eq(drafts.accountId, auth.accountId), isNull(drafts.deletedAt)),
       )
-      .get()
+      .get())
   ) {
     throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
   }
   const versionId = randomUUID();
   const objectKey = `drafts/${draftId}/versions/${versionId}.html`;
-  // Storage must finish before entering Bun SQLite's synchronous transaction.
+  // External object storage completes before the atomic metadata write.
   await ctx.putHtml(objectKey, html);
-  return db.transaction(
-    (tx) => {
-      const [existing] = input.draftId
-        ? tx
-            .select()
-            .from(drafts)
-            .where(
-              and(
-                eq(drafts.id, input.draftId),
-                eq(drafts.accountId, auth.accountId),
-                isNull(drafts.deletedAt),
-              ),
-            )
-            .limit(1)
-            .all()
-        : [];
-      if (input.draftId && !existing) {
-        throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
-      }
-      const [latest] = existing
-        ? tx
-            .select({ number: max(draftVersions.versionNumber) })
-            .from(draftVersions)
-            .where(eq(draftVersions.draftId, draftId))
-            .all()
-        : [];
-      const versionNumber = (latest?.number ?? 0) + 1;
-      const title = validation.title || existing?.title || input.filename || "Untitled Draft";
-      if (!existing) {
-        tx.insert(drafts)
-          .values({
-            id: draftId,
-            accountId: auth.accountId,
-            title,
-            description: cleanText(input.description, 1000),
-            repoOrg: cleanText(metadata.repoOrg),
-            repoName: cleanText(metadata.repoName),
-            repoHost: cleanText(metadata.repoHost),
-          })
-          .run();
-      }
-      tx.insert(draftVersions)
-        .values({
-          id: versionId,
-          draftId: draftId,
-          versionNumber: versionNumber,
-          objectKey: objectKey,
-          contentHash: createHash("sha256").update(html).digest("hex"),
-          fileSize: Buffer.byteLength(html, "utf8"),
-          createdByApiKeyId: auth.id,
-          sourceIp: ctx.sourceIp,
-          userAgent: ctx.userAgent,
-          requestId: ctx.requestId,
-          cliVersion: cleanText(metadata.cliVersion),
-          gitBranch: cleanText(metadata.gitBranch),
-          gitCommitSha: cleanText(metadata.gitCommitSha),
-          gitCommitSubject: cleanText(metadata.gitCommitSubject),
-          gitDirty: typeof metadata.gitDirty === "boolean" ? metadata.gitDirty : null,
-          originalFilename: cleanText(input.filename),
-          hasInlineScript: validation.stats.hasInlineScript,
-          externalImageHosts: validation.stats.externalImageHosts,
-          ciRunUrl: cleanText(metadata.ciRunUrl),
-          ciActor: cleanText(metadata.ciActor),
-        })
-        .run();
-      tx.update(drafts)
+  const owned = and(
+    eq(drafts.id, draftId),
+    eq(drafts.accountId, auth.accountId),
+    isNull(drafts.deletedAt),
+  );
+  const title = validation.title || input.filename || "Untitled Draft";
+  const statements = [];
+  if (!input.draftId) {
+    statements.push(
+      statement(
+        db.insert(drafts).values({
+          id: draftId,
+          accountId: auth.accountId,
+          title,
+          description: cleanText(input.description, 1000),
+          repoOrg: cleanText(metadata.repoOrg),
+          repoName: cleanText(metadata.repoName),
+          repoHost: cleanText(metadata.repoHost),
+        }),
+      ),
+    );
+  }
+  // A missing owner/deleted draft produces NULL, violating NOT NULL and rolling
+  // back the whole batch. Version allocation happens inside the same transaction.
+  statements.push(
+    statement(
+      db.insert(draftVersions).values({
+        id: versionId,
+        draftId: sql`(${db.select({ id: drafts.id }).from(drafts).where(owned)})`,
+        versionNumber: sql`coalesce((${db
+          .select({ n: max(draftVersions.versionNumber) })
+          .from(draftVersions)
+          .where(eq(draftVersions.draftId, draftId))}), 0) + 1`,
+        objectKey,
+        contentHash: createHash("sha256").update(html).digest("hex"),
+        fileSize: Buffer.byteLength(html, "utf8"),
+        createdByApiKeyId: auth.id,
+        sourceIp: ctx.sourceIp,
+        userAgent: ctx.userAgent,
+        requestId: ctx.requestId,
+        cliVersion: cleanText(metadata.cliVersion),
+        gitBranch: cleanText(metadata.gitBranch),
+        gitCommitSha: cleanText(metadata.gitCommitSha),
+        gitCommitSubject: cleanText(metadata.gitCommitSubject),
+        gitDirty: typeof metadata.gitDirty === "boolean" ? metadata.gitDirty : null,
+        originalFilename: cleanText(input.filename),
+        hasInlineScript: validation.stats.hasInlineScript,
+        externalImageHosts: validation.stats.externalImageHosts,
+        ciRunUrl: cleanText(metadata.ciRunUrl),
+        ciActor: cleanText(metadata.ciActor),
+      }),
+    ),
+  );
+  statements.push(
+    statement(
+      db
+        .update(drafts)
         .set({
           currentVersionId: versionId,
-          title,
+          title: validation.title || sql`coalesce(nullif(${drafts.title}, ''), ${title})`,
           updatedAt: new Date(),
           description: sql`coalesce(${cleanText(input.description, 1000)}, ${drafts.description})`,
           repoOrg: sql`coalesce(${cleanText(metadata.repoOrg)}, ${drafts.repoOrg})`,
           repoName: sql`coalesce(${cleanText(metadata.repoName)}, ${drafts.repoName})`,
           repoHost: sql`coalesce(${cleanText(metadata.repoHost)}, ${drafts.repoHost})`,
         })
-        .where(eq(drafts.id, draftId))
-        .run();
-      tx.insert(uploadEvents)
-        .values({
-          id: randomUUID(),
-          draftId: draftId,
-          draftVersionId: versionId,
-          apiKeyId: auth.id,
-          eventType: existing ? "draft.updated" : "draft.created",
-          sourceIp: ctx.sourceIp,
-          userAgent: ctx.userAgent,
-          metadataJson: metadata,
-        })
-        .run();
-      return {
-        ok: true as const,
-        draftId,
-        versionId,
-        versionNumber,
-        title,
-        requestId: ctx.requestId,
-        ...urls(draftId, ctx),
-        warnings: validation.warnings,
-      };
-    },
-    { behavior: "immediate" },
+        .where(owned),
+    ),
   );
+  statements.push(
+    statement(
+      db.insert(uploadEvents).values({
+        id: randomUUID(),
+        draftId,
+        draftVersionId: versionId,
+        apiKeyId: auth.id,
+        eventType: input.draftId ? "draft.updated" : "draft.created",
+        sourceIp: ctx.sourceIp,
+        userAgent: ctx.userAgent,
+        metadataJson: metadata,
+      }),
+    ),
+  );
+  try {
+    await db.atomic(statements);
+  } catch (error) {
+    if (input.draftId && !(await db.select({ id: drafts.id }).from(drafts).where(owned).get())) {
+      throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
+    }
+    throw error;
+  }
+  const version = await db
+    .select()
+    .from(draftVersions)
+    .where(eq(draftVersions.id, versionId))
+    .get();
+  const draft = await db
+    .select({ title: drafts.title })
+    .from(drafts)
+    .where(eq(drafts.id, draftId))
+    .get();
+  if (!version || !draft) {
+    throw new Error("Draft missing after atomic upload");
+  }
+  return {
+    ok: true as const,
+    draftId,
+    versionId,
+    versionNumber: version.versionNumber,
+    title: validation.title || draft.title,
+    requestId: ctx.requestId,
+    ...urls(draftId, ctx),
+    warnings: validation.warnings,
+  };
 }
