@@ -8,7 +8,7 @@ import { CORSHandlerPlugin } from "@orpc/server/plugins";
 import { EvlogHandlerPlugin } from "@orpc/evlog";
 import { SmartCoercionHandlerPlugin } from "@orpc/json-schema";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
-import { contract, uploadRejected } from "@postplan/api";
+import { contract } from "@postplan/api";
 import { sql } from "drizzle-orm";
 import { createDatabase } from "./db/client.js";
 import { seedAccounts } from "./routers/account-store.js";
@@ -40,14 +40,6 @@ export function createServerOptions(deps: ServerDependencies) {
       new OpenAPIReferenceHandlerPlugin({
         spec: () =>
           openapiGenerator.generate(contract, {
-            customErrorResponseBodySchema: (_errors, status) =>
-              status === 422
-                ? zodConverter.convert(uploadRejected, "output")[0]
-                : {
-                    type: "object",
-                    properties: { ok: { const: false }, error: { type: "string" } },
-                    required: ["ok", "error"],
-                  },
             base: {
               info: { title: "Postplan API", version: "1.0.0" },
               servers: [{ url: "/api" }],
@@ -57,13 +49,6 @@ export function createServerOptions(deps: ServerDependencies) {
         providerConfig: { authentication: { securitySchemes: { bearerAuth: {} } } },
       }),
     ],
-    customErrorResponseBodyEncoder: (error) => {
-      if (error.code === "UNPROCESSABLE_CONTENT") {
-        const result = uploadRejected.safeParse(error.data);
-        if (result.success) return result.data;
-      }
-      return { ok: false, error: error.message };
-    },
   });
   function handleOpenAPIRequest(request: Request, server: Server<undefined>) {
     return onlyApplication(request, async () => {

@@ -164,7 +164,14 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     }
     const badHtml = await api("/api/uploads", "POST", { html: "<form></form>" });
     assert.equal(badHtml.status, 422);
-    assert.ok(((await badHtml.json()) as { errors: string[] }).errors.length);
+    const rejection = (await badHtml.json()) as {
+      code: string;
+      message: string;
+      data: { errors: string[] };
+    };
+    assert.equal(rejection.code, "UNPROCESSABLE_CONTENT");
+    assert.equal(rejection.message, "HTML validation failed.");
+    assert.ok(rejection.data.errors.length);
     const malformed = await app(
       new Request(base + "/api/uploads", {
         method: "POST",

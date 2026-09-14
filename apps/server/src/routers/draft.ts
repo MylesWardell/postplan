@@ -42,16 +42,18 @@ export const enableDraft = protectedOS.drafts.enable.handler(({ context: ctx, in
     disabled_reason: null,
   }),
 );
-export const uploadDraft = publicOS.drafts.upload.handler(async ({ context: ctx, input }) => {
-  ctx.limit("upload-ip", ctx.sourceIp || "anonymous");
-  ctx.limit("upload-key", ctx.apiKey?.id ?? publicUploadAuth.id);
-  if (ctx.session && !ctx.apiKey)
-    throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
-  const result = await persistUpload(ctx, input);
-  if (!result.ok)
-    throw new ORPCError("UNPROCESSABLE_CONTENT", {
-      message: "HTML validation failed.",
-      data: result,
-    });
-  return { status: result.versionNumber === 1 ? (201 as const) : (200 as const), body: result };
-});
+export const uploadDraft = publicOS.drafts.upload.handler(
+  async ({ context: ctx, input, errors }) => {
+    ctx.limit("upload-ip", ctx.sourceIp || "anonymous");
+    ctx.limit("upload-key", ctx.apiKey?.id ?? publicUploadAuth.id);
+    if (ctx.session && !ctx.apiKey)
+      throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
+    const result = await persistUpload(ctx, input);
+    if (!result.ok)
+      throw errors.UNPROCESSABLE_CONTENT({
+        message: "HTML validation failed.",
+        data: result,
+      });
+    return { status: result.versionNumber === 1 ? (201 as const) : (200 as const), body: result };
+  },
+);

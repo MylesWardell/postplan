@@ -63,7 +63,7 @@ Build the portable CLI tarball with `bun run pack:cli`. The executable is `apps/
 
 The server follows the Fetch host pattern in the [oRPC Bun playground](https://github.com/middleapi/orpc/tree/main/playgrounds/bun), using its pinned oRPC `2.0.0-beta.35` generation. All oRPC packages must stay on the same version. Its API is still prerelease; review upgrades together with contract and transport tests.
 
-The [contract](packages/api/src/index.ts) defines the REST routes; the server uses `OpenAPIHandler` without a manual REST dispatcher. Typed clients use `OpenAPILink` with the exported contract. Dates are ISO strings in REST JSON. Uploads return HTTP 201 for a new draft, 200 for a version, and 422 with validation errors for rejected HTML.
+The [contract](packages/api/src/index.ts) defines the REST routes; the server uses `OpenAPIHandler` without a manual REST dispatcher. Typed clients use `OpenAPILink` with the exported contract. Dates are ISO strings in REST JSON. Uploads return HTTP 201 for a new draft, 200 for a version, and 422 for rejected HTML. Errors use [oRPC’s standard format](https://orpc.dev/docs/error-handling): `code`, `message`, and optional `data`. Upload validation details are in `data.errors` and `data.warnings`; typed clients receive `ORPCError` without a custom decoder.
 
 | Router    | Procedures                                                          |
 | --------- | ------------------------------------------------------------------- |

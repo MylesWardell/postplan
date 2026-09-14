@@ -32,8 +32,8 @@ interface DraftsFile {
 
 // Loose view of API JSON responses; the CLI only reads a handful of fields.
 interface ApiBody {
-  error?: string;
-  errors?: string[];
+  message?: string;
+  data?: { errors?: string[] };
   warnings?: string[];
   [key: string]: unknown;
 }
@@ -128,7 +128,7 @@ authCommand
     });
     const body = (await response.json()) as MeBody;
     if (!response.ok) {
-      throw new CliError(body.error || "That key was rejected. Nothing saved.");
+      throw new CliError(body.message || "That key was rejected. Nothing saved.");
     }
 
     saveCredentials(apiKey, options.apiUrl);
@@ -145,7 +145,7 @@ program
     });
     const body = (await response.json()) as MeBody;
     if (!response.ok) {
-      throw new CliError(body.error || "Authentication failed.");
+      throw new CliError(body.message || "Authentication failed.");
     }
     console.log(`Account: ${body.accountName} (${body.accountId})`);
     console.log(`API key: ${body.apiKeyName} (${body.apiKeyId})`);
@@ -205,8 +205,8 @@ program
 
       const body = (await response.json()) as UploadBody;
       if (!response.ok) {
-        const details = body.errors?.length ? `\n- ${body.errors.join("\n- ")}` : "";
-        throw new CliError(`${body.error || "Upload failed."}${details}`);
+        const details = body.data?.errors?.length ? `\n- ${body.data.errors.join("\n- ")}` : "";
+        throw new CliError(`${body.message || "Upload failed."}${details}`);
       }
 
       drafts.files ||= {};
@@ -242,7 +242,7 @@ program
     });
     const body = (await response.json()) as ListBody;
     if (!response.ok) {
-      throw new CliError(body.error || "Failed to list drafts.");
+      throw new CliError(body.message || "Failed to list drafts.");
     }
 
     const drafts = body.drafts || [];

@@ -50,16 +50,6 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
           origin: base,
           url: "/api",
           headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), ...headers },
-          customErrorResponseBodyDecoder: (body) => {
-            if (body && typeof body === "object") {
-              if ("error" in body && typeof body.error === "string")
-                return new ORPCError("API_ERROR", { message: body.error });
-              if ("errors" in body)
-                return new ORPCError("UNPROCESSABLE_CONTENT", {
-                  message: "HTML validation failed.",
-                });
-            }
-          },
         }),
       );
     const owner = client("owner-key");
@@ -122,7 +112,13 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     );
     assert.equal((await fetch(`${base}/api/drafts`, { headers: { cookie } })).status, 401);
     assert.equal((await anonymous.drafts.upload({ html })).body.ok, true);
-    await assert.rejects(owner.drafts.upload({ html: "<form></form>" }), /HTML validation failed/);
+    await assert.rejects(owner.drafts.upload({ html: "<form></form>" }), (error: unknown) => {
+      assert.ok(error instanceof ORPCError);
+      assert.equal(error.code, "UNPROCESSABLE_CONTENT");
+      assert.match(error.message, /HTML validation failed/);
+      assert.ok(error.data && typeof error.data === "object" && "errors" in error.data);
+      return true;
+    });
     const before = (await owner.drafts.detail({ draftId })).versions.length;
     failStorage = true;
     await assert.rejects(owner.drafts.upload({ html, draftId }), /Internal server error/i);
