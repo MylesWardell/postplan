@@ -2,24 +2,30 @@
   "name": "postplan",
   "version": "0.0.4",
   "description": "Static HTML draft publishing for agents.",
-  "type": "module",
   "license": "MIT",
+  "bin": {
+    "postplan": "./dist/bin/postplan.js"
+  },
   "files": [
-    "bin/",
-    "src/",
+    "dist/bin/",
+    "dist/src/",
     "skills/",
     "README.md"
   ],
-  "bin": {
-    "postplan": "./bin/postplan.js"
-  },
+  "type": "module",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --test test/*.test.js"
-  },
-  "engines": {
-    "node": ">=20"
+    "build": "tsc -p tsconfig.json",
+    "build:watch": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node --enable-source-maps dist/src/server.js",
+    "dev": "node --enable-source-maps --watch-path=dist dist/src/server.js",
+    "test": "pnpm run build && node --test dist/test/*.test.js",
+    "lint": "oxlint --deny-warnings src bin test",
+    "lint:fix": "oxlint --fix src bin test",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm test",
+    "prepack": "pnpm run build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.835.0",
@@ -29,5 +35,18 @@
     "nanoid": "^5.1.5",
     "parse5": "^7.3.0",
     "pg": "^8.16.2"
-  }
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.2",
+    "@types/pg": "^8.23.1",
+    "oxfmt": "0.67.0",
+    "oxlint": "1.82.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.20.0",
+    "pnpm": ">=11 <12"
+  },
+  "packageManager": "pnpm@11.22.0"
 }

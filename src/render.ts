@@ -1,4 +1,6 @@
-export function renderHome({ publicBaseUrl }) {
+import { escapeHtml } from "./escape.js";
+
+export function renderHome({ publicBaseUrl }: { publicBaseUrl: string }): string {
   return htmlPage({
     title: "Postplan",
     body: `
@@ -10,11 +12,11 @@ export function renderHome({ publicBaseUrl }) {
         <p>Health: <a href="/healthz">/healthz</a></p>
         <p>Public base URL: ${escapeHtml(publicBaseUrl || "not configured")}</p>
       </main>
-    `
+    `,
   });
 }
 
-export function renderNotFound() {
+export function renderNotFound(): string {
   return htmlPage({
     title: "Draft not found",
     body: `
@@ -22,11 +24,11 @@ export function renderNotFound() {
         <h1>Draft not found</h1>
         <p>The requested draft is unavailable.</p>
       </main>
-    `
+    `,
   });
 }
 
-function htmlPage({ title, body }) {
+function htmlPage({ title, body }: { title: string; body: string }): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -70,12 +72,4 @@ function htmlPage({ title, body }) {
 </head>
 <body>${body}</body>
 </html>`;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import type { JWTPayload } from "jose";
 import { config } from "./config.js";
 import { randomToken } from "./crypto.js";
 
@@ -14,16 +15,38 @@ import { randomToken } from "./crypto.js";
 // - The only error shoo redirects back is ?error=access_denied — everything
 //   else renders on shoo itself.
 
-let jwksCache = null;
-let issuerCache = null;
+export interface ShooClaims extends JWTPayload {
+  pairwise_sub: string;
+  email?: unknown;
+  email_verified?: unknown;
+  name?: unknown;
+  picture?: unknown;
+  pii_sub?: unknown;
+}
 
-export function buildPkce() {
+export interface ShooTokens {
+  id_token: string;
+  [key: string]: unknown;
+}
+
+let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
+let issuerCache: Promise<string> | null = null;
+
+export function buildPkce(): { verifier: string; challenge: string; state: string } {
   const verifier = randomToken(32);
   const challenge = createHash("sha256").update(verifier).digest("base64url");
   return { verifier, challenge, state: randomToken(24) };
 }
 
-export function buildAuthorizeUrl({ redirectUri, state, challenge }) {
+export function buildAuthorizeUrl({
+  redirectUri,
+  state,
+  challenge,
+}: {
+  redirectUri: string;
+  state: string;
+  challenge: string;
+}): string {
   const url = new URL(`${config.shooBaseUrl}/authorize`);
   url.searchParams.set("redirect_uri", redirectUri);
   url.searchParams.set("state", state);
@@ -35,7 +58,15 @@ export function buildAuthorizeUrl({ redirectUri, state, challenge }) {
   return url.toString();
 }
 
-export async function exchangeCode({ code, verifier, redirectUri }) {
+export async function exchangeCode({
+  code,
+  verifier,
+  redirectUri,
+}: {
+  code: string;
+  verifier: string;
+  redirectUri: string;
+}): Promise<ShooTokens> {
   const response = await fetch(`${config.shooBaseUrl}/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -43,60 +74,60 @@ export async function exchangeCode({ code, verifier, redirectUri }) {
       grant_type: "authorization_code",
       redirect_uri: redirectUri,
       code,
-      code_verifier: verifier
+      code_verifier: verifier,
     }),
-    signal: AbortSignal.timeout(10_000)
+    signal: AbortSignal.timeout(10_000),
   });
 
-  const body = await response.json().catch(() => ({}));
+  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok) {
     throw new Error(`shoo token exchange failed: ${body.error || response.status}`);
   }
   if (typeof body.id_token !== "string") {
     throw new Error("shoo token exchange returned no id_token.");
   }
-  return body;
+  return body as ShooTokens;
 }
 
 // Verifies the ES256 id_token against shoo's JWKS and returns its claims.
 // audOrigin must be this deployment's public origin (e.g. https://postplan.dev).
-export async function verifyIdToken(idToken, { audOrigin }) {
+export async function verifyIdToken(
+  idToken: string,
+  { audOrigin }: { audOrigin: string },
+): Promise<ShooClaims> {
   const audience = `origin:${new URL(audOrigin).origin}`;
   const { payload } = await jwtVerify(idToken, getJwks(), {
     issuer: await getIssuer(),
     audience,
-    algorithms: ["ES256"]
+    algorithms: ["ES256"],
   });
   if (typeof payload.pairwise_sub !== "string" || !payload.pairwise_sub) {
     throw new Error("shoo id_token is missing pairwise_sub.");
   }
-  return payload;
+  return payload as ShooClaims;
 }
 
-function getJwks() {
-  jwksCache ||= createRemoteJWKSet(
-    new URL(`${config.shooBaseUrl}/.well-known/jwks.json`)
-  );
+function getJwks(): ReturnType<typeof createRemoteJWKSet> {
+  jwksCache ||= createRemoteJWKSet(new URL(`${config.shooBaseUrl}/.well-known/jwks.json`));
   return jwksCache;
 }
 
 // The issuer string is whatever shoo's discovery document says (it may differ
 // from the base URL), so fetch it once instead of assuming.
-async function getIssuer() {
+async function getIssuer(): Promise<string> {
   issuerCache ||= (async () => {
-    const response = await fetch(
-      `${config.shooBaseUrl}/.well-known/openid-configuration`,
-      { signal: AbortSignal.timeout(10_000) }
-    );
+    const response = await fetch(`${config.shooBaseUrl}/.well-known/openid-configuration`, {
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!response.ok) {
       throw new Error(`shoo discovery failed: ${response.status}`);
     }
-    const body = await response.json();
+    const body = (await response.json()) as { issuer?: unknown };
     if (typeof body.issuer !== "string") {
       throw new Error("shoo discovery document has no issuer.");
     }
     return body.issuer;
-  })().catch((error) => {
+  })().catch((error: unknown) => {
     issuerCache = null;
     throw error;
   });
@@ -104,7 +135,7 @@ async function getIssuer() {
 }
 
 // Test hook: reset module caches (jwks/issuer) between test servers.
-export function resetShooCaches() {
+export function resetShooCaches(): void {
   jwksCache = null;
   issuerCache = null;
 }

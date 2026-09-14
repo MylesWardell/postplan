@@ -2,7 +2,19 @@
 // only) — unlike draft serving they may use inline styles/JS freely; the
 // draft-serving CSP never applies here.
 
-export function renderSignIn({ next }) {
+import type { AccountDraft, AccountDraftDetail } from "./drafts.js";
+import { escapeHtml } from "./escape.js";
+import type { ApiKeySummary, DraftVersionSummary, Session } from "./types.js";
+
+type SessionView = Pick<Session, "accountName" | "email" | "pictureUrl">;
+
+interface RepoGroup {
+  label: string;
+  href: string | null;
+  drafts: AccountDraft[];
+}
+
+export function renderSignIn({ next }: { next?: string }): string {
   const target = `/auth/sign-in?next=${encodeURIComponent(next || "/dashboard")}`;
   return webPage({
     title: "Sign in — Postplan",
@@ -13,11 +25,11 @@ export function renderSignIn({ next }) {
         <p><a class="button" href="${escapeHtml(target)}">Continue with shoo</a></p>
         <p class="muted small">Publishing from the CLI stays anonymous unless you attach a key.</p>
       </main>
-    `
+    `,
   });
 }
 
-export function renderAuthError({ message }) {
+export function renderAuthError({ message }: { message: string }): string {
   return webPage({
     title: "Sign-in problem — Postplan",
     body: `
@@ -26,11 +38,17 @@ export function renderAuthError({ message }) {
         <p class="muted">${escapeHtml(message)}</p>
         <p><a class="button" href="/auth/sign-in">Try again</a></p>
       </main>
-    `
+    `,
   });
 }
 
-export function renderDashboard({ session, drafts }) {
+export function renderDashboard({
+  session,
+  drafts,
+}: {
+  session: SessionView;
+  drafts: AccountDraft[];
+}): string {
   const groups = groupByRepo(drafts);
   const sections = groups
     .map(
@@ -43,7 +61,7 @@ export function renderDashboard({ session, drafts }) {
           }</h2>
           ${group.drafts.map(renderDraftRow).join("\n")}
         </section>
-      `
+      `,
     )
     .join("\n");
 
@@ -59,11 +77,19 @@ export function renderDashboard({ session, drafts }) {
             : `<p class="muted">No drafts yet. Publish one with <code>postplan upload plan.html</code> using a key from <a href="/cli/auth">CLI setup</a>.</p>`
         }
       </main>
-    `
+    `,
   });
 }
 
-export function renderDraftDetail({ session, draft, versions }) {
+export function renderDraftDetail({
+  session,
+  draft,
+  versions,
+}: {
+  session: SessionView;
+  draft: AccountDraftDetail["draft"];
+  versions: DraftVersionSummary[];
+}): string {
   const rows = versions
     .map(
       (v) => `
@@ -73,7 +99,7 @@ export function renderDraftDetail({ session, draft, versions }) {
           <td class="muted">${escapeHtml(v.git_branch || "")} ${escapeHtml((v.git_commit_sha || "").slice(0, 7))}</td>
           <td class="muted">${escapeHtml(formatDate(v.created_at))}</td>
         </tr>
-      `
+      `,
     )
     .join("\n");
 
@@ -91,11 +117,17 @@ export function renderDraftDetail({ session, draft, versions }) {
           ${rows}
         </table>
       </main>
-    `
+    `,
   });
 }
 
-export function renderCliAuth({ session, keys = [] }) {
+export function renderCliAuth({
+  session,
+  keys = [],
+}: {
+  session: SessionView;
+  keys?: ApiKeySummary[];
+}): string {
   const keyRows = keys
     .map(
       (key) => `
@@ -109,7 +141,7 @@ export function renderCliAuth({ session, keys = [] }) {
             </form>
           </td>
         </tr>
-      `
+      `,
     )
     .join("\n");
 
@@ -134,11 +166,19 @@ export function renderCliAuth({ session, keys = [] }) {
             : ""
         }
       </main>
-    `
+    `,
   });
 }
 
-export function renderCliAuthKey({ session, token, keyName }) {
+export function renderCliAuthKey({
+  session,
+  token,
+  keyName,
+}: {
+  session: SessionView;
+  token: string;
+  keyName: string;
+}): string {
   return webPage({
     title: "Your new API key — Postplan",
     header: pageHeader({ session, active: "cli" }),
@@ -158,11 +198,11 @@ export function renderCliAuthKey({ session, token, keyName }) {
           });
         </script>
       </main>
-    `
+    `,
   });
 }
 
-function renderDraftRow(draft) {
+function renderDraftRow(draft: AccountDraft): string {
   // The title is the one-click "open the plan" action (new tab); the internal
   // detail/version-history screen hangs off the separate Details link.
   return `
@@ -180,8 +220,8 @@ function renderDraftRow(draft) {
   `;
 }
 
-function groupByRepo(drafts) {
-  const map = new Map();
+function groupByRepo(drafts: AccountDraft[]): RepoGroup[] {
+  const map = new Map<string, RepoGroup>();
   for (const draft of drafts) {
     const hasRepo = draft.repoOrg && draft.repoName;
     const key = hasRepo ? `${draft.repoOrg}/${draft.repoName}` : "";
@@ -194,20 +234,28 @@ function groupByRepo(drafts) {
         href: hasRepo
           ? `https://${draft.repoHost || "github.com"}/${draft.repoOrg}/${draft.repoName}`
           : null,
-        drafts: []
+        drafts: [],
       });
     }
-    const group = map.get(key);
+    const group = map.get(key)!;
     if (hasRepo && draft.repoHost) {
       group.href = `https://${draft.repoHost}/${draft.repoOrg}/${draft.repoName}`;
     }
     group.drafts.push(draft);
   }
   // Repo groups first (already newest-first within), "No repository" last.
-  return [...map.entries()].sort(([a], [b]) => (a === "") - (b === "")).map(([, g]) => g);
+  return [...map.entries()]
+    .sort(([a], [b]) => Number(a === "") - Number(b === ""))
+    .map(([, g]) => g);
 }
 
-function pageHeader({ session = {}, active }) {
+function pageHeader({
+  session,
+  active,
+}: {
+  session: SessionView;
+  active: "dashboard" | "cli";
+}): string {
   // Claims arrive via shoo's verified id_token, but only render an avatar for
   // plain https URLs anyway.
   const avatar =
@@ -242,12 +290,21 @@ function pageHeader({ session = {}, active }) {
   `;
 }
 
-function formatDate(value) {
+function formatDate(value: Date | string | null): string {
+  if (value === null) return "";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 16).replace("T", " ");
 }
 
-function webPage({ title, body, header = "" }) {
+function webPage({
+  title,
+  body,
+  header = "",
+}: {
+  title: string;
+  body: string;
+  header?: string;
+}): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -291,12 +348,4 @@ function webPage({ title, body, header = "" }) {
 </head>
 <body>${header}${body}</body>
 </html>`;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
 }

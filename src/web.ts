@@ -1,5 +1,7 @@
+import type { Express, NextFunction, Request, Response } from "express";
 import { config } from "./config.js";
 import { findOrCreateAccountForIdentity, pool } from "./db.js";
+import { errorMessage, routeParam } from "./http.js";
 import { newInternalId } from "./ids.js";
 import { clientIp } from "./client-ip.js";
 import { createRateLimiter } from "./rate-limit.js";
@@ -13,7 +15,7 @@ import {
   createAuthStateCookie,
   createSessionCookie,
   readAuthState,
-  readSession
+  readSession,
 } from "./web-auth.js";
 import {
   renderAuthError,
@@ -21,28 +23,26 @@ import {
   renderCliAuthKey,
   renderDashboard,
   renderDraftDetail,
-  renderSignIn
+  renderSignIn,
 } from "./render-web.js";
+import type { ApiKeySummary } from "./types.js";
 
 // Server-rendered web UI: shoo sign-in, the drafts dashboard, and the /cli/auth
 // key page. Apex-domain only — on draft subdomains these paths fall through to
 // the 404 handler so a draft origin can never serve dashboard UI.
-export function registerWebRoutes(app) {
+export function registerWebRoutes(app: Express): void {
   const web = [onlyApex, requireConfigured];
   const keyMintRateLimit = createRateLimiter({
     windowMs: Number(process.env.KEY_MINT_RATE_LIMIT_WINDOW_MS || 3_600_000),
     max: Number(process.env.KEY_MINT_RATE_LIMIT_MAX || 10),
     keyPrefix: "key-mint",
-    key: (req) => readSession(req)?.accountId || clientIp(req) || "anonymous"
+    key: (req) => readSession(req)?.accountId || clientIp(req) || "anonymous",
   });
 
   app.get("/auth/sign-in", ...web, (req, res) => {
     const { verifier, challenge, state } = buildPkce();
-    const next = safeNextPath(req.query.next);
-    res.append(
-      "Set-Cookie",
-      createAuthStateCookie({ state, verifier, next })
-    );
+    const nextPath = safeNextPath(req.query.next);
+    res.append("Set-Cookie", createAuthStateCookie({ state, verifier, next: nextPath }));
     res.redirect(buildAuthorizeUrl({ redirectUri: callbackUrl(), state, challenge }));
   });
 
@@ -58,8 +58,8 @@ export function registerWebRoutes(app) {
           .send(
             renderAuthError({
               message:
-                "Sign-in was cancelled or consent was declined. Postplan uses your email and profile picture to identify your account — retry and approve to continue."
-            })
+                "Sign-in was cancelled or consent was declined. Postplan uses your email and profile picture to identify your account — retry and approve to continue.",
+            }),
           );
       }
 
@@ -86,11 +86,11 @@ export function registerWebRoutes(app) {
         const tokens = await exchangeCode({
           code,
           verifier: authState.verifier,
-          redirectUri: callbackUrl()
+          redirectUri: callbackUrl(),
         });
         claims = await verifyIdToken(tokens.id_token, { audOrigin: webOrigin() });
       } catch (error) {
-        console.error("shoo sign-in failed:", error.message);
+        console.error("shoo sign-in failed:", errorMessage(error));
         return res
           .status(502)
           .type("html")
@@ -108,8 +108,8 @@ export function registerWebRoutes(app) {
           emailVerified: typeof claims.email_verified === "boolean" ? claims.email_verified : null,
           displayName: claimText(claims.name),
           pictureUrl: claimText(claims.picture),
-          piiSubject: claimText(claims.pii_sub)
-        }
+          piiSubject: claimText(claims.pii_sub),
+        },
       });
 
       res.append("Set-Cookie", createSessionCookie(account));
@@ -131,7 +131,7 @@ export function registerWebRoutes(app) {
         return res.type("html").send(renderSignIn({ next: "/dashboard" }));
       }
       const drafts = await listAccountDrafts(session.accountId, {
-        requestBaseUrl: getRequestBaseUrl(req)
+        requestBaseUrl: getRequestBaseUrl(req),
       });
       res.type("html").send(renderDashboard({ session, drafts }));
     } catch (error) {
@@ -145,16 +145,20 @@ export function registerWebRoutes(app) {
       if (!session) {
         return res.type("html").send(renderSignIn({ next: "/dashboard" }));
       }
-      const result = await getAccountDraftWithVersions(session.accountId, req.params.draftId, {
-        requestBaseUrl: getRequestBaseUrl(req)
-      });
+      const result = await getAccountDraftWithVersions(
+        session.accountId,
+        routeParam(req, "draftId"),
+        {
+          requestBaseUrl: getRequestBaseUrl(req),
+        },
+      );
       if (!result) return next();
       res.type("html").send(
         renderDraftDetail({
           session,
           draft: result.draft,
-          versions: result.versions
-        })
+          versions: result.versions,
+        }),
       );
     } catch (error) {
       next(error);
@@ -170,8 +174,8 @@ export function registerWebRoutes(app) {
       res.type("html").send(
         renderCliAuth({
           session,
-          keys: await listAccountApiKeys(session.accountId)
-        })
+          keys: await listAccountApiKeys(session.accountId),
+        }),
       );
     } catch (error) {
       next(error);
@@ -191,12 +195,10 @@ export function registerWebRoutes(app) {
       const keyName = `CLI · ${new Date().toISOString().slice(0, 10)}`;
       await pool.query(
         "INSERT INTO api_keys (id, account_id, name, key_hash) VALUES ($1, $2, $3, $4)",
-        [newInternalId(), session.accountId, keyName, sha256(token)]
+        [newInternalId(), session.accountId, keyName, sha256(token)],
       );
 
-      res.type("html").send(
-        renderCliAuthKey({ session, token, keyName })
-      );
+      res.type("html").send(renderCliAuthKey({ session, token, keyName }));
     } catch (error) {
       next(error);
     }
@@ -214,7 +216,7 @@ export function registerWebRoutes(app) {
           SET revoked_at = now()
           WHERE id = $1 AND account_id = $2 AND revoked_at IS NULL
         `,
-        [req.params.apiKeyId, session.accountId]
+        [routeParam(req, "apiKeyId"), session.accountId],
       );
       res.redirect("/cli/auth");
     } catch (error) {
@@ -223,54 +225,55 @@ export function registerWebRoutes(app) {
   });
 }
 
-async function listAccountApiKeys(accountId) {
-  const result = await pool.query(
+async function listAccountApiKeys(accountId: string): Promise<ApiKeySummary[]> {
+  const result = await pool.query<ApiKeySummary>(
     `
       SELECT id, name, created_at, last_used_at
       FROM api_keys
       WHERE account_id = $1 AND revoked_at IS NULL
       ORDER BY created_at DESC
     `,
-    [accountId]
+    [accountId],
   );
   return result.rows;
 }
 
 // Web sign-in needs a session secret and a configured public base URL (the
 // shoo redirect_uri must be a stable, exact string — never request-derived).
-function requireConfigured(req, res, next) {
+function requireConfigured(req: Request, res: Response, next: NextFunction): void {
   if (!config.sessionSecret || !config.publicBaseUrl) {
-    return res
+    res
       .status(503)
       .type("html")
       .send(
         renderAuthError({
           message:
-            "Web sign-in is not configured on this deployment (POSTPLAN_SESSION_SECRET / POSTPLAN_PUBLIC_BASE_URL)."
-        })
+            "Web sign-in is not configured on this deployment (POSTPLAN_SESSION_SECRET / POSTPLAN_PUBLIC_BASE_URL).",
+        }),
       );
+    return;
   }
   next();
 }
 
-function onlyApex(req, res, next) {
+function onlyApex(req: Request, _res: Response, next: NextFunction): void {
   const draftId = getDraftIdFromHost({
     publicBaseUrl: config.publicBaseUrl,
-    host: req.hostname || req.get("host")
+    host: req.hostname || req.get("host"),
   });
   if (draftId) return next("route");
   next();
 }
 
-function webOrigin() {
+function webOrigin(): string {
   return getHomeUrl({ publicBaseUrl: config.publicBaseUrl, requestBaseUrl: "" });
 }
 
-function callbackUrl() {
+function callbackUrl(): string {
   return `${webOrigin()}/auth/callback`;
 }
 
-function claimText(value) {
+function claimText(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed || null;
@@ -278,7 +281,7 @@ function claimText(value) {
 
 // Only allow same-site relative paths as post-login destinations, so the
 // `next` param can never become an open redirect.
-function safeNextPath(value) {
+function safeNextPath(value: unknown): string {
   if (typeof value !== "string") return "/dashboard";
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
     return "/dashboard";

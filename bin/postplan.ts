@@ -1,16 +1,80 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { once } from "node:events";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
+import readline from "node:readline/promises";
 import { Command } from "commander";
 import { validateHtml } from "../src/html-policy.js";
 
+interface CliConfig {
+  apiUrl?: string;
+}
+
+interface Credentials {
+  apiKey?: string;
+  updatedAt?: string;
+}
+
+interface DraftMapping {
+  draftId: string;
+  publicUrl: string;
+  rawUrl: string;
+  latestVersionNumber: number;
+  updatedAt: string;
+}
+
+interface DraftsFile {
+  files?: Record<string, DraftMapping>;
+}
+
+// Loose view of API JSON responses; the CLI only reads a handful of fields.
+interface ApiBody {
+  error?: string;
+  errors?: string[];
+  warnings?: string[];
+  [key: string]: unknown;
+}
+
+interface MeBody extends ApiBody {
+  accountId: string;
+  accountName: string;
+  apiKeyId: string;
+  apiKeyName: string;
+}
+
+interface UploadBody extends ApiBody {
+  draftId: string;
+  versionNumber: number;
+  publicUrl: string;
+  rawUrl?: string;
+}
+
+interface ListedDraft {
+  title: string | null;
+  description: string | null;
+  repoOrg: string | null;
+  repoName: string | null;
+  latestVersionNumber: number | null;
+  versionCount: number;
+  updatedAt: string;
+  disabled: boolean;
+  publicUrl: string;
+}
+
+interface ListBody extends ApiBody {
+  drafts?: ListedDraft[];
+}
+
 // Single source of truth for the version: package.json. CI bumps it on every
-// merge to main, so a hardcoded copy here would immediately drift.
-const { version: VERSION } = createRequire(import.meta.url)("../package.json");
+// merge to main, so a hardcoded copy here would immediately drift. Compiled
+// output lives in dist/bin/, two levels below the package root.
+const { version: VERSION } = createRequire(import.meta.url)("../../package.json") as {
+  version: string;
+};
 const DEFAULT_API_URL = "https://postplan.dev";
 const POSTPLAN_DIR = path.join(os.homedir(), ".postplan");
 const CONFIG_PATH = path.join(POSTPLAN_DIR, "config.json");
@@ -21,10 +85,7 @@ class CliError extends Error {}
 
 const program = new Command();
 
-program
-  .name("postplan")
-  .description("Upload static HTML drafts to Postplan.")
-  .version(VERSION);
+program.name("postplan").description("Upload static HTML drafts to Postplan.").version(VERSION);
 
 const authCommand = program.command("auth").description("Manage CLI authentication.");
 
@@ -32,7 +93,7 @@ authCommand
   .command("set")
   .argument("<api-key>", "Postplan API key")
   .option("--api-url <url>", "Override the default Postplan API base URL")
-  .action((apiKey, options) => {
+  .action((apiKey: string, options: { apiUrl?: string }) => {
     saveCredentials(apiKey, options.apiUrl);
     console.log("Postplan credentials saved.");
   });
@@ -41,26 +102,21 @@ authCommand
   .command("login")
   .description("Log in by pasting an API key from the browser. Works over SSH.")
   .option("--api-url <url>", "Override the default Postplan API base URL")
-  .action(async (options) => {
+  .action(async (options: { apiUrl?: string }) => {
     const { apiUrl } = readAuth(options.apiUrl, { requireApiKey: false });
 
     console.log("Open this in your browser (any device):\n");
     console.log(`  ${apiUrl}/cli/auth\n`);
     console.log("Sign in, generate a key, then paste it below.\n");
 
-    const readline = await import("node:readline/promises");
-    const { once } = await import("node:events");
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    let apiKey;
+    let apiKey: string;
     try {
       // rl.question never resolves if stdin closes (EOF/ctrl-d) — race the
       // close event so that path hits the "No key entered" error below
       // instead of exiting 0 silently.
       apiKey = (
-        await Promise.race([
-          rl.question("Paste your API key: "),
-          once(rl, "close").then(() => "")
-        ])
+        await Promise.race([rl.question("Paste your API key: "), once(rl, "close").then(() => "")])
       ).trim();
     } finally {
       rl.close();
@@ -71,9 +127,9 @@ authCommand
     }
 
     const response = await fetch(`${apiUrl}/api/me`, {
-      headers: { Authorization: `Bearer ${apiKey}` }
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
-    const body = await response.json();
+    const body = (await response.json()) as MeBody;
     if (!response.ok) {
       throw new CliError(body.error || "That key was rejected. Nothing saved.");
     }
@@ -88,9 +144,9 @@ program
   .action(async () => {
     const { apiUrl, apiKey } = readAuth();
     const response = await fetch(`${apiUrl}/api/me`, {
-      headers: { Authorization: `Bearer ${apiKey}` }
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
-    const body = await response.json();
+    const body = (await response.json()) as MeBody;
     if (!response.ok) {
       throw new CliError(body.error || "Authentication failed.");
     }
@@ -106,89 +162,94 @@ program
   .option("--description <text>", "Set a short description for the draft")
   .option("--api-url <url>", "Override the default Postplan API base URL")
   .description("Upload or update an HTML draft.")
-  .action(async (file, options) => {
-    const resolvedFile = path.resolve(file);
-    const { apiUrl, apiKey } = readAuth(options.apiUrl, { requireApiKey: false });
+  .action(
+    async (
+      file: string,
+      options: { draft?: string; new?: boolean; description?: string; apiUrl?: string },
+    ) => {
+      const resolvedFile = path.resolve(file);
+      const { apiUrl, apiKey } = readAuth(options.apiUrl, { requireApiKey: false });
 
-    if (!fs.existsSync(resolvedFile)) {
-      throw new CliError(`File does not exist: ${resolvedFile}`);
-    }
-
-    const html = fs.readFileSync(resolvedFile, "utf8");
-    const validation = validateHtml(html);
-
-    if (!validation.ok) {
-      throw new CliError(`HTML failed Postplan validation:\n- ${validation.errors.join("\n- ")}`);
-    }
-
-    const drafts = readDrafts();
-    const knownDraft = drafts.files?.[resolvedFile];
-    const draftId = options.new ? null : options.draft || knownDraft?.draftId || null;
-
-    const payload = {
-      html,
-      filename: path.basename(resolvedFile),
-      draftId,
-      description: options.description,
-      metadata: {
-        ...collectGitMetadata(path.dirname(resolvedFile)),
-        ...collectCiMetadata(),
-        cliVersion: VERSION,
-        fileSha256: sha256(html)
+      if (!fs.existsSync(resolvedFile)) {
+        throw new CliError(`File does not exist: ${resolvedFile}`);
       }
-    };
 
-    const headers = {
-      "Content-Type": "application/json",
-      "User-Agent": `postplan/${VERSION}`
-    };
-    if (apiKey) {
-      headers.Authorization = `Bearer ${apiKey}`;
-    }
+      const html = fs.readFileSync(resolvedFile, "utf8");
+      const validation = validateHtml(html);
 
-    const response = await fetch(`${apiUrl}/api/uploads`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload)
-    });
+      if (!validation.ok) {
+        throw new CliError(`HTML failed Postplan validation:\n- ${validation.errors.join("\n- ")}`);
+      }
 
-    const body = await response.json();
-    if (!response.ok) {
-      const details = body.errors?.length ? `\n- ${body.errors.join("\n- ")}` : "";
-      throw new CliError(`${body.error || "Upload failed."}${details}`);
-    }
+      const drafts = readDrafts();
+      const knownDraft = drafts.files?.[resolvedFile];
+      const draftId = options.new ? null : options.draft || knownDraft?.draftId || null;
 
-    drafts.files ||= {};
-    drafts.files[resolvedFile] = {
-      draftId: body.draftId,
-      publicUrl: body.publicUrl,
-      rawUrl: body.rawUrl || `${body.publicUrl.replace(/\/+$/, "")}/raw`,
-      latestVersionNumber: body.versionNumber,
-      updatedAt: new Date().toISOString()
-    };
-    writeJson(DRAFTS_PATH, drafts, 0o600);
+      const payload = {
+        html,
+        filename: path.basename(resolvedFile),
+        draftId,
+        description: options.description,
+        metadata: {
+          ...collectGitMetadata(path.dirname(resolvedFile)),
+          ...collectCiMetadata(),
+          cliVersion: VERSION,
+          fileSha256: sha256(html),
+        },
+      };
 
-    console.log(draftId ? "Updated draft" : "Uploaded draft");
-    console.log(`URL: ${body.publicUrl}`);
-    console.log(`Raw HTML: ${body.rawUrl || `${body.publicUrl.replace(/\/+$/, "")}/raw`}`);
-    console.log(`Draft ID: ${body.draftId}`);
-    console.log(`Version: ${body.versionNumber}`);
-    for (const warning of body.warnings || []) {
-      console.warn(`Warning: ${warning}`);
-    }
-  });
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "User-Agent": `postplan/${VERSION}`,
+      };
+      if (apiKey) {
+        headers.Authorization = `Bearer ${apiKey}`;
+      }
+
+      const response = await fetch(`${apiUrl}/api/uploads`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const body = (await response.json()) as UploadBody;
+      if (!response.ok) {
+        const details = body.errors?.length ? `\n- ${body.errors.join("\n- ")}` : "";
+        throw new CliError(`${body.error || "Upload failed."}${details}`);
+      }
+
+      drafts.files ||= {};
+      drafts.files[resolvedFile] = {
+        draftId: body.draftId,
+        publicUrl: body.publicUrl,
+        rawUrl: body.rawUrl || `${body.publicUrl.replace(/\/+$/, "")}/raw`,
+        latestVersionNumber: body.versionNumber,
+        updatedAt: new Date().toISOString(),
+      };
+      writeJson(DRAFTS_PATH, drafts, 0o600);
+
+      console.log(draftId ? "Updated draft" : "Uploaded draft");
+      console.log(`URL: ${body.publicUrl}`);
+      console.log(`Raw HTML: ${body.rawUrl || `${body.publicUrl.replace(/\/+$/, "")}/raw`}`);
+      console.log(`Draft ID: ${body.draftId}`);
+      console.log(`Version: ${body.versionNumber}`);
+      for (const warning of body.warnings || []) {
+        console.warn(`Warning: ${warning}`);
+      }
+    },
+  );
 
 program
   .command("list")
   .description("List the drafts published to your account.")
   .option("--api-url <url>", "Override the default Postplan API base URL")
   .option("--json", "Print the raw JSON response")
-  .action(async (options) => {
+  .action(async (options: { apiUrl?: string; json?: boolean }) => {
     const { apiUrl, apiKey } = readAuth(options.apiUrl);
     const response = await fetch(`${apiUrl}/api/drafts`, {
-      headers: { Authorization: `Bearer ${apiKey}` }
+      headers: { Authorization: `Bearer ${apiKey}` },
     });
-    const body = await response.json();
+    const body = (await response.json()) as ListBody;
     if (!response.ok) {
       throw new CliError(body.error || "Failed to list drafts.");
     }
@@ -207,13 +268,16 @@ program
 
     console.log(`Drafts (${drafts.length})\n`);
     for (const draft of drafts) {
-      const repo = draft.repoOrg && draft.repoName ? `${draft.repoOrg}/${draft.repoName}` : "no repo";
+      const repo =
+        draft.repoOrg && draft.repoName ? `${draft.repoOrg}/${draft.repoName}` : "no repo";
       const version = draft.latestVersionNumber ? `v${draft.latestVersionNumber}` : "no versions";
       const count = `${draft.versionCount} version${draft.versionCount === 1 ? "" : "s"}`;
       const disabled = draft.disabled ? " · disabled" : "";
 
       console.log(draft.title || "Untitled Draft");
-      console.log(`  ${repo} · ${version} · ${count} · updated ${timeAgo(draft.updatedAt)}${disabled}`);
+      console.log(
+        `  ${repo} · ${version} · ${count} · updated ${timeAgo(draft.updatedAt)}${disabled}`,
+      );
       console.log(`  ${draft.publicUrl}`);
       if (draft.description) {
         console.log(`  ${draft.description}`);
@@ -224,7 +288,7 @@ program
 
 program.exitOverride();
 
-program.parseAsync(process.argv).catch((error) => {
+program.parseAsync(process.argv).catch((error: { code?: string; message?: string }) => {
   if (error instanceof CliError) {
     console.error(error.message);
     process.exit(1);
@@ -238,9 +302,12 @@ program.parseAsync(process.argv).catch((error) => {
   process.exit(1);
 });
 
-function readAuth(apiUrlOverride, { requireApiKey = true } = {}) {
-  const config = readJson(CONFIG_PATH, {});
-  const credentials = readJson(CREDENTIALS_PATH, {});
+function readAuth(
+  apiUrlOverride?: string,
+  { requireApiKey = true }: { requireApiKey?: boolean } = {},
+): { apiUrl: string; apiKey: string | undefined } {
+  const config = readJson<CliConfig>(CONFIG_PATH, {});
+  const credentials = readJson<Credentials>(CREDENTIALS_PATH, {});
   const apiUrl = (
     apiUrlOverride ||
     process.env.POSTPLAN_API_URL ||
@@ -256,17 +323,17 @@ function readAuth(apiUrlOverride, { requireApiKey = true } = {}) {
   return { apiUrl, apiKey };
 }
 
-function ensureStateDir() {
+function ensureStateDir(): void {
   fs.mkdirSync(POSTPLAN_DIR, { recursive: true, mode: 0o700 });
 }
 
-function saveCredentials(apiKey, apiUrlOverride) {
+function saveCredentials(apiKey: string, apiUrlOverride: string | undefined): void {
   ensureStateDir();
 
   if (apiUrlOverride) {
     writeJson(CONFIG_PATH, {
-      ...readJson(CONFIG_PATH, {}),
-      apiUrl: apiUrlOverride.replace(/\/+$/, "")
+      ...readJson<CliConfig>(CONFIG_PATH, {}),
+      apiUrl: apiUrlOverride.replace(/\/+$/, ""),
     });
   }
 
@@ -274,31 +341,31 @@ function saveCredentials(apiKey, apiUrlOverride) {
     CREDENTIALS_PATH,
     {
       apiKey,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     },
-    0o600
+    0o600,
   );
 }
 
-function readDrafts() {
-  return readJson(DRAFTS_PATH, { files: {} });
+function readDrafts(): DraftsFile {
+  return readJson<DraftsFile>(DRAFTS_PATH, { files: {} });
 }
 
-function readJson(file, fallback) {
+function readJson<T>(file: string, fallback: T): T {
   try {
-    return JSON.parse(fs.readFileSync(file, "utf8"));
+    return JSON.parse(fs.readFileSync(file, "utf8")) as T;
   } catch {
     return fallback;
   }
 }
 
-function writeJson(file, value, mode = 0o600) {
+function writeJson(file: string, value: unknown, mode = 0o600): void {
   ensureStateDir();
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, { mode });
   fs.chmodSync(file, mode);
 }
 
-function collectGitMetadata(cwd) {
+function collectGitMetadata(cwd: string): Record<string, string | boolean | null> {
   const repoRoot = git(["rev-parse", "--show-toplevel"], cwd);
   const remote = git(["config", "--get", "remote.origin.url"], cwd);
   const parsedRemote = parseRemote(remote);
@@ -312,14 +379,14 @@ function collectGitMetadata(cwd) {
     gitCommitSha: git(["rev-parse", "HEAD"], cwd),
     gitCommitSubject: git(["log", "-1", "--format=%s"], cwd),
     // null when not a git repo; true/false when a working tree is present.
-    gitDirty: status === null ? null : status.length > 0
+    gitDirty: status === null ? null : status.length > 0,
   };
 }
 
 // Best-effort CI provenance. GitHub Actions is detected precisely (with a run
 // URL); other CI systems are flagged generically. Nothing here is trusted for
 // authorization — it is metadata for the dashboard and audit trail only.
-function collectCiMetadata() {
+function collectCiMetadata(): Record<string, string | null> {
   const env = process.env;
   if (env.GITHUB_ACTIONS === "true") {
     const server = env.GITHUB_SERVER_URL || "https://github.com";
@@ -328,7 +395,7 @@ function collectCiMetadata() {
     return {
       ciProvider: "github_actions",
       ciRunUrl: repo && runId ? `${server}/${repo}/actions/runs/${runId}` : null,
-      ciActor: env.GITHUB_ACTOR || null
+      ciActor: env.GITHUB_ACTOR || null,
     };
   }
   if (env.CI) {
@@ -337,32 +404,32 @@ function collectCiMetadata() {
   return {};
 }
 
-function git(args, cwd) {
+function git(args: string[], cwd: string): string | null {
   try {
     return execFileSync("git", args, {
       cwd,
       encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"]
+      stdio: ["ignore", "pipe", "ignore"],
     }).trim();
   } catch {
     return null;
   }
 }
 
-function parseRemote(remote) {
+function parseRemote(remote: string | null): { host?: string; org?: string; name?: string } {
   if (!remote) return {};
 
   const cleaned = remote.replace(/\.git$/, "");
   const sshMatch = cleaned.match(/^[^@]+@([^:]+):([^/]+)\/(.+)$/);
   if (sshMatch) {
-    return { host: sshMatch[1], org: sshMatch[2], name: path.basename(sshMatch[3]) };
+    return { host: sshMatch[1]!, org: sshMatch[2]!, name: path.basename(sshMatch[3]!) };
   }
 
   try {
     const url = new URL(cleaned);
     const parts = url.pathname.split("/").filter(Boolean);
     if (parts.length >= 2) {
-      return { host: url.hostname, org: parts[0], name: parts.at(-1) };
+      return { host: url.hostname, org: parts[0]!, name: parts.at(-1)! };
     }
   } catch {
     // Fall through to path parsing.
@@ -370,34 +437,34 @@ function parseRemote(remote) {
 
   const parts = cleaned.split("/").filter(Boolean);
   if (parts.length >= 2) {
-    return { org: parts.at(-2), name: parts.at(-1) };
+    return { org: parts.at(-2)!, name: parts.at(-1)! };
   }
 
   return {};
 }
 
-function inferOrgFromRoot(repoRoot) {
+function inferOrgFromRoot(repoRoot: string | null): string | null {
   if (!repoRoot) return null;
   return path.basename(path.dirname(repoRoot));
 }
 
-function sha256(value) {
+function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function timeAgo(value) {
+function timeAgo(value: string | null | undefined): string {
   if (!value) return "unknown";
   const then = new Date(value).getTime();
   if (Number.isNaN(then)) return "unknown";
 
   const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
-  const units = [
+  const units: [string, number][] = [
     ["year", 31_536_000],
     ["month", 2_592_000],
     ["week", 604_800],
     ["day", 86_400],
     ["hour", 3_600],
-    ["minute", 60]
+    ["minute", 60],
   ];
 
   for (const [name, secs] of units) {

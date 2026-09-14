@@ -1,14 +1,28 @@
+import type { Request } from "express";
+
 const DRAFT_ID_PATTERN = /^[a-z0-9]{12}$/;
 
-export function getRequestBaseUrl(req) {
+export interface DraftUrlOptions {
+  draftId: string;
+  publicBaseUrl: string | undefined;
+  requestBaseUrl: string;
+}
+
+export function getRequestBaseUrl(req: Request): string {
   const forwardedProto = req.get("x-forwarded-proto");
   const protocol = forwardedProto
-    ? forwardedProto.split(",")[0].trim()
+    ? (forwardedProto.split(",")[0] ?? "").trim()
     : req.protocol || "http";
   return `${protocol}://${req.get("host")}`;
 }
 
-export function getHomeUrl({ publicBaseUrl, requestBaseUrl }) {
+export function getHomeUrl({
+  publicBaseUrl,
+  requestBaseUrl,
+}: {
+  publicBaseUrl: string | undefined;
+  requestBaseUrl: string;
+}): string {
   const configured = normalizeUrl(publicBaseUrl);
   const wildcard = parseWildcardBaseUrl(configured);
 
@@ -23,7 +37,11 @@ export function getHomeUrl({ publicBaseUrl, requestBaseUrl }) {
   return configured || normalizeUrl(requestBaseUrl);
 }
 
-export function getDraftPublicUrl({ draftId, publicBaseUrl, requestBaseUrl }) {
+export function getDraftPublicUrl({
+  draftId,
+  publicBaseUrl,
+  requestBaseUrl,
+}: DraftUrlOptions): string {
   const configured = normalizeUrl(publicBaseUrl);
   const wildcard = parseWildcardBaseUrl(configured);
 
@@ -39,7 +57,11 @@ export function getDraftPublicUrl({ draftId, publicBaseUrl, requestBaseUrl }) {
   return `${baseUrl}/d/${draftId}`;
 }
 
-export function getDraftRawUrl({ draftId, publicBaseUrl, requestBaseUrl }) {
+export function getDraftRawUrl({
+  draftId,
+  publicBaseUrl,
+  requestBaseUrl,
+}: DraftUrlOptions): string {
   const configured = normalizeUrl(publicBaseUrl);
   const wildcard = parseWildcardBaseUrl(configured);
 
@@ -55,7 +77,13 @@ export function getDraftRawUrl({ draftId, publicBaseUrl, requestBaseUrl }) {
   return `${baseUrl}/d/${draftId}/raw`;
 }
 
-export function getDraftIdFromHost({ publicBaseUrl, host }) {
+export function getDraftIdFromHost({
+  publicBaseUrl,
+  host,
+}: {
+  publicBaseUrl: string | undefined;
+  host: string | undefined;
+}): string | null {
   const wildcard = parseWildcardBaseUrl(publicBaseUrl);
   if (!wildcard) return null;
 
@@ -68,13 +96,13 @@ export function getDraftIdFromHost({ publicBaseUrl, host }) {
   return draftId;
 }
 
-function parseWildcardBaseUrl(value) {
+function parseWildcardBaseUrl(value: string | undefined): URL | null {
   const url = parseUrl(value);
   if (!url || !url.hostname.startsWith("*.")) return null;
   return url;
 }
 
-function parseHost(value) {
+function parseHost(value: string | undefined): string | null {
   const normalized = String(value || "").trim();
   if (!normalized) return null;
 
@@ -85,7 +113,7 @@ function parseHost(value) {
   }
 }
 
-function parseUrl(value) {
+function parseUrl(value: string | undefined): URL | null {
   const normalized = normalizeUrl(value);
   if (!normalized) return null;
 
@@ -96,11 +124,11 @@ function parseUrl(value) {
   }
 }
 
-function normalizeUrl(value) {
+function normalizeUrl(value: string | undefined): string {
   if (typeof value !== "string") return "";
   return value.trim().replace(/\/+$/, "");
 }
 
-function stripTrailingSlash(value) {
+function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }

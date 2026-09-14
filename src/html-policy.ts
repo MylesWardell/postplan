@@ -1,14 +1,6 @@
 import * as parse5 from "parse5";
 
-const BLOCKED_TAGS = new Set([
-  "form",
-  "iframe",
-  "object",
-  "embed",
-  "applet",
-  "base",
-  "link"
-]);
+const BLOCKED_TAGS = new Set(["form", "iframe", "object", "embed", "applet", "base", "link"]);
 
 const URL_ATTRS = new Set([
   "href",
@@ -17,7 +9,7 @@ const URL_ATTRS = new Set([
   "formaction",
   "poster",
   "srcdoc",
-  "xlink:href"
+  "xlink:href",
 ]);
 
 const BLOCKED_PROTOCOLS = ["javascript:", "vbscript:", "file:"];
@@ -28,10 +20,41 @@ const ALLOWED_SCRIPT_TYPES = new Set(["", "text/javascript", "application/javasc
 // would overflow the call stack (~2000+ levels).
 const MAX_DEPTH = 512;
 
-export function validateHtml(html, options = {}) {
+export interface HtmlStats {
+  hasInlineScript: boolean;
+  externalImageHosts: string[];
+}
+
+export interface HtmlValidationResult {
+  ok: boolean;
+  errors: string[];
+  warnings: string[];
+  title: string | null;
+  hasScripts: boolean;
+  stats: HtmlStats;
+}
+
+export interface HtmlValidationOptions {
+  maxBytes?: number;
+}
+
+// The subset of parse5's default tree nodes the policy walks. Kept structural
+// so documents, elements, text, and comment nodes all fit one shape.
+interface TreeNode {
+  nodeName: string;
+  tagName?: string;
+  attrs?: { name: string; value: string }[];
+  childNodes?: TreeNode[];
+  value?: string;
+}
+
+export function validateHtml(
+  html: unknown,
+  options: HtmlValidationOptions = {},
+): HtmlValidationResult {
   const maxBytes = options.maxBytes ?? 512 * 1024;
-  const errors = [];
-  const warnings = [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
 
   if (typeof html !== "string" || html.trim() === "") {
     errors.push("HTML document is empty.");
@@ -43,22 +66,22 @@ export function validateHtml(html, options = {}) {
     errors.push(`HTML document is ${byteLength} bytes; maximum is ${maxBytes} bytes.`);
   }
 
-  let document;
+  let document: TreeNode;
   try {
     // scriptingEnabled: false so <noscript> children parse as real elements:
     // the hosted viewer renders drafts in an iframe without allow-scripts
     // unless consented, and the policy must see what that frame shows.
-    document = parse5.parse(html, { scriptingEnabled: false });
+    document = parse5.parse(html, { scriptingEnabled: false }) as unknown as TreeNode;
   } catch {
     errors.push("HTML document could not be parsed.");
     return { ok: false, errors, warnings, title: null, hasScripts: false, stats: emptyStats() };
   }
 
-  let title = null;
+  let title: string | null = null;
   let hasScripts = false;
-  const externalImageHosts = new Set();
+  const externalImageHosts = new Set<string>();
 
-  function visit(node) {
+  function visit(node: TreeNode): void {
     if (node.tagName) {
       const tagName = node.tagName.toLowerCase();
 
@@ -69,7 +92,10 @@ export function validateHtml(html, options = {}) {
       if (tagName === "script") {
         hasScripts = true;
         const attributes = new Map(
-          (node.attrs || []).map((attr) => [attr.name.toLowerCase(), String(attr.value || "").trim()])
+          (node.attrs || []).map((attr) => [
+            attr.name.toLowerCase(),
+            String(attr.value || "").trim(),
+          ]),
         );
         if (attributes.has("src")) {
           errors.push("External script sources are not allowed.");
@@ -94,19 +120,26 @@ export function validateHtml(html, options = {}) {
         }
 
         if (URL_ATTRS.has(name)) {
+          // Strip control characters that can disguise javascript: URLs.
+          // oxlint-disable-next-line no-control-regex
           const normalized = value.replace(/[\u0000-\u0020]+/g, "").toLowerCase();
           if (BLOCKED_PROTOCOLS.some((protocol) => normalized.startsWith(protocol))) {
             errors.push(`Blocked unsafe URL in "${name}" attribute.`);
           }
         }
 
-        if (name === "style" && /expression\s*\(|behavior\s*:|url\s*\(\s*javascript:/i.test(value)) {
+        if (
+          name === "style" &&
+          /expression\s*\(|behavior\s*:|url\s*\(\s*javascript:/i.test(value)
+        ) {
           errors.push("Blocked unsafe inline CSS.");
         }
       }
 
       if (tagName === "meta") {
-        const httpEquiv = (node.attrs || []).find((attr) => attr.name.toLowerCase() === "http-equiv");
+        const httpEquiv = (node.attrs || []).find(
+          (attr) => attr.name.toLowerCase() === "http-equiv",
+        );
         if (httpEquiv && httpEquiv.value.trim().toLowerCase() === "refresh") {
           errors.push("Blocked meta refresh tag found.");
         }
@@ -127,9 +160,9 @@ export function validateHtml(html, options = {}) {
   }
 
   let tooDeep = false;
-  const stack = [{ node: document, depth: 0 }];
+  const stack: { node: TreeNode; depth: number }[] = [{ node: document, depth: 0 }];
   while (stack.length) {
-    const { node, depth } = stack.pop();
+    const { node, depth } = stack.pop()!;
     visit(node);
     if (depth >= MAX_DEPTH) {
       tooDeep = true;
@@ -137,7 +170,7 @@ export function validateHtml(html, options = {}) {
     }
     const children = node.childNodes || [];
     for (let i = children.length - 1; i >= 0; i--) {
-      stack.push({ node: children[i], depth: depth + 1 });
+      stack.push({ node: children[i]!, depth: depth + 1 });
     }
   }
   if (tooDeep) {
@@ -156,18 +189,18 @@ export function validateHtml(html, options = {}) {
     hasScripts,
     stats: {
       hasInlineScript: hasScripts,
-      externalImageHosts: [...externalImageHosts].sort()
-    }
+      externalImageHosts: [...externalImageHosts].sort(),
+    },
   };
 }
 
-function emptyStats() {
+function emptyStats(): HtmlStats {
   return { hasInlineScript: false, externalImageHosts: [] };
 }
 
 // Returns the lowercased host of an absolute http(s) (or protocol-relative) URL,
 // or null for relative paths, data: URIs, and anything unparseable.
-function externalHost(value) {
+function externalHost(value: string | undefined): string | null {
   const raw = String(value || "").trim();
   if (!raw) return null;
   const candidate = raw.startsWith("//") ? `https:${raw}` : raw;
@@ -182,7 +215,7 @@ function externalHost(value) {
   return null;
 }
 
-function collectText(node) {
+function collectText(node: TreeNode): string {
   let value = "";
   for (const child of node.childNodes || []) {
     if (child.nodeName === "#text") value += child.value || "";

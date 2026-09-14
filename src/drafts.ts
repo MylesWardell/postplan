@@ -1,12 +1,58 @@
 import { pool } from "./db.js";
 import { config } from "./config.js";
 import { getDraftPublicUrl, getDraftRawUrl } from "./public-url.js";
+import type { DraftVersionSummary } from "./types.js";
+
+export interface AccountDraft {
+  draftId: string;
+  title: string;
+  description: string | null;
+  repoOrg: string | null;
+  repoName: string | null;
+  repoHost: string | null;
+  latestVersionNumber: number | null;
+  versionCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+  latestVersionAt: Date | null;
+  disabled: boolean;
+  publicUrl: string;
+  rawUrl: string;
+}
+
+export interface AccountDraftDetail {
+  draft: {
+    draftId: string;
+    title: string;
+    description: string | null;
+    publicUrl: string;
+  };
+  versions: DraftVersionSummary[];
+}
+
+interface AccountDraftRow {
+  id: string;
+  title: string;
+  description: string | null;
+  repo_org: string | null;
+  repo_name: string | null;
+  repo_host: string | null;
+  created_at: Date;
+  updated_at: Date;
+  disabled_at: Date | null;
+  latest_version_number: number | null;
+  latest_version_at: Date | null;
+  version_count: number;
+}
 
 // The "my docs" feed: every draft owned by an account, newest first, with the
 // aggregates a dashboard needs (latest version, version count, repo). Shared
 // by GET /api/drafts and the server-rendered dashboard.
-export async function listAccountDrafts(accountId, { requestBaseUrl }) {
-  const result = await pool.query(
+export async function listAccountDrafts(
+  accountId: string,
+  { requestBaseUrl }: { requestBaseUrl: string },
+): Promise<AccountDraft[]> {
+  const result = await pool.query<AccountDraftRow>(
     `
       SELECT
         d.id,
@@ -32,7 +78,7 @@ export async function listAccountDrafts(accountId, { requestBaseUrl }) {
         AND d.deleted_at IS NULL
       ORDER BY d.updated_at DESC
     `,
-    [accountId]
+    [accountId],
   );
 
   return result.rows.map((row) => ({
@@ -52,30 +98,34 @@ export async function listAccountDrafts(accountId, { requestBaseUrl }) {
     publicUrl: getDraftPublicUrl({
       draftId: row.id,
       publicBaseUrl: config.publicBaseUrl,
-      requestBaseUrl
+      requestBaseUrl,
     }),
     rawUrl: getDraftRawUrl({
       draftId: row.id,
       publicBaseUrl: config.publicBaseUrl,
-      requestBaseUrl
-    })
+      requestBaseUrl,
+    }),
   }));
 }
 
-export async function getAccountDraftWithVersions(accountId, draftId, { requestBaseUrl }) {
-  const draftResult = await pool.query(
+export async function getAccountDraftWithVersions(
+  accountId: string,
+  draftId: string,
+  { requestBaseUrl }: { requestBaseUrl: string },
+): Promise<AccountDraftDetail | null> {
+  const draftResult = await pool.query<{ id: string; title: string; description: string | null }>(
     `
       SELECT *
       FROM drafts
       WHERE id = $1 AND account_id = $2 AND deleted_at IS NULL
       LIMIT 1
     `,
-    [draftId, accountId]
+    [draftId, accountId],
   );
   const draft = draftResult.rows[0];
   if (!draft) return null;
 
-  const versionsResult = await pool.query(
+  const versionsResult = await pool.query<DraftVersionSummary>(
     `
       SELECT id, version_number, created_at, git_branch, git_commit_sha,
              git_commit_subject, git_dirty, file_size
@@ -83,7 +133,7 @@ export async function getAccountDraftWithVersions(accountId, draftId, { requestB
       WHERE draft_id = $1
       ORDER BY version_number DESC
     `,
-    [draftId]
+    [draftId],
   );
 
   return {
@@ -94,9 +144,9 @@ export async function getAccountDraftWithVersions(accountId, draftId, { requestB
       publicUrl: getDraftPublicUrl({
         draftId: draft.id,
         publicBaseUrl: config.publicBaseUrl,
-        requestBaseUrl
-      })
+        requestBaseUrl,
+      }),
     },
-    versions: versionsResult.rows
+    versions: versionsResult.rows,
   };
 }
