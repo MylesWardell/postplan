@@ -42,4 +42,8 @@ The postflight analytics snapshot reported 115 Worker requests, 8,942 D1 rows re
 
 ## Next engineering step
 
+### Explicit Wrangler CPU limit
+
+An additional configuration-only check attempted an undeployed version upload with `limits: { cpu_ms: 10 }`. Cloudflare rejected it with API error **100328: "CPU limits are not supported for the Free plan."** No version was deployed and no plan change was made. Free applies its platform CPU policy; setting a custom limit cannot make the current routes fit. Where custom limits are supported, repeated excess CPU terminates execution with Error 1102, with the documented allowance for occasional bursts. This is not an account-wide billing cap. [Wrangler limits](https://developers.cloudflare.com/workers/wrangler/configuration/#limits).
+
 Keep the deployment stopped while profiling the upload path and SSR. The measured public-serving path is substantially lighter, but still had one 15 ms observation. Investigate client-rendering the dashboard, reducing upload parsing/serialization and repeated middleware work, and then rerun this bounded measurement. The current test identifies expensive routes; it does not yet identify their individual CPU hotspots or prove which optimization will bring them below 10 ms.
