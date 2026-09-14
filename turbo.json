@@ -1,6 +1,24 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "tasks": {
+    "//#quality": {
+      "dependsOn": ["//#lint:root", "//#format:root"]
+    },
+    "//#quality:fix": {
+      "dependsOn": ["//#lint:root:fix", "//#format:root:fix"]
+    },
+    "//#lint:root": {
+      "dependsOn": ["@postplan/api#build"]
+    },
+    "//#lint:root:fix": {
+      "dependsOn": ["@postplan/api#build"],
+      "cache": false
+    },
+    "//#format:root": {},
+    "//#format:root:fix": {
+      "dependsOn": ["//#lint:root:fix"],
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build"],
       "inputs": [
@@ -10,13 +28,13 @@
       ],
       "outputs": ["dist/**", "bin/**"]
     },
-    "typecheck": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/tsconfig.base.json"]
-    },
     "test": {
       "dependsOn": ["build"],
       "cache": false
+    },
+    "start": {
+      "cache": false,
+      "persistent": true
     },
     "dev": {
       "dependsOn": ["^build"],

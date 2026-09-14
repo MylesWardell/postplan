@@ -8,12 +8,12 @@ import { z } from "zod";
 const loadDraft = createServerFn({ method: "GET" })
   .validator(z.object({ draftId: z.string().min(1) }))
   .handler(async ({ data, context }) => {
-    const { session, caller } = await authenticatedContext(getRequest(), context);
+    const { session, caller } = authenticatedContext(getRequest(), context);
     try {
       return { session, ...(await caller.drafts.detail(data)) };
     } catch (error) {
       if (error instanceof ORPCError && error.code === "NOT_FOUND") {
-        throw notFound();
+        throw notFound() as unknown as Error;
       }
       throw error;
     }

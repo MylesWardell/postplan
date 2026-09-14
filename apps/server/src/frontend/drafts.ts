@@ -7,24 +7,24 @@ export async function draftResponse(
   hostDraftId: string | null,
 ): Promise<Response | undefined> {
   if (req.method !== "GET" && req.method !== "HEAD") {
-    return;
+    return undefined;
   }
   const path = new URL(req.url).pathname;
   const match = hostDraftId
     ? path.match(/^\/(?:v\/([^/]+))?(?:\/?raw)?\/?$/)
     : path.match(/^\/d\/([^/]+)(?:\/v\/([^/]+))?(?:\/raw)?\/?$/);
   if (!match) {
-    return;
+    return undefined;
   }
   const draftId = hostDraftId ?? match[1]!;
   const number = hostDraftId ? match[1] : match[2];
   const versionNumber = number === undefined ? undefined : Number(number);
   if (versionNumber !== undefined && (!Number.isInteger(versionNumber) || versionNumber < 1)) {
-    return;
+    return undefined;
   }
   const { draft, version } = await findPublicDraftVersion(deps.db, draftId, versionNumber);
   if (!draft || !version) {
-    return;
+    return undefined;
   }
   return new Response(req.method === "HEAD" ? null : await deps.getHtml(version.objectKey), {
     headers: {
