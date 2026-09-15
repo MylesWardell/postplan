@@ -23,14 +23,14 @@
     "test": "bun test ./test"
   },
   "dependencies": {
-    "@orpc/ratelimit": "2.0.0-beta.35",
-    "@orpc/server": "2.0.0-beta.35",
+    "@orpc/ratelimit": "catalog:",
+    "@orpc/server": "catalog:",
     "@postplan/store": "workspace:*",
-    "drizzle-orm": "^0.45.2",
-    "nanoid": "^6.0.1"
+    "drizzle-orm": "catalog:",
+    "nanoid": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "1.4.2",
+    "@types/bun": "catalog:",
     "drizzle-kit": "0.31.10"
   }
 }

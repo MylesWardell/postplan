@@ -14,13 +14,13 @@
     "test": "bun test ./test"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1131.0",
-    "@aws-sdk/client-ssm": "^3.1131.0",
+    "@aws-sdk/client-s3": "catalog:",
+    "@aws-sdk/client-ssm": "catalog:",
     "@postplan/store": "workspace:*",
     "@postplan/store-drizzle": "workspace:*",
     "@postplan/store-dynamodb": "workspace:*"
   },
   "devDependencies": {
-    "@types/bun": "1.4.2"
+    "@types/bun": "catalog:"
   }
 }

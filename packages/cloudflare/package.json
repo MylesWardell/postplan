@@ -12,20 +12,20 @@
     "cf:initialize": "bun deploy/initialize.ts"
   },
   "dependencies": {
-    "@orpc/cloudflare": "2.0.0-beta.35",
-    "@orpc/server": "2.0.0-beta.35",
+    "@orpc/cloudflare": "catalog:",
+    "@orpc/server": "catalog:",
     "@postplan/store": "workspace:*",
     "@postplan/store-drizzle": "workspace:*",
     "@postplan/web": "workspace:*",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.54.9",
     "@cloudflare/vitest-plugin": "1.1.9",
-    "@types/node": "^26.5.1",
-    "vite": "^8.3.0",
+    "@types/node": "catalog:",
+    "vite": "catalog:",
     "vitest": "4.1.0",
     "wrangler": "4.131.2",
-    "zod": "^4.6.5"
+    "zod": "catalog:"
   }
 }
