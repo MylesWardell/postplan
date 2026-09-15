@@ -34,3 +34,5 @@ crash.*.log
 .claude/skills
 
 packages/cloudflare/env.d.ts
+
+benchmark/cloudflare/results/

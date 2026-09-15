@@ -16,6 +16,7 @@
     "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS": "false",
     "POSTPLAN_PUBLIC_BASE_URL": "http://localhost:5173",
     "POSTPLAN_LOCAL": "true",
+    "POSTPLAN_ORPC_TRACING": "false",
     "REQUEST_ID_HEADER": "x-request-id",
     "CLIENT_IP_SOURCE": "req-ip",
     "TRUST_PROXY": "false",

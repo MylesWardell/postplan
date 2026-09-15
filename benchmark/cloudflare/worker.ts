@@ -1,0 +1,230 @@
+// CPU benchmark entry. `run.sh` copies this file over packages/cloudflare/src/worker.ts in a
+// disposable copy of the repository, so imports are relative to that location. Never deploy it.
+//
+// A Durable Object runs the real built application in a loop against a D1-compatible adapter
+// over its own SQLite storage and an in-memory R2 bucket. With no bindings on the hot path, the
+// profiled isolate contains only application work plus native SQLite calls.
+import "./instrumentation";
+import { DurableObject } from "cloudflare:workers";
+import { createHash, createHmac } from "node:crypto";
+import { createCloudflareStore } from "./database";
+import { createApplication } from "@postplan/web/application";
+import { cloudflareGateway } from "./gateway";
+import { applicationStorage } from "./application-storage";
+import { boundedBody } from "./body";
+import migration from "../../store-drizzle/drizzle/0000_same_vulcan.sql?raw";
+import budgetSchema from "../deploy/schema.sql?raw";
+
+type Value = string | number | null | ArrayBuffer;
+type Statement = {
+  bind(...params: unknown[]): Statement;
+  execSync(): Record<string, SqlStorageValue>[];
+};
+
+let transaction: <T>(fn: () => T) => T;
+
+function fakeD1(sql: SqlStorage): D1Database {
+  const normalize = (params: unknown[]) =>
+    params.map((p) => (typeof p === "boolean" ? Number(p) : p === undefined ? null : p)) as Value[];
+  const statement = (query: string, params: Value[] = []) => ({
+    bind: (...next: unknown[]) => statement(query, normalize(next)),
+    async all() {
+      const cursor = sql.exec(query, ...params);
+      return { results: cursor.toArray(), success: true, meta: { changes: cursor.rowsWritten } };
+    },
+    async raw() {
+      return sql
+        .exec(query, ...params)
+        .raw()
+        .toArray();
+    },
+    async run() {
+      const cursor = sql.exec(query, ...params);
+      cursor.toArray();
+      return { results: [], success: true, meta: { changes: cursor.rowsWritten } };
+    },
+    async first(column?: string) {
+      const row = sql.exec(query, ...params).toArray()[0];
+      return row === undefined ? null : column ? row[column] : row;
+    },
+    execSync: () => sql.exec(query, ...params).toArray(),
+  });
+  return {
+    prepare: (query: string) => statement(query),
+    async batch(statements: Statement[]) {
+      return transaction(() =>
+        statements.map((s) => ({ results: s.execSync(), success: true, meta: {} })),
+      );
+    },
+  } as unknown as D1Database;
+}
+
+function fakeR2(): R2Bucket {
+  const objects = new Map<string, string>();
+  return {
+    async put(key: string, value: string) {
+      objects.set(key, value);
+    },
+    async get(key: string) {
+      const value = objects.get(key);
+      return value === undefined ? null : { size: value.length, text: async () => value };
+    },
+    async delete(key: string) {
+      objects.delete(key);
+    },
+  } as unknown as R2Bucket;
+}
+
+const token = "local-benchmark-key";
+const base = "http://localhost:5173";
+const payload = Buffer.from(
+  JSON.stringify({ accountId: "acct_bootstrap", accountName: "Owner", exp: 4102444800 }),
+).toString("base64url");
+const session = `postplan_session=${payload}.${createHmac("sha256", "local-session-only").update(payload).digest("base64url")}`;
+const html = (size: number) => {
+  const head = "<!doctype html><html><head><title>Synthetic CPU plan</title></head><body>";
+  const piece = "<p>Synthetic review paragraph for bounded CPU testing.</p>";
+  const body = head + piece.repeat(Math.floor((size - head.length - 14) / piece.length));
+  return body + " ".repeat(size - body.length - 14) + "</body></html>";
+};
+const small = JSON.stringify({ html: html(5356) });
+const large = JSON.stringify({ html: html(512 * 1024 - 64) });
+let draftId = "";
+const upload = (body: string) =>
+  new Request(base + "/api/uploads", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body,
+  });
+
+// Keep names in sync with PLAN in profile.mjs.
+const cases: Record<string, () => Request> = {
+  healthz: () => new Request(base + "/healthz"),
+  home: () => new Request(base + "/"),
+  dashboard: () => new Request(base + "/dashboard", { headers: { cookie: session } }),
+  list: () => new Request(base + "/api/drafts", { headers: { authorization: `Bearer ${token}` } }),
+  public: () => new Request(base + "/d/" + draftId),
+  upload: () => upload(small),
+  uploadLarge: () => upload(large),
+};
+
+// Exported under the existing SQLite Durable Object class name so wrangler.jsonc needs no changes.
+export class RateLimit extends DurableObject {
+  handle?: (request: Request) => Promise<Response>;
+
+  setup() {
+    const sql = this.ctx.storage.sql;
+    transaction = (fn) => this.ctx.storage.transactionSync(fn);
+    if (!sql.exec("SELECT name FROM sqlite_master WHERE name='drafts'").toArray().length) {
+      for (const part of migration.split("--> statement-breakpoint")) {
+        sql.exec(part);
+      }
+      sql.exec(budgetSchema);
+      sql.exec(
+        "INSERT OR IGNORE INTO accounts(id,name) VALUES ('acct_bootstrap','Bootstrap Account')",
+      );
+      sql.exec(
+        "INSERT OR IGNORE INTO api_keys(id,account_id,name,key_hash) VALUES ('key_bootstrap','acct_bootstrap','Bootstrap Account',?)",
+        createHash("sha256").update(token).digest("hex"),
+      );
+    }
+    const db = fakeD1(sql);
+    const bucket = fakeR2();
+    const env = {
+      POSTPLAN_DB: db,
+      HTML_BUCKET: bucket,
+      POSTPLAN_DATABASE: "sqlite",
+      POSTPLAN_RATE_LIMIT_SECRET: "local-benchmark-only",
+      RATE_LIMITS: {
+        getByName: () => ({
+          limit: async (rule: { maxRequests: number }) => ({
+            success: true,
+            limit: rule.maxRequests,
+            remaining: rule.maxRequests,
+            reset: Date.now() + 60000,
+          }),
+        }),
+      },
+    } as unknown as Cloudflare.Env;
+    const application = createApplication(
+      { store: createCloudflareStore(env).store, ...applicationStorage(db, bucket) },
+      false,
+    );
+    // Mirrors the enabled-application path of packages/cloudflare/src/worker.ts. Update both
+    // together when the Worker's request handling changes.
+    return async (incoming: Request) => {
+      const { request, peerIp } = cloudflareGateway(incoming, {
+        publicBaseUrl: base,
+        requestIdHeader: "x-request-id",
+        local: true,
+      });
+      const budget = await db
+        .prepare(
+          "SELECT id, (SELECT killed FROM usage_guard WHERE id=1) AS killed FROM application_budget WHERE id=1",
+        )
+        .first<{ id: number; killed: number | null }>();
+      if (!budget || budget.killed === 1) {
+        throw new Error("Benchmark budget is missing or stopped.");
+      }
+      let applicationRequest = request;
+      if (request.body) {
+        const body = await boundedBody(request, 2 * 1024 * 1024);
+        applicationRequest = new Request(request, { method: request.method, body });
+      }
+      return application(applicationRequest, peerIp);
+    };
+  }
+
+  override async fetch(request: Request) {
+    this.handle ??= this.setup();
+    const sql = this.ctx.storage.sql;
+    const url = new URL(request.url);
+    if (url.pathname === "/seed") {
+      const count = sql
+        .exec("SELECT count(*) AS n FROM drafts WHERE account_id='acct_bootstrap'")
+        .one().n as number;
+      for (let i = count; i < 58; i++) {
+        const response = await this.handle(cases.upload!());
+        if (response.status !== 201) {
+          throw new Error(await response.text());
+        }
+      }
+      draftId = sql
+        .exec("SELECT id FROM drafts WHERE account_id='acct_bootstrap' ORDER BY created_at LIMIT 1")
+        .one().id as string;
+      return new Response("seeded " + draftId);
+    }
+    const name = url.searchParams.get("case") ?? "";
+    const build = cases[name];
+    if (!build) {
+      return new Response("Unknown case", { status: 404 });
+    }
+    const n = Number(url.searchParams.get("n") || 100);
+    const status: Record<number, number> = {};
+    let bytes = 0;
+    let sample = "";
+    for (let i = 0; i < n; i++) {
+      const response = await this.handle(build());
+      status[response.status] = (status[response.status] || 0) + 1;
+      const text = await response.text();
+      bytes = text.length;
+      if (response.status >= 400) {
+        sample = text.slice(0, 200);
+      }
+    }
+    if (name.startsWith("upload")) {
+      // Keep the 58-plan dataset stable for later cases and runs.
+      const keep = "SELECT id FROM drafts ORDER BY created_at, id LIMIT 58";
+      sql.exec(`DELETE FROM upload_events WHERE draft_id NOT IN (${keep})`);
+      sql.exec(`DELETE FROM draft_versions WHERE draft_id NOT IN (${keep})`);
+      sql.exec(`DELETE FROM drafts WHERE id NOT IN (${keep})`);
+    }
+    return Response.json({ status, bytes, sample });
+  }
+}
+
+export default {
+  fetch(request, env) {
+    return env.RATE_LIMITS.getByName("bench").fetch(request);
+  },
+} satisfies ExportedHandler<Cloudflare.Env>;

@@ -1,4 +1,4 @@
-import { statement } from "./database";
+import { prepared, statement } from "./database";
 import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
@@ -18,13 +18,13 @@ const urls = (draftId: string, context: UrlContext) => ({
   rawUrl: getDraftRawUrl({ draftId, ...context }),
 });
 
-export async function listAccountDrafts(db: Database, accountId: string, context: UrlContext) {
+const accountDraftsQuery = prepared((db) => {
   const counts = db
     .select({ draftId: draftVersions.draftId, versionCount: count().as("version_count") })
     .from(draftVersions)
     .groupBy(draftVersions.draftId)
     .as("version_counts");
-  const rows = await db
+  return db
     .select({
       draft: drafts,
       latest: { number: draftVersions.versionNumber, date: draftVersions.createdAt },
@@ -33,8 +33,13 @@ export async function listAccountDrafts(db: Database, accountId: string, context
     .from(drafts)
     .leftJoin(draftVersions, eq(draftVersions.id, drafts.currentVersionId))
     .leftJoin(counts, eq(counts.draftId, drafts.id))
-    .where(and(eq(drafts.accountId, accountId), isNull(drafts.deletedAt)))
-    .orderBy(desc(drafts.updatedAt));
+    .where(and(eq(drafts.accountId, sql.placeholder("accountId")), isNull(drafts.deletedAt)))
+    .orderBy(desc(drafts.updatedAt))
+    .prepare();
+});
+
+export async function listAccountDrafts(db: Database, accountId: string, context: UrlContext) {
+  const rows = await accountDraftsQuery(db).all({ accountId });
   return rows.map(({ draft, latest, count: versionCount }) => ({
     draftId: draft.id,
     title: draft.title,
@@ -53,21 +58,22 @@ export async function listAccountDrafts(db: Database, accountId: string, context
 }
 export type AccountDraft = Awaited<ReturnType<typeof listAccountDrafts>>[number];
 
-export async function getAccountDraftWithVersions(
-  db: Database,
-  accountId: string,
-  draftId: string,
-  context: UrlContext,
-) {
-  const [draft] = await db
+const ownedDraftQuery = prepared((db) =>
+  db
     .select()
     .from(drafts)
-    .where(and(eq(drafts.id, draftId), eq(drafts.accountId, accountId), isNull(drafts.deletedAt)))
-    .limit(1);
-  if (!draft) {
-    return null;
-  }
-  const versions = await db
+    .where(
+      and(
+        eq(drafts.id, sql.placeholder("draftId")),
+        eq(drafts.accountId, sql.placeholder("accountId")),
+        isNull(drafts.deletedAt),
+      ),
+    )
+    .limit(1)
+    .prepare(),
+);
+const draftVersionsQuery = prepared((db) =>
+  db
     .select({
       id: draftVersions.id,
       versionNumber: draftVersions.versionNumber,
@@ -79,8 +85,22 @@ export async function getAccountDraftWithVersions(
       fileSize: draftVersions.fileSize,
     })
     .from(draftVersions)
-    .where(eq(draftVersions.draftId, draftId))
-    .orderBy(desc(draftVersions.versionNumber));
+    .where(eq(draftVersions.draftId, sql.placeholder("draftId")))
+    .orderBy(desc(draftVersions.versionNumber))
+    .prepare(),
+);
+
+export async function getAccountDraftWithVersions(
+  db: Database,
+  accountId: string,
+  draftId: string,
+  context: UrlContext,
+) {
+  const draft = await ownedDraftQuery(db).get({ draftId, accountId });
+  if (!draft) {
+    return null;
+  }
+  const versions = await draftVersionsQuery(db).all({ draftId });
   return {
     draft: {
       draftId,
@@ -96,25 +116,42 @@ export type AccountDraftDetail = NonNullable<
   Awaited<ReturnType<typeof getAccountDraftWithVersions>>
 >;
 
+const publicVersionQuery = (version: "current" | "numbered") =>
+  prepared((db) =>
+    db
+      .select({ draft: drafts, version: draftVersions })
+      .from(drafts)
+      .innerJoin(
+        draftVersions,
+        and(
+          eq(draftVersions.draftId, drafts.id),
+          version === "current"
+            ? eq(draftVersions.id, drafts.currentVersionId)
+            : eq(draftVersions.versionNumber, sql.placeholder("versionNumber")),
+        ),
+      )
+      .where(
+        and(
+          eq(drafts.id, sql.placeholder("draftId")),
+          isNull(drafts.deletedAt),
+          isNull(drafts.disabledAt),
+        ),
+      )
+      .limit(1)
+      .prepare(),
+  );
+const currentPublicVersionQuery = publicVersionQuery("current");
+const numberedPublicVersionQuery = publicVersionQuery("numbered");
+
 export async function findPublicDraftVersion(
   db: Database,
   draftId: string,
   versionNumber?: number,
 ) {
-  const [row] = await db
-    .select({ draft: drafts, version: draftVersions })
-    .from(drafts)
-    .innerJoin(
-      draftVersions,
-      and(
-        eq(draftVersions.draftId, drafts.id),
-        versionNumber === undefined
-          ? eq(draftVersions.id, drafts.currentVersionId)
-          : eq(draftVersions.versionNumber, versionNumber),
-      ),
-    )
-    .where(and(eq(drafts.id, draftId), isNull(drafts.deletedAt), isNull(drafts.disabledAt)))
-    .limit(1);
+  const row =
+    versionNumber === undefined
+      ? await currentPublicVersionQuery(db).get({ draftId })
+      : await numberedPublicVersionQuery(db).get({ draftId, versionNumber });
   return row ?? { draft: null, version: null };
 }
 
@@ -140,6 +177,34 @@ export async function updateOwnedDraft(
   return { ok: true as const };
 }
 
+const ownedDraftIdQuery = prepared((db) =>
+  db
+    .select({ id: drafts.id })
+    .from(drafts)
+    .where(
+      and(
+        eq(drafts.id, sql.placeholder("draftId")),
+        eq(drafts.accountId, sql.placeholder("accountId")),
+        isNull(drafts.deletedAt),
+      ),
+    )
+    .prepare(),
+);
+const versionNumberQuery = prepared((db) =>
+  db
+    .select({ versionNumber: draftVersions.versionNumber })
+    .from(draftVersions)
+    .where(eq(draftVersions.id, sql.placeholder("versionId")))
+    .prepare(),
+);
+const draftTitleQuery = prepared((db) =>
+  db
+    .select({ title: drafts.title })
+    .from(drafts)
+    .where(eq(drafts.id, sql.placeholder("draftId")))
+    .prepare(),
+);
+
 export async function uploadDraft(db: Database, ctx: UploadContext, input: UploadInput) {
   const validation = validateHtml(input.html, { maxBytes: ctx.maxHtmlBytes });
   if (!validation.ok || typeof input.html !== "string") {
@@ -149,16 +214,7 @@ export async function uploadDraft(db: Database, ctx: UploadContext, input: Uploa
   const auth = ctx.apiKey ?? publicUploadAuth;
   const metadata = input.metadata ?? {};
   const draftId = input.draftId ?? newDraftId();
-  if (
-    input.draftId &&
-    !(await db
-      .select({ id: drafts.id })
-      .from(drafts)
-      .where(
-        and(eq(drafts.id, draftId), eq(drafts.accountId, auth.accountId), isNull(drafts.deletedAt)),
-      )
-      .get())
-  ) {
+  if (input.draftId && !(await ownedDraftIdQuery(db).get({ draftId, accountId: auth.accountId }))) {
     throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
   }
   const versionId = randomUUID();
@@ -251,21 +307,16 @@ export async function uploadDraft(db: Database, ctx: UploadContext, input: Uploa
   try {
     await db.atomic(statements);
   } catch (error) {
-    if (input.draftId && !(await db.select({ id: drafts.id }).from(drafts).where(owned).get())) {
+    if (
+      input.draftId &&
+      !(await ownedDraftIdQuery(db).get({ draftId, accountId: auth.accountId }))
+    ) {
       throw new ORPCError("NOT_FOUND", { message: "Draft not found." });
     }
     throw error;
   }
-  const version = await db
-    .select()
-    .from(draftVersions)
-    .where(eq(draftVersions.id, versionId))
-    .get();
-  const draft = await db
-    .select({ title: drafts.title })
-    .from(drafts)
-    .where(eq(drafts.id, draftId))
-    .get();
+  const version = await versionNumberQuery(db).get({ versionId });
+  const draft = await draftTitleQuery(db).get({ draftId });
   if (!version || !draft) {
     throw new Error("Draft missing after atomic upload");
   }
