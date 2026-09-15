@@ -5,10 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import fs from "node:fs";
-import { test } from "node:test";
+import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 
-void test("CLI displays the oRPC error message and upload validation details", async () => {
+test("CLI displays the oRPC error message and upload validation details", async () => {
   const directory = fs.mkdtempSync(join(tmpdir(), "postplan-cli-"));
   const file = join(directory, "invalid.html");
   fs.writeFileSync(file, "<form>" + "x".repeat(2000) + "</form>");
@@ -30,7 +30,7 @@ void test("CLI displays the oRPC error message and upload validation details", a
     await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
     const address = server.address();
     assert.ok(address && typeof address === "object");
-    const cli = fileURLToPath(new URL("../../bin/postplan.js", import.meta.url));
+    const cli = fileURLToPath(new URL("../bin/postplan.js", import.meta.url));
     await assert.rejects(
       promisify(execFile)(
         process.execPath,
@@ -54,11 +54,11 @@ void test("CLI displays the oRPC error message and upload validation details", a
   }
 });
 
-void test("compiled CLI resolves package version and exposes commands", () => {
-  const cli = fileURLToPath(new URL("../../bin/postplan.js", import.meta.url));
-  const pkg = JSON.parse(
-    fs.readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
-  ) as { version: string };
+test("compiled CLI resolves package version and exposes commands", () => {
+  const cli = fileURLToPath(new URL("../bin/postplan.js", import.meta.url));
+  const pkg = JSON.parse(fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")) as {
+    version: string;
+  };
   assert.equal(
     execFileSync(process.execPath, [cli, "--version"], { encoding: "utf8" }).trim(),
     pkg.version,

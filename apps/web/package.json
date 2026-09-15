@@ -75,7 +75,7 @@
   },
   "scripts": {
     "build": "bun ../../scripts/clean.ts && bun --bun vite build && tsc -p tsconfig.json",
-    "test": "bun test --preload ../../scripts/testing/drizzle.ts --conditions=source ./test",
+    "test": "bun --bun vitest run",
     "start": "bun dist/src/launch.js",
     "db:bootstrap": "bun dist/src/db/bootstrap.js",
     "dev": "bun --bun vite dev",

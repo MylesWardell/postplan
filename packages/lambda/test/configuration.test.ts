@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { selectDatabase } from "../src/configuration";
 
 test("AWS selects exactly one database and explicit selection overrides legacy detection", () => {

@@ -2,7 +2,7 @@ import { createTestStore } from "@postplan/store/testing";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
-import { test } from "bun:test";
+import { test } from "vitest";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { createServerOptions } from "./start-server";
 import { config } from "#config";

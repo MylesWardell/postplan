@@ -40,7 +40,7 @@ packages/
   store/           Internal oRPC store contracts and shared domain helpers
   store-drizzle/   Drizzle/SQLite stores, schema, migrations, and driver tests
   store-dynamodb/  DynamoDB stores, cleanup, and local test fixture
-scripts/           Workspace setup and provider-specific test preloads
+scripts/           Workspace setup, shared Vitest config and provider-specific test setup files
 ```
 
 Useful commands:

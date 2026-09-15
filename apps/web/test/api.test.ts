@@ -1,6 +1,6 @@
 import { createTestStore } from "@postplan/store/testing";
 import assert from "node:assert/strict";
-import { test } from "bun:test";
+import { test } from "vitest";
 import { ORPCError, createORPCClient } from "@orpc/client";
 import { OpenAPILink } from "@orpc/openapi/fetch";
 import { contract, type ApiClient } from "@postplan/api";
