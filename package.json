@@ -12,7 +12,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "dev": "turbo run dev",
-    "start": "turbo run start --filter=@postplan/server",
+    "start": "turbo run start --filter=@postplan/web",
     "lint": "turbo run lint:root",
     "lint:fix": "turbo run lint:root:fix",
     "lint:root": "oxlint --deny-warnings apps packages scripts",
@@ -23,8 +23,8 @@
     "format:root:fix": "oxfmt .",
     "check": "turbo run quality test",
     "pack:cli": "turbo run build --filter=postplan... && cd apps/cli && bun pm pack --ignore-scripts --destination ../../dist",
-    "db:generate": "bun run --filter @postplan/server db:generate",
-    "db:migrate": "bun run --filter @postplan/server build && bun apps/server/dist/src/db/migrate.js"
+    "db:generate": "bun run --filter @postplan/web db:generate",
+    "db:migrate": "bun run --filter @postplan/web build && bun apps/web/dist/src/db/migrate.js"
   },
   "devDependencies": {
     "@postplan/store": "workspace:*",

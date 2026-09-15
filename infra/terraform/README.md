@@ -67,7 +67,7 @@ The generated execute-api endpoint is disabled; test through the configured HTTP
 
 Both functions receive `PLAN_RETENTION_DAYS`, `AWS_S3_BUCKET_NAME` and `POSTPLAN_IDENTITY_TABLE`, `POSTPLAN_PLANS_TABLE`, `POSTPLAN_RECORDS_TABLE`, `POSTPLAN_RATE_LIMITS_TABLE`. Lambda supplies `AWS_REGION`; do not set reserved AWS environment variables.
 
-The launcher loads `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` (and optional `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN`) before initializing configuration/authentication. The app enforces `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS=false`, `POSTPLAN_ALLOWED_LOGIN_DOMAINS`, domain/origin checks, and trusted API Gateway client-IP extraction when `POSTPLAN_API_GATEWAY=true`. Run `bun apps/server/dist/src/db/bootstrap.js` once with deployment credentials and the configured table names to seed an optional administrator key; cold starts do not seed DynamoDB.
+The launcher loads `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` (and optional `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN`) before initializing configuration/authentication. The app enforces `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS=false`, `POSTPLAN_ALLOWED_LOGIN_DOMAINS`, domain/origin checks, and trusted API Gateway client-IP extraction when `POSTPLAN_API_GATEWAY=true`. Run `bun apps/web/dist/src/db/bootstrap.js` once with deployment credentials and the configured table names to seed an optional administrator key; cold starts do not seed DynamoDB.
 
 App images include the Lambda Web Adapter, listen on port 3000, and support buffered API Gateway v2 requests. Built assets remain inside the image. The cleanup image runs `apps/cleanup/dist/src/index.js`, which implements the Lambda runtime protocol directly. Its S3 adapter and tests live in `apps/cleanup`; DynamoDB cleanup algorithms and tests live in `packages/store-dynamodb`. Both images are Linux x86_64 and use temporary storage only.
 
@@ -78,7 +78,7 @@ App images include the Lambda Web Adapter, listen on port 3000, and support buff
 | Records  | `draftId` (S), `sk` (S) | None                                           | None                                 |
 | Limits   | `pk` (S)                | None                                           | `ttlAt`                              |
 
-The app enforces uniqueness/ownership via conditional transactions and uses consistent base-table reads for revocation/expiry. Indexes are eventual. It never assigns `ttlAt` to active plans. HTML uses immutable objects under `drafts/<id>/`; the bucket has no object-age expiration rule or S3 versioning. SQLite remains available for local deployments; existing SQLite data requires a separate migration before cutover. See [database configuration](../../apps/server/DATABASE.md).
+The app enforces uniqueness/ownership via conditional transactions and uses consistent base-table reads for revocation/expiry. Indexes are eventual. It never assigns `ttlAt` to active plans. HTML uses immutable objects under `drafts/<id>/`; the bucket has no object-age expiration rule or S3 versioning. SQLite remains available for local deployments; existing SQLite data requires a separate migration before cutover. See [database configuration](../../apps/web/DATABASE.md).
 
 ## Retention operations
 

@@ -27,7 +27,7 @@ Uploads are public by default. Set `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS=false` to r
 
 ## DynamoDB and Lambda
 
-Set `POSTPLAN_IDENTITY_TABLE`, `POSTPLAN_PLANS_TABLE`, `POSTPLAN_RECORDS_TABLE`, and `POSTPLAN_RATE_LIMITS_TABLE` together to select DynamoDB. `PLAN_RETENTION_DAYS` defaults to 90 days since the last successful upload; 0 disables automatic expiry. SQLite ignores this retention policy. DynamoDB bootstrap seeding is an explicit command, not a cold-start action. See [database configuration and migration limits](../apps/server/DATABASE.md).
+Set `POSTPLAN_IDENTITY_TABLE`, `POSTPLAN_PLANS_TABLE`, `POSTPLAN_RECORDS_TABLE`, and `POSTPLAN_RATE_LIMITS_TABLE` together to select DynamoDB. `PLAN_RETENTION_DAYS` defaults to 90 days since the last successful upload; 0 disables automatic expiry. SQLite ignores this retention policy. DynamoDB bootstrap seeding is an explicit command, not a cold-start action. See [database configuration and migration limits](../apps/web/DATABASE.md).
 
 Lambda supplies `AWS_REGION` and temporary credentials, including `AWS_SESSION_TOKEN`. Set `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` and optionally `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN` to load SSM SecureStrings before startup. `POSTPLAN_API_GATEWAY=true` selects trusted API Gateway request-context handling and is only suitable behind the Lambda Web Adapter. The [Terraform runbook](../infra/terraform/README.md) configures these settings, images, and the cleanup schedule.
 

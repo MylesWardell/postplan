@@ -18,7 +18,7 @@ bun run build
 - [Architecture and API](docs/architecture.md)
 - [AWS deployment plan](docs/aws-deployment-plan.md)
 - [Cloudflare gateway and hosting plan](docs/cloudflare-deployment-plan.md)
-- [Database operations](apps/server/DATABASE.md)
+- [Database operations](apps/web/DATABASE.md)
 
 ## Licence
 

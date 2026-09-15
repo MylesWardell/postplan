@@ -1,6 +1,6 @@
 import "./instrumentation";
 import { createCloudflareStore } from "./database";
-import { createApplication } from "@postplan/server/application";
+import { createApplication } from "@postplan/web/application";
 import { cloudflareGateway } from "./gateway";
 import { applicationStorage } from "./application-storage";
 import { boundedBody } from "./body";

@@ -6,7 +6,7 @@ export default defineConfig({
   resolve: {
     conditions: ["source"],
     alias: {
-      "#config": fileURLToPath(new URL("../../apps/server/src/config.ts", import.meta.url)),
+      "#config": fileURLToPath(new URL("../../apps/web/src/config.ts", import.meta.url)),
     },
   },
   plugins: [

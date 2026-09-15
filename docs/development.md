@@ -21,12 +21,12 @@ Copy `.env.example` to `.env`, configure storage, and choose a database path. Us
 
 ```sh
 bun run db:migrate
-bun run --filter @postplan/server dev
+bun run --filter @postplan/web dev
 ```
 
-Set variables in the shell or create `apps/server/.env` for Bun to load. Run server package commands from `apps/server` when they depend on its React JSX configuration. Rebuild shared packages after changing their exports.
+Set variables in the shell or create `apps/web/.env` for Bun to load. Run server package commands from `apps/web` when they depend on its React JSX configuration. Rebuild shared packages after changing their exports.
 
-SQLite startup seeds configured accounts and keys but does not apply schema changes. Review and run migrations before starting the service. DynamoDB uses an explicit bootstrap command. See [database operations](../apps/server/DATABASE.md).
+SQLite startup seeds configured accounts and keys but does not apply schema changes. Review and run migrations before starting the service. DynamoDB uses an explicit bootstrap command. See [database operations](../apps/web/DATABASE.md).
 
 ## Workspace
 
@@ -52,7 +52,7 @@ bun run db:generate
 bun run pack:cli
 ```
 
-TanStack Router generates `apps/server/src/frontend/routeTree.gen.ts` before builds and type checks. Commit the generated file and do not edit it by hand.
+TanStack Router generates `apps/web/src/frontend/routeTree.gen.ts` before builds and type checks. Commit the generated file and do not edit it by hand.
 
 ## Container image
 

@@ -73,7 +73,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun test --preload ../../scripts/testing/dynamodb.ts --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/concurrency.test.ts ./test/store.test.ts
-        working-directory: apps/server
+        working-directory: apps/web
         env:
           POSTPLAN_TEST_DYNAMODB_ENDPOINT: http://127.0.0.1:8000
       - run: bun test ./test
