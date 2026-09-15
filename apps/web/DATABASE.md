@@ -14,7 +14,7 @@ Set all four table names to select DynamoDB: `POSTPLAN_IDENTITY_TABLE`, `POSTPLA
 
 The DynamoDB stores use conditional transactions for account identities, API keys, ownership, concurrent version allocation, and upload publication. Consistent base-table reads enforce revocation and expiry; list indexes are eventually consistent. Dates retain the existing API format. Stored date fields use epoch milliseconds, while `lastUploadedAt`, upload leases, and `ttlAt` use epoch seconds. HTML remains in S3.
 
-After building, run `bun apps/server/dist/src/db/bootstrap.js` with the table configuration and optional bootstrap secret to seed accounts. `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` and `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN` load SecureString values from SSM before startup. Normal Lambda cold starts do not seed or rotate keys.
+After building, run `bun apps/web/dist/src/db/bootstrap.js` with the table configuration and optional bootstrap secret to seed accounts. `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` and `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN` load SecureString values from SSM before startup. Normal Lambda cold starts do not seed or rotate keys.
 
 `PLAN_RETENTION_DAYS` defaults to **90**; a positive whole number changes the window and **0 disables automatic expiry**. Retention applies to the entire plan, measured from its last successful upload. Reads and mutations reject expired plans immediately. Changing retention affects existing active plans; it cannot restore plans already claimed for deletion. SQLite does not implement this retention policy.
 
@@ -24,7 +24,7 @@ Build container targets `lambda-app` and `lambda-cleanup` for Terraform. The def
 
 Server tests consume an injected `TestStore` and never import a provider. The workspace preloads in `scripts/testing` register the provider factory through `@postplan/store/testing`. `bun run check` uses SQLite for the server suite and runs each package's unit tests. HTML/URL/retention tests live in `packages/store`; transaction, lease, and cleanup tests live in `packages/store-dynamodb`; raw SQLite tests live in `packages/store-drizzle`.
 
-To repeat DynamoDB CI locally, start DynamoDB Local, build the repo, and set `POSTPLAN_TEST_DYNAMODB_ENDPOINT=http://127.0.0.1:8000`. From `apps/server`, run `bun test --preload ../../scripts/testing/dynamodb.ts --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/concurrency.test.ts ./test/store.test.ts`. Then run `bun test ./test` from `packages/store-dynamodb`. Its fixture accepts only loopback endpoints and creates/deletes isolated tables. Provider integration tests are skipped when the endpoint is absent; explicitly selecting the DynamoDB server preload requires a valid endpoint.
+To repeat DynamoDB CI locally, start DynamoDB Local, build the repo, and set `POSTPLAN_TEST_DYNAMODB_ENDPOINT=http://127.0.0.1:8000`. From `apps/web`, run `bun test --preload ../../scripts/testing/dynamodb.ts --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/concurrency.test.ts ./test/store.test.ts`. Then run `bun test ./test` from `packages/store-dynamodb`. Its fixture accepts only loopback endpoints and creates/deletes isolated tables. Provider integration tests are skipped when the endpoint is absent; explicitly selecting the DynamoDB server preload requires a valid endpoint.
 
 ## SQLite
 

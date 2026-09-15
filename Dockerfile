@@ -9,7 +9,7 @@ RUN bun run check
 FROM bun AS dependencies
 WORKDIR /app
 COPY package.json bun.lock ./
-COPY apps/server/package.json ./apps/server/package.json
+COPY apps/web/package.json ./apps/web/package.json
 COPY apps/cleanup/package.json ./apps/cleanup/package.json
 COPY apps/cli/package.json ./apps/cli/package.json
 COPY packages/cloudflare/package.json ./packages/cloudflare/package.json
@@ -24,7 +24,7 @@ FROM bun AS app-base
 WORKDIR /app
 ENV NODE_ENV=production DATABASE_PATH=/data/postplan.sqlite
 COPY --from=dependencies /app /app
-COPY --from=build /workspace/apps/server/dist ./apps/server/dist
+COPY --from=build /workspace/apps/web/dist ./apps/web/dist
 COPY --from=build /workspace/packages/store-drizzle/drizzle ./packages/store-drizzle/drizzle
 COPY --from=build /workspace/packages/lambda/dist/src ./packages/lambda/dist/src
 COPY --from=build /workspace/packages/api/dist/src ./packages/api/dist/src
@@ -32,10 +32,10 @@ COPY --from=build /workspace/packages/store/dist/src ./packages/store/dist/src
 COPY --from=build /workspace/packages/store-drizzle/dist/src ./packages/store-drizzle/dist/src
 COPY --from=build /workspace/packages/store-dynamodb/dist/src ./packages/store-dynamodb/dist/src
 RUN mkdir /data && chown bun:bun /data
-RUN bun -e "await import('./apps/server/dist/src/index.js')"
+RUN bun -e "await import('./apps/web/dist/src/index.js')"
 USER bun
 EXPOSE 3000
-CMD ["bun", "apps/server/dist/src/launch.js"]
+CMD ["bun", "apps/web/dist/src/launch.js"]
 
 FROM app-base AS lambda-app
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.1 /lambda-adapter /opt/extensions/lambda-adapter

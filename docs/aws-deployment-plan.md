@@ -29,7 +29,7 @@ Keep port 3000 inaccessible externally. Configure TLS for apex and wildcard host
 
 1. Run `bun install --frozen-lockfile`, `bun run check`, `bun run pack:cli`, and `docker build --tag postplan:local .`. CI does these without AWS credentials. Record the reviewed image digest.
 2. Confirm region, domain, sizing, backup retention and acceptable recovery time. Provision the instance, retained volume, bucket, role, DNS and TLS. Make `/data` writable by the image's `bun` user.
-3. Stop the app and take a consistent backup for updates. Run `bun apps/server/dist/src/db/migrate.js` from `/app` in the release image with the same data mount and environment. Run one migration process, then start exactly one server container. Bind port 3000 to loopback and configure automatic restart. Never keep SQLite only in the container layer.
+3. Stop the app and take a consistent backup for updates. Run `bun apps/web/dist/src/db/migrate.js` from `/app` in the release image with the same data mount and environment. Run one migration process, then start exactly one server container. Bind port 3000 to loopback and configure automatic restart. Never keep SQLite only in the container layer.
 4. Verify `/healthz`, `/api/spec.json`, bearer key revocation, SSR sign-in/forms, uploads, version history, ownership, disable/delete and byte-exact public HTML. Confirm draft hosts cannot reach dashboard or API routes. Test real S3 and restart persistence before opening traffic.
 
 Bun 1.4.2 runs the app; Node builds tooling and runs the portable CLI. Keep all oRPC 2.0.0-beta.35 dependencies aligned. CI has no deployment step.
@@ -42,4 +42,4 @@ Test restore on a separate volume: check integrity and foreign keys, compare row
 
 Keep the previous image digest. Application rollback can reuse the database only when its schema remains compatible; do not automatically reverse migrations. Restoring an older backup discards newer writes and requires an explicit recovery decision.
 
-Existing PostgreSQL installations require a separately reviewed conversion; SQLite migrations do not import them. Preserve identities, key hashes, object keys and the session secret, and test account continuity if the domain changes. See [database guidance](../apps/server/DATABASE.md).
+Existing PostgreSQL installations require a separately reviewed conversion; SQLite migrations do not import them. Preserve identities, key hashes, object keys and the session secret, and test account continuity if the domain changes. See [database guidance](../apps/web/DATABASE.md).

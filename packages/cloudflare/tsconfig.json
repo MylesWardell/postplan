@@ -1,5 +1,5 @@
 {
-  "extends": "../../apps/server/tsconfig.json",
+  "extends": "../../apps/web/tsconfig.json",
   "compilerOptions": {
     "rootDir": "../..",
     "noEmit": true,
@@ -7,8 +7,8 @@
   },
   "include": [
     "./**/*.ts",
-    "../../apps/server/src/frontend/**/*.ts",
-    "../../apps/server/src/frontend/**/*.tsx"
+    "../../apps/web/src/frontend/**/*.ts",
+    "../../apps/web/src/frontend/**/*.tsx"
   ],
   "exclude": ["./dist", "./generated"]
 }

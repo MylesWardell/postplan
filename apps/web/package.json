@@ -1,5 +1,5 @@
 {
-  "name": "@postplan/server",
+  "name": "@postplan/web",
   "version": "0.0.4",
   "private": true,
   "files": [

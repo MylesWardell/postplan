@@ -52,7 +52,7 @@ Use seven-day DynamoDB PITR for durable metadata. Expired metadata can remain re
 
 ## Database and application changes
 
-Queries are mostly in `apps/server/src/routers/account-store.ts` and `draft-store.ts`; schema-derived types, context, initialization, health checks and tests also depend on SQLite. Introduce a persistence interface and a DynamoDB SDK implementation. This is a backend migration, not a Drizzle driver swap.
+Queries are mostly in `apps/web/src/routers/account-store.ts` and `draft-store.ts`; schema-derived types, context, initialization, health checks and tests also depend on SQLite. Introduce a persistence interface and a DynamoDB SDK implementation. This is a backend migration, not a Drizzle driver swap.
 
 | Proposed table  | Keys and access patterns                                                                                           | Retention                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |

@@ -49,8 +49,8 @@
         "@postplan/api": "workspace:*",
       },
     },
-    "apps/server": {
-      "name": "@postplan/server",
+    "apps/web": {
+      "name": "@postplan/web",
       "version": "0.0.4",
       "dependencies": {
         "@opentelemetry/auto-instrumentations-node": "^0.80.0",
@@ -103,9 +103,9 @@
       "dependencies": {
         "@orpc/cloudflare": "2.0.0-beta.35",
         "@orpc/server": "2.0.0-beta.35",
-        "@postplan/server": "workspace:*",
         "@postplan/store": "workspace:*",
         "@postplan/store-drizzle": "workspace:*",
+        "@postplan/web": "workspace:*",
         "drizzle-orm": "^0.45.2",
       },
       "devDependencies": {
@@ -752,13 +752,13 @@
 
     "@postplan/lambda": ["@postplan/lambda@workspace:packages/lambda"],
 
-    "@postplan/server": ["@postplan/server@workspace:apps/server"],
-
     "@postplan/store": ["@postplan/store@workspace:packages/store"],
 
     "@postplan/store-drizzle": ["@postplan/store-drizzle@workspace:packages/store-drizzle"],
 
     "@postplan/store-dynamodb": ["@postplan/store-dynamodb@workspace:packages/store-dynamodb"],
+
+    "@postplan/web": ["@postplan/web@workspace:apps/web"],
 
     "@protobufjs/aspromise": ["@protobufjs/aspromise@1.1.2", "", {}, "sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ=="],
 
