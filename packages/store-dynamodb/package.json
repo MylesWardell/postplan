@@ -27,14 +27,14 @@
     "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1131.0",
-    "@aws-sdk/lib-dynamodb": "^3.1131.0",
-    "@orpc/ratelimit": "2.0.0-beta.35",
-    "@orpc/server": "2.0.0-beta.35",
+    "@aws-sdk/client-dynamodb": "catalog:",
+    "@aws-sdk/lib-dynamodb": "catalog:",
+    "@orpc/ratelimit": "catalog:",
+    "@orpc/server": "catalog:",
     "@postplan/store": "workspace:*",
-    "nanoid": "^6.0.1"
+    "nanoid": "catalog:"
   },
   "devDependencies": {
-    "@types/bun": "1.4.2"
+    "@types/bun": "catalog:"
   }
 }

@@ -16,8 +16,8 @@
     "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@orpc/contract": "2.0.0-beta.35",
-    "@orpc/openapi": "2.0.0-beta.35",
-    "zod": "^4.6.5"
+    "@orpc/contract": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "zod": "catalog:"
   }
 }
