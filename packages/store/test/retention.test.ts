@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { test, expect } from "vitest";
 import { parseRetentionDays, expired } from "../src/retention";
 
 test("retention accepts configurable whole days and rejects invalid values", () => {

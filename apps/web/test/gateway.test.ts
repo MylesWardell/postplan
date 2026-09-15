@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { test, expect } from "vitest";
 import { gatewayRequest } from "#lib/gateway";
 import { config } from "#config";
 import { clientIp } from "#lib/client-ip";

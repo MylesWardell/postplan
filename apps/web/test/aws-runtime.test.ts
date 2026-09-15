@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 
 test("AWS startup decrypts SSM secrets and preserves session credentials for S3", async () => {
   const requests: { target: string | null; token: string | null; body: string }[] = [];

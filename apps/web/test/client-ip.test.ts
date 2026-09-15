@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "bun:test";
+import { test } from "vitest";
 import { clientIp } from "#lib/client-ip";
 import { config } from "#config";
 test("ALB ignores forged X-Real-IP and prepended forwarding entries", () => {

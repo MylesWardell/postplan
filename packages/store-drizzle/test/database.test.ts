@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "bun:test";
+import { test } from "vitest";
 import { migrateDatabase } from "@postplan/store-drizzle/migrate";
 import { statement } from "@postplan/store-drizzle/database";
 import { eq } from "drizzle-orm";

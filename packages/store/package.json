@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
-    "test": "bun test ./test"
+    "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts"
   },
   "dependencies": {
     "@orpc/contract": "2.0.0-beta.35",

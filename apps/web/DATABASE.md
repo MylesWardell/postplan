@@ -24,7 +24,7 @@ Build container targets `lambda-app` and `lambda-cleanup` for Terraform. The def
 
 Server tests consume an injected `TestStore` and never import a provider. The workspace preloads in `scripts/testing` register the provider factory through `@postplan/store/testing`. `bun run check` uses SQLite for the server suite and runs each package's unit tests. HTML/URL/retention tests live in `packages/store`; transaction, lease, and cleanup tests live in `packages/store-dynamodb`; raw SQLite tests live in `packages/store-drizzle`.
 
-To repeat DynamoDB CI locally, start DynamoDB Local, build the repo, and set `POSTPLAN_TEST_DYNAMODB_ENDPOINT=http://127.0.0.1:8000`. From `apps/web`, run `bun test --preload ../../scripts/testing/dynamodb.ts --conditions=source ./test/api.test.ts ./test/ssr.test.ts ./test/concurrency.test.ts ./test/store.test.ts`. Then run `bun test ./test` from `packages/store-dynamodb`. Its fixture accepts only loopback endpoints and creates/deletes isolated tables. Provider integration tests are skipped when the endpoint is absent; explicitly selecting the DynamoDB server preload requires a valid endpoint.
+To repeat DynamoDB CI locally, start DynamoDB Local, build the repo, and set `POSTPLAN_TEST_DYNAMODB_ENDPOINT=http://127.0.0.1:8000`. From `apps/web`, run `POSTPLAN_TEST_STORE=dynamodb bun --bun vitest run test/api.test.ts test/ssr.test.ts test/concurrency.test.ts test/store.test.ts`. Then run `bun run test` from `packages/store-dynamodb`. Its fixture accepts only loopback endpoints and creates/deletes isolated tables. Provider integration tests are skipped when the endpoint is absent; explicitly selecting the DynamoDB server setup file requires a valid endpoint.
 
 ## SQLite
 

@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "bun test ./test"
+    "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1131.0",

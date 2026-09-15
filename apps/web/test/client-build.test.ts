@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
-import { test } from "bun:test";
+import { test } from "vitest";
 
 test("Start splits pages and excludes database, storage, and session implementation from client assets", async () => {
   const directory = fileURLToPath(new URL("../dist/client/", import.meta.url));

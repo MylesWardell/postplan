@@ -1,6 +1,6 @@
 import { createContextFactory } from "#context";
 import assert from "node:assert/strict";
-import { test } from "bun:test";
+import { test } from "vitest";
 import { createTestStore } from "@postplan/store/testing";
 import { createCaller } from "#client";
 

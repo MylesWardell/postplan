@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
-    "test": "bun test ./test",
+    "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts",
     "start": "bun dist/src/index.js"
   },
   "dependencies": {

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test, expect } from "bun:test";
+import { test, expect } from "vitest";
 import { findDynamoPublicVersion, claimExpiredPlan } from "@postplan/store-dynamodb/dynamo-drafts";
 import type { DynamoPlan } from "@postplan/store-dynamodb/dynamo-drafts";
 import { DynamoRateLimiter } from "@postplan/store-dynamodb/dynamo-rate-limit";
