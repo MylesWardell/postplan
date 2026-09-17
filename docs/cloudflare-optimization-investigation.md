@@ -126,7 +126,7 @@ To pursue reliable Free hosting, the next substantial changes are pagination/cli
 
 ## Fourth pass: bounded lists and remaining CPU actions
 
-Issue #29 follow-up. Baseline `59ab3ee` (master after #28); candidate is this branch. All figures are warm, interleaved WSL benchmark medians of application CPU per request (ms), subject to the limits described above. Nothing in this pass was deployed or measured remotely.
+Issue #29 follow-up. Baseline `59ab3ee` (master after #28); candidate `4b89167` (application code identical to the final branch, which adds only documentation). All figures are warm, interleaved WSL benchmark medians of application CPU per request (ms), subject to the limits described above. Nothing in this pass was deployed or measured remotely.
 
 ### Changes retained
 
