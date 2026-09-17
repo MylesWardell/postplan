@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["bun", "node"]
+  },
+  "include": [
+    "cloudflare/compare.ts",
+    "cloudflare/cpu-profile.test.ts",
+    "cloudflare/cpu-profile.ts",
+    "cloudflare/inspect.ts",
+    "cloudflare/profile.ts"
+  ]
+}

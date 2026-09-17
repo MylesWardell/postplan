@@ -28,6 +28,9 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run check
+      - run: bun run typecheck:benchmark
+      - run: bun run test:benchmark
+      - run: bash benchmark/cloudflare/run.test.sh
       - run: bunx --no-install turbo run cf:build cf:test --filter=@postplan/cloudflare
         env:
           POSTPLAN_RATE_LIMIT_SECRET: local-test-only

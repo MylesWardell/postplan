@@ -1,5 +1,5 @@
-// CPU benchmark entry. `run.sh` copies this file over packages/cloudflare/src/worker.ts in a
-// disposable copy of the repository, so imports are relative to that location. Never deploy it.
+// CPU benchmark entry. `run.sh` copies this file over worker.ts in a disposable repository copy.
+// It is type-checked here beside the production modules it imports. Never deploy it.
 //
 // A Durable Object runs the real built application in a loop against a D1-compatible adapter
 // over its own SQLite storage and an in-memory R2 bucket. With no bindings on the hot path, the
@@ -9,9 +9,8 @@ import { DurableObject } from "cloudflare:workers";
 import { createHash, createHmac } from "node:crypto";
 import { createCloudflareStore } from "./database";
 import { createApplication } from "@postplan/web/application";
-import { cloudflareGateway } from "./gateway";
 import { applicationStorage } from "./application-storage";
-import { boundedBody } from "./body";
+import { handleCloudflareRequest } from "./request-pipeline";
 import migration from "../../store-drizzle/drizzle/0000_same_vulcan.sql?raw";
 import budgetSchema from "../deploy/schema.sql?raw";
 
@@ -33,10 +32,7 @@ function fakeD1(sql: SqlStorage): D1Database {
       return { results: cursor.toArray(), success: true, meta: { changes: cursor.rowsWritten } };
     },
     async raw() {
-      return sql
-        .exec(query, ...params)
-        .raw()
-        .toArray();
+      return [...sql.exec(query, ...params).raw()];
     },
     async run() {
       const cursor = sql.exec(query, ...params);
@@ -97,7 +93,7 @@ const upload = (body: string) =>
     body,
   });
 
-// Keep names in sync with PLAN in profile.mjs.
+// Keep names in sync with PLAN in profile.ts.
 const cases: Record<string, () => Request> = {
   healthz: () => new Request(base + "/healthz"),
   home: () => new Request(base + "/"),
@@ -131,6 +127,9 @@ export class RateLimit extends DurableObject {
     const db = fakeD1(sql);
     const bucket = fakeR2();
     const env = {
+      POSTPLAN_APPLICATION_ENABLED: "true",
+      POSTPLAN_PUBLIC_BASE_URL: base,
+      POSTPLAN_LOCAL: "true",
       POSTPLAN_DB: db,
       HTML_BUCKET: bucket,
       POSTPLAN_DATABASE: "sqlite",
@@ -145,34 +144,13 @@ export class RateLimit extends DurableObject {
           }),
         }),
       },
+      ASSETS: { fetch: () => new Response("Not found", { status: 404 }) },
     } as unknown as Cloudflare.Env;
     const application = createApplication(
       { store: createCloudflareStore(env).store, ...applicationStorage(db, bucket) },
       false,
     );
-    // Mirrors the enabled-application path of packages/cloudflare/src/worker.ts. Update both
-    // together when the Worker's request handling changes.
-    return async (incoming: Request) => {
-      const { request, peerIp } = cloudflareGateway(incoming, {
-        publicBaseUrl: base,
-        requestIdHeader: "x-request-id",
-        local: true,
-      });
-      const budget = await db
-        .prepare(
-          "SELECT id, (SELECT killed FROM usage_guard WHERE id=1) AS killed FROM application_budget WHERE id=1",
-        )
-        .first<{ id: number; killed: number | null }>();
-      if (!budget || budget.killed === 1) {
-        throw new Error("Benchmark budget is missing or stopped.");
-      }
-      let applicationRequest = request;
-      if (request.body) {
-        const body = await boundedBody(request, 2 * 1024 * 1024);
-        applicationRequest = new Request(request, { method: request.method, body });
-      }
-      return application(applicationRequest, peerIp);
-    };
+    return (incoming: Request) => handleCloudflareRequest(incoming, env, application);
   }
 
   override async fetch(request: Request) {

@@ -46,37 +46,35 @@ Validation passed: repository checks, Cloudflare build/typecheck, 16 permanent w
 
 Local CPU profiles captured on Windows are not usable for attribution. workerd sampled at the Windows timer tick: a 40-request `/healthz` profile held 37 samples with a median interval of 16 ms, so every request appeared to cost about 15 ms regardless of work. The earlier upload profiles came from the same environment; their function-level percentages should not guide optimization. Linux profiles of `wrangler dev` were also misleading because Miniflare runs the D1/R2 simulators on the same thread, attributing simulator work to application frames (the plan-list API appeared to cost 41 ms locally against 10 ms remotely).
 
-The replacement benchmark runs in WSL. A Durable Object executes the real built application in a loop against a D1-compatible adapter over its own SQLite storage and an in-memory R2 bucket, so the profiled isolate contains only application work plus native SQLite calls. SQLite execution and benchmark request construction are excluded from the figures below. Each case runs a warm-up then three profiled batches; batch-to-batch variation was generally under 10%. The benchmark entry, scripts and steps to rerun it are in [`benchmark/cloudflare/`](../benchmark/cloudflare/README.md); they are not imported by runtime code.
+The replacement benchmark runs in WSL. A Durable Object executes the real built application in a loop against a D1-compatible adapter over its own SQLite storage and an in-memory R2 bucket, so the profiled isolate contains only application work plus native SQLite calls. Each case runs a warm-up then three profiled batches. Every raw profile is retained, SQLite and benchmark-construction frames are excluded independently from each batch, and the published value is their median. Interleaved A/B mode reverses target order between batches to distribute runtime drift. The benchmark entry calls the production request pipeline directly, while remaining outside the deployed entry graph. Scripts and rerun steps are in [`benchmark/cloudflare/`](../benchmark/cloudflare/README.md).
 
 These are warm steady-state figures. Deployed invocations include cold JIT, lazy compilation and Cloudflare's binding overhead, so absolute values are lower than remote CPU measurements. Use them to compare changes, not to predict Free-plan compliance.
 
 ### Results so far
 
-Application CPU per request, 58-plan account, milliseconds:
+Application CPU per request for the corrected 2026-09-17 interleaved parity run, 58-plan account, milliseconds:
 
-| Case                     | Baseline | String SSR | + oRPC tracer off | + prepared queries |
-| ------------------------ | -------: | ---------: | ----------------: | -----------------: |
-| `/healthz`               |     1.29 |       1.16 |              0.55 |               0.62 |
-| Homepage                 |     0.94 |       0.74 |              0.85 |               0.84 |
-| Dashboard                |     6.39 |       5.81 |              2.53 |               2.67 |
-| Authenticated plan list  |    10.59 |       9.78 |              6.21 |               5.66 |
-| Public HTML, 5,356 bytes |     4.57 |       4.56 |              3.75 |               1.93 |
-| Upload, 5,356 bytes      |    18.59 |      18.71 |              7.63 |               7.94 |
-| Upload, 512 KiB          |    23.46 |      23.44 |             16.85 |              20.25 |
+| Case                     | Archive `7266f84` | Issue #22 tree |
+| ------------------------ | ----------------: | -------------: |
+| `/healthz`               |              0.76 |           0.80 |
+| Homepage                 |              0.87 |           0.76 |
+| Dashboard                |              2.22 |           2.49 |
+| Authenticated plan list  |              6.03 |           6.04 |
+| Public HTML, 5,356 bytes |              1.93 |           2.08 |
+| Upload, 5,356 bytes      |              7.60 |           7.26 |
+| Upload, 512 KiB          |             18.18 |          17.35 |
 
-Each column includes the changes to its left. Differences under about 10% between adjacent columns are noise; the 512 KiB case runs only 20 requests per batch and is the noisiest.
-
-- **oRPC tracing was the largest avoidable cost.** `CloudflareTracer` wraps every middleware, validation step and handler, including the store's in-process procedure calls, in a native span plus an async closure. Disabling it cut dashboard CPU by 56% and small uploads by 59%. Local `wrangler dev` may trace every request whereas the deployment samples 1%, so the remote saving may be smaller; the wrapping itself happens regardless of sampling. The tracer is now opt-in through `POSTPLAN_ORPC_TRACING=true` (default `false`); Workers' own binding traces are unaffected.
-- **String rendering is cheaper than streaming SSR.** No route uses Suspense, deferred data or streaming. `createStartHandler(defaultRenderHandler)` replaces the default stream handler, avoiding per-chunk encoding and the router's transform streams. Dashboard CPU fell by about 0.6 ms. Response headers, CSP nonces and dehydration scripts are unchanged.
-- **Hot Drizzle selects are prepared once per database.** Without tracing, building the public-read select (`is()`, `buildSelection`, `orderSelectedFields`, column casing) accounted for roughly 2 ms of the 3.75 ms public read. `prepared()` in `store-drizzle/src/database.ts` now builds, with placeholders, the public version lookups, API-key lookup, plan list, plan detail, and upload's ownership and follow-up selects. Public reads fell by 49% and the plan list by 9%. Inserts, updates and the upload batch still build per request. Bun SQLite holds a file open until statements are finalized, so file-backed callers that close and delete a database must call `finalizePrepared(db)` first; the reopen test does.
+Both targets use equivalent application behavior; this is a parity and methodology check, not an optimization comparison. The prior staged table was derived from the first profile only, despite collecting three batches, so its percentage claims are withdrawn. Tracing, string rendering and prepared-query changes remain in the code, but their individual effects must be remeasured from interleaved archives before drawing a performance conclusion.
 
 Validation for this pass: format, lint, Cloudflare typecheck, 16 workerd tests, web, Lambda and store-drizzle tests, and built-Worker HTTP acceptance against local D1. The acceptance run exercises reused prepared statements across many requests, including versioned reads, key revocation and deletion. Reuse against remote D1, the full repository check (DynamoDB and Docker) and a repeated remote CPU comparison have not been run.
 
-### Remaining hot spots
+### Previously observed hot spots
+
+These are investigation candidates from the superseded first-profile analysis, not corrected comparison results.
 
 - **Duplicate Zod validation.** Store calls go through an in-process oRPC router, validating input and output a second time after the API contract. Zod 4 cannot use its JIT in Workers because code generation is disallowed. Measured separately in Node (jitless), validating 58 plans costs about 0.04 ms per pass, so this is a small win.
 - **Public URL construction.** `getDraftPublicUrl`/`getDraftRawUrl` reparse the configured base URL twice per listed plan, and `hostDraftId` reparses it per request.
-- **Request body buffering.** `boundedBody` showed about 5 ms self time for 512 KiB uploads in the benchmark, comparable to parse5. A `Content-Length` fast path using `arrayBuffer()` may help; streaming limits must remain for chunked bodies.
+- **Request body buffering.** `boundedBody` appeared prominently in the earlier 512 KiB profile. A `Content-Length` fast path using `arrayBuffer()` may help; streaming limits must remain for chunked bodies.
 - **OpenAPI handler plumbing.** The plan-list API costs about 3 ms more than the dashboard, which renders the same list through the in-process client. Request conversion, header normalization, evlog, CORS and coercion plugins all appear in the profile.
 
 Rejected: replacing `node:crypto` HMAC/SHA-256. The Windows profile blamed session HMAC verification for about 3 ms per dashboard request, but a workerd micro-benchmark measured about 30 µs per `createHmac` call and 19 µs for Web Crypto.
