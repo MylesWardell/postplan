@@ -25,6 +25,8 @@ export function createDatabase(binding: D1Database) {
 export function createCloudflareStore(env: Cloudflare.Env) {
   assertSqliteDatabase(env.POSTPLAN_DATABASE);
   const db = createDatabase(env.POSTPLAN_DB);
+  // D1 prepared queries do not own local statement handles. The shared close
+  // callback still evicts them from the per-database query cache.
   const connection = createDrizzleStore(db, undefined, async (input) => {
     const name = limiterName(
       env.POSTPLAN_RATE_LIMIT_SECRET,
