@@ -23,6 +23,14 @@ def sample():
             {"dimensions": {"actionType": "PutObject"}, "sum": {"requests": 2}},
             {"dimensions": {"actionType": "GetObject"}, "sum": {"requests": 3}},
             {"dimensions": {"actionType": "DeleteObject"}, "sum": {"requests": 2}},
+            {
+                "dimensions": {"actionType": "GetBucketSippyConfiguration"},
+                "sum": {"requests": 1},
+            },
+            {
+                "dimensions": {"actionType": "GetBucketNotificationConfiguration"},
+                "sum": {"requests": 1},
+            },
         ],
         "r2Storage": [
             {
@@ -145,7 +153,7 @@ class UsageTests(unittest.TestCase):
     def test_units_classes_and_per_resource_peaks(self):
         metrics = guard.metrics_from_response(sample())
         self.assertEqual(metrics["workers_cpu_ms_24h"], 148.418)
-        self.assertEqual(metrics["r2_class_a_31d"], 2)
+        self.assertEqual(metrics["r2_class_a_31d"], 4)
         self.assertEqual(metrics["r2_class_b_31d"], 3)
         self.assertEqual(metrics["r2_storage_peak_bytes_31d"], 330)
         self.assertEqual(guard.breaches(metrics, POLICY), [])

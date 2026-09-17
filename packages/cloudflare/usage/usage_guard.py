@@ -18,6 +18,9 @@ PAGE_SIZE = 1000
 CLASS_A = set(
     "ListBuckets PutBucket ListObjects PutObject CopyObject CompleteMultipartUpload CreateMultipartUpload LifecycleStorageTierTransition ListMultipartUploads UploadPart UploadPartCopy ListParts PutBucketEncryption PutBucketCors PutBucketLifecycleConfiguration".split()
 )
+# Analytics also reports these control-plane reads, but the R2 pricing table
+# does not classify them. Count them as the more expensive class until it does.
+CLASS_A.update({"GetBucketSippyConfiguration", "GetBucketNotificationConfiguration"})
 CLASS_B = set(
     "HeadBucket HeadObject GetObject UsageSummary GetBucketEncryption GetBucketLocation GetBucketCors GetBucketLifecycleConfiguration".split()
 )
