@@ -11,9 +11,17 @@ import { applyContentSecurityPolicy, createNonce } from "#lib/content-security-p
 // Pages have no Suspense boundaries, so render to a string: streaming SSR encodes
 // every chunk and pipes it through router transform streams for no benefit.
 const handler = { fetch: createStartHandler(defaultRenderHandler) };
-export function createApplication(deps: ServerDependencies, compressResponse = true) {
+export interface ApplicationOptions {
+  compressResponse?: boolean;
+  enableEvlog?: boolean;
+}
+
+export function createApplication(deps: ServerDependencies, options: ApplicationOptions = {}) {
   const createContext = createContextFactory(deps);
-  const api = createApiHandler(createContext, compressResponse);
+  const api = createApiHandler(createContext, {
+    compressResponse: options.compressResponse ?? true,
+    enableEvlog: options.enableEvlog ?? true,
+  });
   return (request: Request, peerIp: string | null = null) =>
     respond(async () => {
       const draftId = hostDraftId(request);

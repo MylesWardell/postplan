@@ -43,6 +43,8 @@ Build output stays in `packages/cloudflare/dist` for Cloudflare and `apps/web/di
 
 oRPC's experimental `CloudflareTracer` is opt-in: set `POSTPLAN_ORPC_TRACING` to `"true"` to register it at module scope. It wraps every procedure, middleware and validation step in a span, which more than doubled request CPU in the [in-process benchmark](../../docs/cloudflare-optimization-investigation.md#second-pass-in-process-cpu-benchmark), so it defaults to `"false"`. Workers Traces still records binding spans at the configured 1% sampling rate; the AWS OpenTelemetry SDK is not loaded. `enable_request_signal` lets oRPC observe client disconnects through the request signal. Keep the compatibility flag and trace settings in generated remote configurations.
 
+The Cloudflare runtime also leaves oRPC's Evlog handler disabled and emits bounded structured records only for 4xx/5xx responses. AWS keeps Evlog enabled by default. Public HTML responses pass the private R2 object stream directly to `Response`; they do not materialize the whole object as a string. The [third optimization pass](../../docs/cloudflare-optimization-investigation.md#third-pass-logging-parser-and-r2-streaming) records the local and deployed comparisons and the rejected tokenizer prototype.
+
 ## Storage and retention safeguards
 
 Before every application R2 operation, D1 atomically consumes a lifetime reservation:
@@ -71,7 +73,7 @@ Keep Workers Free and R2 private Standard. Do not enable paid WAF or upgrade the
 
 ## Validation and remaining acceptance
 
-Local repository checks, both runtime builds, Cloudflare TypeScript, 16 workerd tests and 15 usage-guard tests pass. The built Worker passes the application check and persistent-stop check. Tests cover concurrency, rollback, ownership/deletion races, account lifecycle, limiter isolation, budget exhaustion, UTF-8 sizes, expiry and cleanup.
+Local repository checks, both runtime builds, Cloudflare TypeScript, 17 workerd tests and 15 usage-guard tests pass. The built Worker passes the application check and persistent-stop check. Tests cover concurrency, rollback, ownership/deletion races, account lifecycle, limiter isolation, budget exhaustion, UTF-8 sizes, expiry and cleanup.
 
 The [bounded remote CPU test](../../docs/cloudflare-cpu-test.md) deployed this connector on Workers Free on 14 September 2026. Dashboard rendering and uploads repeatedly exceeded 10 ms, so the current build does not reliably fit the Free CPU allowance. All temporary HTML was deleted and verified absent; the test key was revoked and the remote stop restored. The tested version remains deployed with public access disabled. Shoo browser login, wildcard DNS, backup/restore and cleanup CPU remain unverified. See the [usage assessment](../../docs/cloudflare-usage-assessment.md) and [deployment plan](../../docs/cloudflare-deployment-plan.md).
 

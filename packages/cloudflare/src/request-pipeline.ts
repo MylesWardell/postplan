@@ -4,11 +4,34 @@ import { cloudflareGateway } from "./gateway";
 
 type Application = ReturnType<typeof createApplication>;
 
+function logFailure(request: Request, response: Response, peerIp: string | null = null) {
+  if (response.status < 400) {
+    return;
+  }
+  const record = JSON.stringify({
+    event: "request_failure",
+    method: request.method,
+    path: new URL(request.url).pathname,
+    status: response.status,
+    requestId: request.headers.get("x-request-id") ?? request.headers.get("cf-ray"),
+    clientIp: peerIp,
+  });
+  if (response.status >= 500) {
+    console.error(record);
+  } else {
+    console.warn(record);
+  }
+}
+
 export async function handleCloudflareRequest(
   incoming: Request,
   env: Cloudflare.Env,
   application: Application,
 ): Promise<Response> {
+  const finish = (request: Request, response: Response, peerIp: string | null = null) => {
+    logFailure(request, response, peerIp);
+    return response;
+  };
   let gateway;
   try {
     gateway = cloudflareGateway(incoming, {
@@ -17,19 +40,23 @@ export async function handleCloudflareRequest(
       local: env.POSTPLAN_LOCAL === "true",
     });
   } catch {
-    return new Response("Invalid gateway request", { status: 400 });
+    return finish(incoming, new Response("Invalid gateway request", { status: 400 }));
   }
   const { request, peerIp, draftHost } = gateway;
   const enabled = String(env.POSTPLAN_APPLICATION_ENABLED) === "true";
   if (draftHost && !enabled) {
-    return new Response("Not found", { status: 404 });
+    return finish(request, new Response("Not found", { status: 404 }), peerIp);
   }
   const path = new URL(request.url).pathname;
   if (!draftHost && path.startsWith("/assets/")) {
-    return env.ASSETS.fetch(request);
+    return finish(request, await env.ASSETS.fetch(request), peerIp);
   }
   if (!enabled && !["/", "/healthz", "/api/spec.json"].includes(path)) {
-    return new Response("Application data routes are not enabled.", { status: 503 });
+    return finish(
+      request,
+      new Response("Application data routes are not enabled.", { status: 503 }),
+      peerIp,
+    );
   }
   if (enabled) {
     try {
@@ -37,24 +64,28 @@ export async function handleCloudflareRequest(
         "SELECT id, (SELECT killed FROM usage_guard WHERE id=1) AS killed FROM application_budget WHERE id=1",
       ).first<{ id: number; killed: number | null }>();
       if (budget?.killed === 1) {
-        return new Response("Application stopped", { status: 503 });
+        return finish(request, new Response("Application stopped", { status: 503 }), peerIp);
       }
       // Missing migrations fail closed; bootstrap is an explicit deployment step.
       if (!budget) {
         throw new Error("Missing budget");
       }
     } catch {
-      return new Response("Application storage is not initialized", { status: 503 });
+      return finish(
+        request,
+        new Response("Application storage is not initialized", { status: 503 }),
+        peerIp,
+      );
     }
   }
   let applicationRequest = request;
   if (request.body) {
     const body = await boundedBody(request, 2 * 1024 * 1024);
     if (!body) {
-      return new Response("Request body too large", { status: 413 });
+      return finish(request, new Response("Request body too large", { status: 413 }), peerIp);
     }
     applicationRequest = new Request(request, { method: request.method, body });
   }
   // The edge handles compression; workerd otherwise strips the plugin's encoding header.
-  return application(applicationRequest, peerIp);
+  return finish(request, await application(applicationRequest, peerIp), peerIp);
 }

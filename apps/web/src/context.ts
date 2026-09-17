@@ -6,7 +6,7 @@ import { createRateLimiters } from "#lib/rate-limiters";
 export interface ServerDependencies {
   store: Store;
   putHtml: (key: string, html: string) => Promise<void>;
-  getHtml: (key: string) => Promise<string>;
+  getHtml: (key: string) => Promise<string | ReadableStream<Uint8Array>>;
 }
 
 export type RateLimiters = Record<"upload-ip" | "upload-key" | "key-mint", RateLimiter>;

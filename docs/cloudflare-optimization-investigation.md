@@ -79,6 +79,45 @@ These are investigation candidates from the superseded first-profile analysis, n
 
 Rejected: replacing `node:crypto` HMAC/SHA-256. The Windows profile blamed session HMAC verification for about 3 ms per dashboard request, but a workerd micro-benchmark measured about 30 µs per `createHmac` call and 19 µs for Web Crypto.
 
+## Third pass: logging, parser and R2 streaming
+
+Issue #20 identified three follow-up candidates. Two are safe to retain; the parser replacement is not.
+
+### Cloudflare logging
+
+The Cloudflare application now disables oRPC's always-on Evlog handler. Other runtimes retain the previous default. The Worker emits one small JSON record only for failed requests, containing the method, path, status, request ID and client IP. It deliberately omits headers, credentials, query strings and bodies. This keeps failure and abuse-investigation metadata without formatting a full success event on every request; Cloudflare invocation logs still record request outcome and billed CPU.
+
+Corrected WSL A/B results, milliseconds of application CPU per request:
+
+| Case                     | Before | Error-only logging + R2 stream | Change |
+| ------------------------ | -----: | -----------------------------: | -----: |
+| Authenticated plan list  |   6.19 |                           4.08 |   -34% |
+| Upload, 5,356 bytes      |   8.34 |                           6.77 |   -19% |
+| Upload, 512 KiB          |  17.49 |                          18.02 |    +3% |
+| Public HTML, 5,356 bytes |   2.17 |                           2.15 |    -1% |
+
+The interleaved run supports retaining the logging change for ordinary API traffic. It does not improve the large-upload parse path, and the 3% increase there is within run-to-run noise. Large uploads remain well above the 10 ms target.
+
+### Parser prototype
+
+A streaming SAX-tokenizer policy prototype reduced 512 KiB validation CPU from 19.94 ms to 14.18 ms (29%) locally, but it failed the security-equivalence gate and was removed. It passed the targeted application corpus and did not accept any tree-rejected document in 1,959 upstream HTML tree-construction fixtures. Deterministic malformed-input fuzzing then found 244 documents rejected by the production tree policy but accepted by the tokenizer, and 148 documents where the production parser found a script but the tokenizer did not; 357 unique inputs had at least one unsafe mismatch.
+
+The failures come from treating token events as if they were the browser's constructed tree, especially around malformed markup, insertion modes, templates and foreign content. A native `HTMLRewriter` adapter would remove JavaScript parse5 work and preserve streaming, but its selector callbacks do not by themselves prove equivalent browser tree construction or the current nesting policy. It remains a possible research direction only if it is exercised against the same differential corpus and fuzz gate. The production parse5 policy is unchanged.
+
+### Public R2 reads
+
+The R2 adapter now returns `R2ObjectBody.body` directly to `Response` instead of awaiting `text()` and materializing the entire object. This preserves the existing 512 KiB stored-object check and response headers. A deployed A/B/A test read the same private 473,803-byte R2 object 20 times per version from Sydney; every response was `200`, exactly 473,803 bytes and had an `ok` invocation outcome.
+
+| Deployed implementation | Worker version                         | CPU median | CPU mean | CPU range |
+| ----------------------- | -------------------------------------- | ---------: | -------: | --------: |
+| Stream A                | `4ea9bbbf-82e9-4547-a7c6-8fed16efe375` |       3 ms |  5.75 ms |   2–21 ms |
+| Buffered control        | `d94717b1-1a78-429e-b65c-710c795bce29` |       4 ms |  6.35 ms |   3–22 ms |
+| Stream C                | `d314c825-f27b-4a48-bc90-49031dd7854d` |       3 ms |  4.20 ms |   2–18 ms |
+
+Cloudflare reports whole-millisecond CPU here and the small samples contain isolate/JIT outliers. The result validates the streamed response and suggests a modest reduction in memory and CPU; it is not a precise performance estimate. The final deployed version is Stream C.
+
+The remote audit also exposed two newly reported R2 analytics action names that were not classified by the guard. `GetBucketSippyConfiguration` and `GetBucketNotificationConfiguration` are now conservatively counted as Class A until Cloudflare's pricing table classifies them. The temporary D1 rows and R2 object were deleted and verified absent. The persistent stop is latched, all six stop controls passed, and `workers.dev` returns the expected edge 404.
+
 ## Cleanup and remaining work
 
 Both preflight and postflight account checks retain Workers Free and private Standard R2. The run wrote nine temporary objects (1,785,540 bytes) and made 30 application R2 reads. All nine objects were deleted and verified absent. The new test key was revoked, 106 synthetic version rows removed, and draft tombstones retained. There are no active drafts or stored version rows. Lifetime counters now show 18 writes, 58 reads and 3,571,080 reserved bytes across both runs; no allowance was reset. All six stop controls passed and the deployed Worker remains stopped with ingress disabled.

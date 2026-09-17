@@ -5,12 +5,14 @@ import {
   runInDurableObject,
   runDurableObjectAlarm,
 } from "cloudflare:test";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { cloudflareGateway } from "../src/gateway";
+import { handleCloudflareRequest } from "../src/request-pipeline";
 import { limiterName, validateRule } from "../src/rate-limit";
 import { r2Storage } from "../src/r2";
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await reset();
 });
 
@@ -60,6 +62,47 @@ test("gateway rejects foreign hosts, nested draft names, plaintext and invalid I
   ).toBe(true);
 });
 
+test("Cloudflare logs only failures with bounded metadata, not credentials", async () => {
+  const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  const response = await handleCloudflareRequest(
+    new Request("http://foreign.example/private", {
+      headers: { authorization: "Bearer secret", "cf-ray": "failure-ray" },
+    }),
+    env,
+    async () => new Response("unused"),
+  );
+  expect(response.status).toBe(400);
+  expect(warning).toHaveBeenCalledOnce();
+  const record = JSON.parse(String(warning.mock.calls[0]![0]));
+  expect(record).toEqual({
+    event: "request_failure",
+    method: "GET",
+    path: "/private",
+    status: 400,
+    requestId: "failure-ray",
+    clientIp: null,
+  });
+  expect(warning.mock.calls[0]![0]).not.toContain("secret");
+
+  const serverFailure = await handleCloudflareRequest(
+    new Request("http://localhost:5173/healthz"),
+    env,
+    async () => new Response("failed", { status: 503 }),
+  );
+  expect(serverFailure.status).toBe(503);
+  expect(error).toHaveBeenCalledOnce();
+
+  const success = await handleCloudflareRequest(
+    new Request("http://localhost:5173/healthz"),
+    env,
+    async () => new Response("ok"),
+  );
+  expect(success.status).toBe(200);
+  expect(warning).toHaveBeenCalledOnce();
+  expect(error).toHaveBeenCalledOnce();
+});
+
 test("D1 rolls back failed batches; zero-row predicates do not abort later statements", async () => {
   const db = env.POSTPLAN_DB;
   await db.exec("CREATE TABLE probe (id TEXT PRIMARY KEY, used INTEGER NOT NULL CHECK(used >= 0))");
@@ -95,7 +138,9 @@ test("R2 round-trips bounded unicode HTML and removes it", async () => {
   const storage = r2Storage(env.HTML_BUCKET);
   const html = "<!doctype html><html><title>Plan</title><body>Résumé — 世界 🌏</body></html>";
   await storage.putHtml("experiment.html", html);
-  expect(await storage.getHtml("experiment.html")).toBe(html);
+  const body = await storage.getHtml("experiment.html");
+  expect(body).toBeInstanceOf(ReadableStream);
+  expect(await new Response(body).text()).toBe(html);
   expect((await env.HTML_BUCKET.head("experiment.html"))?.httpMetadata?.cacheControl).toBe(
     "no-store",
   );

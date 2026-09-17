@@ -63,7 +63,13 @@ function fakeR2(): R2Bucket {
     },
     async get(key: string) {
       const value = objects.get(key);
-      return value === undefined ? null : { size: value.length, text: async () => value };
+      return value === undefined
+        ? null
+        : {
+            size: Buffer.byteLength(value),
+            body: new Response(value).body!,
+            text: async () => value,
+          };
     },
     async delete(key: string) {
       objects.delete(key);
@@ -148,7 +154,7 @@ export class RateLimit extends DurableObject {
     } as unknown as Cloudflare.Env;
     const application = createApplication(
       { store: createCloudflareStore(env).store, ...applicationStorage(db, bucket) },
-      false,
+      { compressResponse: false, enableEvlog: false },
     );
     return (incoming: Request) => handleCloudflareRequest(incoming, env, application);
   }

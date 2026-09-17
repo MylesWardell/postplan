@@ -13,7 +13,7 @@ export function r2Storage(bucket: R2Bucket) {
       if (object.size > 512 * 1024) {
         throw new Error("HTML object exceeds storage limit.");
       }
-      return object.text();
+      return object.body;
     },
   };
 }
