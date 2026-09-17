@@ -105,7 +105,7 @@ Do not infer an optimization from a single run. Review each result's three batch
 | `upload`      | `POST /api/uploads`, 5,356 bytes, then trimmed back to the seed |
 | `uploadLarge` | `POST /api/uploads`, just under 512 KiB                         |
 
-The account is seeded with 58 plans. Set `BENCH_PLANS` to seed a larger account, for example `wsl env BENCH_PLANS=120 bash benchmark/cloudflare/run.sh after list,listMax,dashboard`. Revisions from before `listMax` existed ignore `BENCH_PLANS` and cannot run `listMax`; apply a `BENCH_BASELINE_PATCH` that changes their seed count when comparing larger accounts.
+The account is seeded with 58 plans. Set `BENCH_PLANS` to seed a larger account, for example `wsl env BENCH_PLANS=120 bash benchmark/cloudflare/run.sh after list,listMax,dashboard`. `run.sh` copies the current benchmark entry into every target, so archived baselines seed the same count and accept `listMax`; revisions without list pagination ignore `limit` and return every plan.
 
 To add a case, add a request factory to `packages/cloudflare/src/benchmark.ts` and a batch size to `PLAN` in `profile.ts`.
 

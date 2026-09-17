@@ -123,3 +123,58 @@ The remote audit also exposed two newly reported R2 analytics action names that 
 Both preflight and postflight account checks retain Workers Free and private Standard R2. The run wrote nine temporary objects (1,785,540 bytes) and made 30 application R2 reads. All nine objects were deleted and verified absent. The new test key was revoked, 106 synthetic version rows removed, and draft tombstones retained. There are no active drafts or stored version rows. Lifetime counters now show 18 writes, 58 reads and 3,571,080 reserved bytes across both runs; no allowance was reset. All six stop controls passed and the deployed Worker remains stopped with ingress disabled.
 
 To pursue reliable Free hosting, the next substantial changes are pagination/client rendering for the dashboard and a cheaper upload-validation design. A replacement parser must preserve browser-compatible handling of malformed HTML, blocked elements, URL attributes, scripts, noscript and nesting limits. Moving validation only into the CLI would make it bypassable and is not an acceptable optimization. These larger changes were not substituted for the current validated behavior in this pass.
+
+## Fourth pass: bounded lists and remaining CPU actions
+
+Issue #29 follow-up. Baseline `59ab3ee` (master after #28); candidate is this branch. All figures are warm, interleaved WSL benchmark medians of application CPU per request (ms), subject to the limits described above. Nothing in this pass was deployed or measured remotely.
+
+### Changes retained
+
+- **Bounded draft list.** `drafts.list` takes `limit` (default 50, maximum 100), an opaque keyset `cursor` over `(updatedAt, id)`, `q` and `status`, and returns `nextCursor`. `drafts.totals` supplies the account-wide counts the dashboard previously derived from the full list. Ownership, deleted-draft exclusion and newest-first ordering are unchanged; ties now order by id so pages are stable. The CLI follows every page.
+- **Dashboard.** Renders 25 drafts per page with server-side search/status filters and first/next links. Its loader serializes only rendered fields, so public/raw URLs, repository owner/host and creation dates no longer enter the SSR payload. A stale cursor falls back to the first page.
+- **SQL list query.** A correlated `draft_id`-indexed version count replaces a subquery that grouped every account's versions on each list, reducing D1 rows read as the table grows. List URLs parse the configured base URL once per page instead of twice per plan; a test checks the builder against the per-draft functions for wildcard, port, credential, trailing-path and unsafe-id inputs.
+- **API-key use writes.** The SQL store records `last_used_at` at most once a minute, matching the existing DynamoDB policy, instead of issuing a D1 write for every authenticated request.
+
+Search semantics: `q` is case-insensitive for ASCII only, matching SQLite `lower()`; DynamoDB uses the same folding. The previous in-page JavaScript filter also folded non-ASCII letters.
+
+### Results
+
+58 plans, two interleaved runs against `59ab3ee`:
+
+| Case                     | Run 1 master | Run 1 candidate | Run 2 master | Run 2 candidate |
+| ------------------------ | -----------: | --------------: | -----------: | --------------: |
+| `/healthz`               |         0.85 |            0.78 |         0.61 |            0.56 |
+| Homepage                 |         0.73 |            0.77 |         0.62 |            0.63 |
+| Dashboard                |         2.30 |            2.33 |         2.01 |            1.77 |
+| Plan list (page of 50)   |         6.16 |            1.66 |         4.00 |            1.21 |
+| Public HTML, 5,356 bytes |         2.12 |            2.03 |         1.90 |            2.15 |
+| Upload, 5,356 bytes      |         6.49 |            5.70 |         6.39 |            5.70 |
+| Upload, 512 KiB          |        17.64 |           16.53 |        15.22 |           15.39 |
+
+Unchanged code paths (`public`, `home`) moved by up to 13% between targets, so only the list and small-upload improvements repeat above noise. An interleaved attribution run of the candidate against itself with a `last_used_at` write on every request measured list 1.18 vs 3.82 and upload 5.50 vs 6.37: most of the API gain is the avoided write. Part of that cost is the benchmark's D1 adapter, so the remote saving is a D1 round trip and write rather than a proven CPU figure.
+
+120 plans (`BENCH_PLANS=120`), one interleaved run; master returns every plan for both list cases:
+
+| Case                           | Master | Candidate |
+| ------------------------------ | -----: | --------: |
+| Dashboard (candidate: 25 rows) |   3.06 |      1.94 |
+| Plan list (candidate: 50)      |   4.64 |      1.20 |
+| Plan list, `limit=100`         |   4.08 |      1.45 |
+
+The dashboard no longer grows with account size; at 58 plans its change is within noise because the page gained a totals query.
+
+### Upload validation (priority 1)
+
+No parser replacement was adopted; production validation is unchanged. A Node micro-benchmark of the 512 KiB fixture measured parse5 tokenization alone at 6.3 ms, full `parse` at 10.4 ms and the complete policy at 10.9 ms. Any design that constructs a browser-equivalent tree retains the tokenizer cost, and the small-upload request already costs about 6 ms, so a JavaScript parser cannot bring 512 KiB uploads under 10 ms even with free tree construction.
+
+Two tree-adapter variants were measured and rejected. Dropping text nodes saved 2.5 ms but changes the nesting-depth result for text at the depth limit, because adoption-agency moves cannot carry a per-element flag. Keeping text nodes without concatenating their values saved about 1.2 ms (about 7% of the request), below the 10% noise threshold, and would still need separate handling for `<title>` text including foreign-content descendants. `HTMLRewriter` remains unsuitable without tree construction (see the third pass). A WASM html5ever build is the remaining security-equivalent candidate; it was not prototyped because its per-isolate compile cost needs the cold measurement below first.
+
+### Cold path and bundle (priority 3)
+
+The built Worker is 2.0 MB: `index.js` is 866 KB and statically imports 13 chunks at startup, including the 474 KB React DOM server chunk and the 283 KB router chunk; the Start manifest, router, start and plugin-adapter chunks, and the page routes behind the router, load lazily. OpenAPI generation already runs only for `/api/spec.json` and `/api`. No bundle change was made: warm local profiles cannot measure module evaluation or first-request compilation, and deferring code without that measurement risks moving cost onto the first request. A cold-isolate harness (fresh workerd per sample, profiler attached before the first request) is still required.
+
+### Not done
+
+- Remote comparison, deployed-Worker validation, D1/R2 fixture cleanup and stop-control re-latching: no deployment was made, and public ingress remains disabled.
+- Differential corpus and 20,000-document fuzz runs: no parser candidate reached that gate.
+- Profile-gated items (per-request URL and `Request` reconstruction, OpenAPI plugin removal): remaining gateway URL parsing measured about 0.1 ms per request, below the promotion threshold.
