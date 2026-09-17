@@ -45,6 +45,7 @@ export function createCloudflareStore(env: Cloudflare.Env) {
       rateLimit: connection.store.rateLimit,
       drafts: {
         list: connection.store.drafts.list,
+        totals: connection.store.drafts.totals,
         detail: connection.store.drafts.detail,
         update: connection.store.drafts.update,
         upload: connection.store.drafts.upload,

@@ -4,10 +4,39 @@ import { publicUploadAuth, cleanText } from "@postplan/store";
 import { publicOS, protectedOS } from "#orpc";
 import { config } from "#config";
 
-export const listDrafts = protectedOS.drafts.list.handler(async ({ context: ctx }) => ({
-  ok: true,
-  drafts: await ctx.store.drafts.list({ accountId: ctx.account.accountId, context: ctx }),
-}));
+// Opaque keyset cursor: the last row's update time and id.
+function encodeCursor(draft: { updatedAt: Date; draftId: string }) {
+  return Buffer.from(JSON.stringify([draft.updatedAt.getTime(), draft.draftId])).toString(
+    "base64url",
+  );
+}
+function decodeCursor(cursor: string) {
+  try {
+    const [updatedAt, draftId] = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    if (Number.isSafeInteger(updatedAt) && typeof draftId === "string" && draftId) {
+      return { updatedAt: new Date(updatedAt), draftId };
+    }
+  } catch {
+    // Reported below.
+  }
+  throw new ORPCError("BAD_REQUEST", { message: "Invalid draft list cursor." });
+}
+
+export const listDrafts = protectedOS.drafts.list.handler(async ({ context: ctx, input }) => {
+  const { drafts, hasMore } = await ctx.store.drafts.list({
+    accountId: ctx.account.accountId,
+    context: ctx,
+    limit: input.limit,
+    after: input.cursor === undefined ? undefined : decodeCursor(input.cursor),
+    q: input.q || undefined,
+    status: input.status,
+  });
+  const last = drafts.at(-1);
+  return { ok: true, drafts, nextCursor: hasMore && last ? encodeCursor(last) : null };
+});
+export const listDraftTotals = protectedOS.drafts.totals.handler(({ context: ctx }) =>
+  ctx.store.drafts.totals({ accountId: ctx.account.accountId }),
+);
 export const getDraft = protectedOS.drafts.detail.handler(async ({ context: ctx, input }) => {
   const result = await ctx.store.drafts.detail({
     accountId: ctx.account.accountId,

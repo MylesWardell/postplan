@@ -2,6 +2,7 @@ import { publicOS } from "#orpc";
 import { getAccount } from "./account";
 import {
   listDrafts,
+  listDraftTotals,
   getDraft,
   updateDraft,
   deleteDraft,
@@ -15,6 +16,7 @@ export const router = publicOS.router({
   account: { me: getAccount },
   drafts: {
     list: listDrafts,
+    totals: listDraftTotals,
     detail: getDraft,
     update: updateDraft,
     delete: deleteDraft,

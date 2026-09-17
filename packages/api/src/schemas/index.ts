@@ -62,6 +62,8 @@ export const apiKeySummary = z.object({
 export type AccountDraft = z.infer<typeof accountDraft>;
 export type AccountDraftDetail = z.infer<typeof draftDetail>;
 export type ApiKeySummary = z.infer<typeof apiKeySummary>;
+export type DraftStatus = z.infer<typeof draftStatus>;
+export type DraftTotals = z.infer<typeof draftTotals>;
 
 export const account = z.object({
   accountId: z.string(),
@@ -69,7 +71,24 @@ export const account = z.object({
   apiKeyId: nullableText,
   apiKeyName: nullableText,
 });
-export const draftList = ok.extend({ drafts: z.array(accountDraft) });
+export const DRAFT_PAGE_SIZE_DEFAULT = 50;
+export const DRAFT_PAGE_SIZE_MAX = 100;
+export const draftStatus = z.enum(["all", "published", "disabled"]);
+// prefault keeps `drafts.list()` valid while still applying the field defaults.
+export const listDraftsInput = z
+  .object({
+    limit: z.number().int().min(1).max(DRAFT_PAGE_SIZE_MAX).default(DRAFT_PAGE_SIZE_DEFAULT),
+    cursor: z.string().min(1).max(512).optional(),
+    q: z.string().trim().max(255).optional(),
+    status: draftStatus.default("all"),
+  })
+  .prefault({});
+export const draftList = ok.extend({ drafts: z.array(accountDraft), nextCursor: nullableText });
+export const draftTotals = z.object({
+  drafts: z.number(),
+  published: z.number(),
+  versions: z.number(),
+});
 export const updateDraftInput = draftId.extend({
   title: z.string().trim().min(1).max(255).optional(),
   description: z.string().trim().max(1000).nullable().optional(),

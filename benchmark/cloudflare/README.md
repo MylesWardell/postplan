@@ -17,7 +17,7 @@ Figures are warm steady-state CPU. Deployed invocations add cold JIT, lazy compi
 | `setup-linux.sh`                       | Installs pinned Bun and Node versions in the benchmark-owned user cache.                          |
 | `run.sh`                               | Builds an owned disposable copy, starts Wrangler and profiles one revision or an interleaved A/B. |
 | `packages/cloudflare/src/benchmark.ts` | Benchmark entry and cases; calls the production request pipeline directly.                        |
-| `profile.ts`                           | Seeds 58 plans, then retains every profile from one warm-up and three measured batches.           |
+| `profile.ts`                           | Seeds `BENCH_PLANS` (58) plans, then retains every profile from a warm-up and three batches.      |
 | `compare.ts`                           | Applies exclusions to every batch and prints median application CPU per request.                  |
 | `inspect.ts`                           | Shows top self/inclusive functions or caller stacks for a retained profile.                       |
 | `results/<tag>/`                       | Ignored raw profiles plus `metadata.json`, `summary.json` and `comparison.json`.                  |
@@ -98,11 +98,14 @@ Do not infer an optimization from a single run. Review each result's three batch
 | ------------- | --------------------------------------------------------------- |
 | `healthz`     | `GET /healthz`                                                  |
 | `home`        | `GET /`                                                         |
-| `dashboard`   | `GET /dashboard` with a session cookie, 58 plans                |
-| `list`        | `GET /api/drafts` with an API key, 58 plans                     |
+| `dashboard`   | `GET /dashboard` with a session cookie (first 25 plans)         |
+| `list`        | `GET /api/drafts` with an API key (default page of 50)          |
+| `listMax`     | `GET /api/drafts?limit=100` with an API key                     |
 | `public`      | `GET /d/<id>`, 5,356-byte plan                                  |
-| `upload`      | `POST /api/uploads`, 5,356 bytes, then trimmed back to 58 plans |
+| `upload`      | `POST /api/uploads`, 5,356 bytes, then trimmed back to the seed |
 | `uploadLarge` | `POST /api/uploads`, just under 512 KiB                         |
+
+The account is seeded with 58 plans. Set `BENCH_PLANS` to seed a larger account, for example `wsl env BENCH_PLANS=120 bash benchmark/cloudflare/run.sh after list,listMax,dashboard`. `run.sh` copies the current benchmark entry into every target, so archived baselines seed the same count and accept `listMax`; revisions without list pagination ignore `limit` and return every plan.
 
 To add a case, add a request factory to `packages/cloudflare/src/benchmark.ts` and a batch size to `PLAN` in `profile.ts`.
 

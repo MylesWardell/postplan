@@ -340,6 +340,13 @@ td {
   margin: 12px auto 24px;
   color: var(--muted);
 }
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--line);
+}
 .hint {
   padding: 20px 0;
   display: flex;

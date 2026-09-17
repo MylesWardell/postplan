@@ -26,15 +26,17 @@ The root route owns the document shell. A fresh router is created for each SSR r
 
 The API is mounted at `/api`; `/api/spec.json` serves the generated OpenAPI document and `/api` serves the interactive reference. Draft subdomains cannot access application or API routes.
 
-| Router    | Procedures                                                          |
-| --------- | ------------------------------------------------------------------- |
-| `account` | `me`                                                                |
-| `drafts`  | `list`, `detail`, `upload`, `update`, `disable`, `enable`, `delete` |
-| `apiKeys` | `list`, `create`, `revoke`                                          |
+| Router    | Procedures                                                                    |
+| --------- | ----------------------------------------------------------------------------- |
+| `account` | `me`                                                                          |
+| `drafts`  | `list`, `totals`, `detail`, `upload`, `update`, `disable`, `enable`, `delete` |
+| `apiKeys` | `list`, `create`, `revoke`                                                    |
 
 Protected procedures derive ownership from a bearer key or verified browser session. They do not accept an account ID from the client. Session mutations require the application's exact Origin, and invalid bearer keys fail instead of falling back to anonymous access.
 
 The server uses oRPC's standard error shape: `code`, `message`, and optional `data`. Uploads return 201 for a new draft, 200 for a new version, and 422 when HTML validation fails. REST dates use ISO strings.
+
+`drafts.list` (`GET /api/drafts`) returns one page ordered by most recently updated. It accepts `limit` (default 50, maximum 100), `q` (case-insensitive ASCII search of title, description and repository name), `status` (`all`, `published` or `disabled`) and the opaque `cursor` from the previous page's `nextCursor`. `nextCursor` is `null` on the last page. `drafts.totals` (`GET /api/drafts/totals`) returns account-wide draft, published and saved-version counts.
 
 ```ts
 import { createORPCClient } from "@orpc/client";
@@ -49,7 +51,7 @@ const api = createORPCClient<ApiClient>(
   }),
 );
 
-const { drafts } = await api.drafts.list();
+const { drafts, nextCursor } = await api.drafts.list({ limit: 100 });
 ```
 
 Draft updates store HTML before opening a synchronous SQLite immediate transaction. The transaction allocates a unique increasing version number and writes the database records. A database failure after storage succeeds can leave an unreferenced object for later cleanup.

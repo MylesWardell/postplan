@@ -7,7 +7,13 @@ import { draftStoreContract } from "./draft-store";
 export * from "./models";
 export * from "./text";
 export { accountStoreContract, draftStoreContract };
-export type { AccountDraft, AccountDraftDetail, ApiKeySummary } from "@postplan/api";
+export type {
+  AccountDraft,
+  AccountDraftDetail,
+  ApiKeySummary,
+  DraftStatus,
+  DraftTotals,
+} from "@postplan/api";
 export const storeContract = {
   accounts: accountStoreContract,
   drafts: draftStoreContract,

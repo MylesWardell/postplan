@@ -3,11 +3,48 @@ import { authenticated } from "#frontend/middleware/authenticated";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { authenticatedContext } from "#frontend/context.server";
+import { draftStatus, type DraftStatus } from "@postplan/api";
+import { ORPCError } from "@orpc/server";
+import { z } from "zod";
 
-const loadDashboard = createServerFn({ method: "GET" }).handler(async ({ context }) => {
-  const { session, caller } = authenticatedContext(getRequest(), context);
-  return { session, drafts: (await caller.drafts.list()).drafts };
-});
+const PAGE_SIZE = 25;
+
+const loadDashboard = createServerFn({ method: "GET" })
+  .validator(
+    z
+      .object({
+        q: z.string().max(255).default(""),
+        status: draftStatus.default("all"),
+        cursor: z.string().max(512).optional(),
+      })
+      .prefault({}),
+  )
+  .handler(async ({ data, context }) => {
+    const { session, caller } = authenticatedContext(getRequest(), context);
+    const page = (cursor: string | undefined) =>
+      caller.drafts.list({ limit: PAGE_SIZE, cursor, q: data.q, status: data.status });
+    const [list, totals] = await Promise.all([
+      page(data.cursor).catch((error: unknown) => {
+        // A stale or edited cursor falls back to the first page.
+        if (data.cursor && error instanceof ORPCError && error.code === "BAD_REQUEST") {
+          return page(undefined);
+        }
+        throw error;
+      }),
+      caller.drafts.totals(),
+    ]);
+    // Serialize only what the page renders; URLs and repository details stay out of the payload.
+    const drafts = list.drafts.map((draft) => ({
+      draftId: draft.draftId,
+      title: draft.title,
+      summary: draft.description || draft.repoName || "No description yet",
+      disabled: draft.disabled,
+      latestVersionNumber: draft.latestVersionNumber,
+      versionCount: draft.versionCount,
+      updatedAt: draft.updatedAt,
+    }));
+    return { session, drafts, totals, nextCursor: list.nextCursor };
+  });
 
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Layout } from "#frontend/layout";
@@ -16,26 +53,38 @@ import { date, Status } from "#frontend/shared";
 export const Route = createFileRoute("/dashboard/")({
   server: { middleware: [getOnly, authenticated] },
   loader: async ({ location }) => {
-    const url = new URL(location.href, "http://localhost");
+    const params = new URL(location.href, "http://localhost").searchParams;
+    const query = (params.get("q") ?? "").trim().slice(0, 255);
+    const parsedStatus = draftStatus.safeParse(params.get("status"));
+    const status: DraftStatus = parsedStatus.success ? parsedStatus.data : "all";
+    const cursor = params.get("cursor")?.slice(0, 512) || undefined;
     return {
-      ...(await loadDashboard()),
-      query: url.searchParams.get("q") ?? "",
-      status: url.searchParams.get("status") ?? "all",
+      ...(await loadDashboard({ data: { q: query, status, cursor } })),
+      query,
+      status,
+      paged: cursor !== undefined,
     };
   },
   component: DashboardPage,
 });
 
+function dashboardHref(query: string, status: DraftStatus, cursor?: string) {
+  const params = new URLSearchParams();
+  if (query) {
+    params.set("q", query);
+  }
+  if (status !== "all") {
+    params.set("status", status);
+  }
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  const search = params.toString();
+  return search ? `/dashboard?${search}` : "/dashboard";
+}
+
 function DashboardPage() {
-  const { session, drafts, query, status } = Route.useLoaderData();
-  const filtered = drafts.filter(
-    (draft) =>
-      (!query ||
-        `${draft.title} ${draft.description ?? ""} ${draft.repoName ?? ""}`
-          .toLowerCase()
-          .includes(query.toLowerCase())) &&
-      (status === "disabled" ? draft.disabled : status === "published" ? !draft.disabled : true),
-  );
+  const { session, drafts, totals, nextCursor, query, status, paged } = Route.useLoaderData();
   return (
     <Layout title="Your drafts" session={session} active="drafts">
       <p className="eyebrow">Workspace</p>
@@ -51,21 +100,25 @@ function DashboardPage() {
       <div className="stats">
         <div className="stat">
           <span>Total drafts</span>
-          <strong>{drafts.length}</strong>
+          <strong>{totals.drafts}</strong>
         </div>
         <div className="stat">
           <span>Published</span>
-          <strong>{drafts.filter((draft) => !draft.disabled).length}</strong>
+          <strong>{totals.published}</strong>
         </div>
         <div className="stat">
           <span>Saved versions</span>
-          <strong>{drafts.reduce((sum, draft) => sum + draft.versionCount, 0)}</strong>
+          <strong>{totals.versions}</strong>
         </div>
       </div>
       <section className="panel">
         <div className="panel-head">
           <h2>
-            Draft library <span className="muted">· {filtered.length}</span>
+            Draft library{" "}
+            <span className="muted">
+              · {drafts.length}
+              {nextCursor || paged ? " on this page" : ""}
+            </span>
           </h2>
           <form className="search" method="get" action="/dashboard">
             <input
@@ -83,7 +136,7 @@ function DashboardPage() {
             <button className="secondary">Filter</button>
           </form>
         </div>
-        {filtered.length ? (
+        {drafts.length ? (
           <div className="table-scroll">
             <table className="library">
               <thead>
@@ -98,7 +151,7 @@ function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((draft) => (
+                {drafts.map((draft) => (
                   <tr key={draft.draftId}>
                     <td>
                       <Link
@@ -108,9 +161,7 @@ function DashboardPage() {
                       >
                         {draft.title}
                       </Link>
-                      <span className="description">
-                        {draft.description || draft.repoName || "No description yet"}
-                      </span>
+                      <span className="description">{draft.summary}</span>
                     </td>
                     <td>
                       <Status disabled={draft.disabled} />
@@ -139,17 +190,23 @@ function DashboardPage() {
             <span className="mark" aria-hidden="true">
               p
             </span>
-            <h2>{drafts.length ? "No drafts match your filters" : "Your next idea starts here"}</h2>
+            <h2>{totals.drafts ? "No drafts match your filters" : "Your next idea starts here"}</h2>
             <p>
-              {drafts.length
+              {totals.drafts
                 ? "Try another search or clear your filters to see all your drafts."
                 : "Connect your CLI, then publish your first HTML file. Every version will find a home here."}
             </p>
-            <a className="button secondary" href={drafts.length ? "/dashboard" : "/cli/auth"}>
-              {drafts.length ? "Clear filters" : "Set up your CLI"}
+            <a className="button secondary" href={totals.drafts ? "/dashboard" : "/cli/auth"}>
+              {totals.drafts ? "Clear filters" : "Set up your CLI"}
             </a>
           </div>
         )}
+        {paged || nextCursor ? (
+          <nav className="pager" aria-label="Draft pages">
+            {paged ? <a href={dashboardHref(query, status)}>← First page</a> : <span />}
+            {nextCursor ? <a href={dashboardHref(query, status, nextCursor)}>Next page →</a> : null}
+          </nav>
+        ) : null}
       </section>
       <div className="hint">
         <span>Upload a new draft from your terminal.</span>

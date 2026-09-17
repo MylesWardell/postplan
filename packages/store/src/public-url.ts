@@ -71,6 +71,49 @@ export function getDraftRawUrl({
   return `${baseUrl}/d/${draftId}/raw`;
 }
 
+const URL_SAFE_DRAFT_ID = /^[a-z0-9]+$/;
+const DRAFT_ID_MARKER = "postplan0draft0id0marker";
+
+// Builds public and raw URLs for many drafts while parsing the base URL once. Generated ids are
+// lowercase alphanumeric, which URL serialization leaves unchanged; any other id takes the
+// per-draft URL path so the output always matches getDraftPublicUrl/getDraftRawUrl.
+export function draftUrlBuilder({
+  publicBaseUrl,
+  requestBaseUrl,
+}: Omit<DraftUrlOptions, "draftId">): (draftId: string) => { publicUrl: string; rawUrl: string } {
+  const configured = normalizeUrl(publicBaseUrl);
+  const wildcard = parseWildcardBaseUrl(configured);
+  const exact = (draftId: string) => ({
+    publicUrl: getDraftPublicUrl({ draftId, publicBaseUrl, requestBaseUrl }),
+    rawUrl: getDraftRawUrl({ draftId, publicBaseUrl, requestBaseUrl }),
+  });
+  if (!wildcard) {
+    const baseUrl = configured || normalizeUrl(requestBaseUrl);
+    return (draftId) => ({
+      publicUrl: `${baseUrl}/d/${draftId}`,
+      rawUrl: `${baseUrl}/d/${draftId}/raw`,
+    });
+  }
+  const root = wildcard.hostname.slice(2);
+  wildcard.search = "";
+  wildcard.hash = "";
+  wildcard.hostname = `${DRAFT_ID_MARKER}.${root}`;
+  wildcard.pathname = "/";
+  const [publicPrefix, publicSuffix, ...extra] = stripTrailingSlash(wildcard.toString()).split(
+    DRAFT_ID_MARKER,
+  );
+  wildcard.hostname = root;
+  wildcard.pathname = "/d/";
+  const rawPrefix = wildcard.toString();
+  if (extra.length || publicSuffix === undefined || !rawPrefix.endsWith("/d/")) {
+    return exact;
+  }
+  return (draftId) =>
+    URL_SAFE_DRAFT_ID.test(draftId)
+      ? { publicUrl: publicPrefix + draftId + publicSuffix, rawUrl: `${rawPrefix}${draftId}/raw` }
+      : exact(draftId);
+}
+
 export function getDraftIdFromHost({
   publicBaseUrl,
   host,
