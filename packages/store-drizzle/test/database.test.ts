@@ -74,7 +74,30 @@ test("migrations, bootstrap keys, revocation and identity updates use SQLite sem
     assert.equal(await findApiKeyByToken(db, "postplan-public-upload-sentinel"), null);
     const key = await createApiKey(db, "acct_bootstrap", "test");
     assert.equal(await revokeApiKey(db, "someone-else", key.apiKey.id), false);
+    const lastUsed = () =>
+      db.select().from(schema.apiKeys).where(eq(schema.apiKeys.id, key.apiKey.id)).get()
+        ?.lastUsedAt;
+    assert.deepEqual(Object.keys((await findApiKeyByToken(db, key.token))!).toSorted(), [
+      "accountId",
+      "accountName",
+      "id",
+      "name",
+    ]);
+    const recorded = lastUsed();
+    assert.ok(recorded instanceof Date);
+    const stale = new Date(recorded.getTime() - 30_000);
+    db.update(schema.apiKeys)
+      .set({ lastUsedAt: stale })
+      .where(eq(schema.apiKeys.id, key.apiKey.id))
+      .run();
     assert.ok(await findApiKeyByToken(db, key.token));
+    assert.equal(lastUsed()?.getTime(), stale.getTime());
+    db.update(schema.apiKeys)
+      .set({ lastUsedAt: new Date(recorded.getTime() - 60_000) })
+      .where(eq(schema.apiKeys.id, key.apiKey.id))
+      .run();
+    assert.ok(await findApiKeyByToken(db, key.token));
+    assert.ok(lastUsed()!.getTime() >= recorded.getTime());
     assert.equal(await revokeApiKey(db, "acct_bootstrap", key.apiKey.id), true);
     assert.equal(await findApiKeyByToken(db, key.token), null);
     const first = await findOrCreateAccountForIdentity(db, {

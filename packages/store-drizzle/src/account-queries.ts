@@ -62,6 +62,7 @@ const apiKeyByHashQuery = prepared((db) =>
       accountId: apiKeys.accountId,
       name: apiKeys.name,
       accountName: accounts.name,
+      lastUsedAt: apiKeys.lastUsedAt,
     })
     .from(apiKeys)
     .innerJoin(accounts, eq(accounts.id, apiKeys.accountId))
@@ -76,13 +77,26 @@ const apiKeyByHashQuery = prepared((db) =>
     .prepare(),
 );
 
+const touchApiKeyQuery = prepared((db) =>
+  db
+    .update(apiKeys)
+    .set({ lastUsedAt: sql`${sql.placeholder("now")}` })
+    .where(eq(apiKeys.id, sql.placeholder("id")))
+    .prepare(),
+);
+
 export async function findApiKeyByToken(db: Database, token: string): Promise<ApiKeyAuth | null> {
   const key = await apiKeyByHashQuery(db).get({ keyHash: hash(token) });
   if (!key) {
     return null;
   }
-  await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, key.id));
-  return key;
+  const { lastUsedAt, ...auth } = key;
+  // Match the DynamoDB store: record use at most once a minute instead of writing per request.
+  const now = Date.now();
+  if (!lastUsedAt || now - lastUsedAt.getTime() >= 60_000) {
+    await touchApiKeyQuery(db).run({ id: key.id, now });
+  }
+  return auth;
 }
 
 export async function createApiKey(db: Database, accountId: string, name: string) {
