@@ -1,14 +1,15 @@
 import { prepared, statement } from "./database";
 import { createHash, randomUUID } from "node:crypto";
 import { customAlphabet } from "nanoid";
-import { and, count, desc, eq, isNull, max, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { ORPCError } from "@orpc/server";
 import { drafts, draftVersions, uploadEvents } from "./schema";
 import { publicUploadAuth } from "@postplan/store";
 import type { Database } from "./database";
 import { validateHtml } from "@postplan/store/html-policy";
-import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
+import { draftUrlBuilder, getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
 import type { UploadContext, UploadInput } from "@postplan/store";
+import type { DraftStatus } from "@postplan/store";
 
 const newDraftId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
 import { cleanText } from "@postplan/store/text";
@@ -18,45 +19,103 @@ const urls = (draftId: string, context: UrlContext) => ({
   rawUrl: getDraftRawUrl({ draftId, ...context }),
 });
 
-const accountDraftsQuery = prepared((db) => {
-  const counts = db
-    .select({ draftId: draftVersions.draftId, versionCount: count().as("version_count") })
-    .from(draftVersions)
-    .groupBy(draftVersions.draftId)
-    .as("version_counts");
-  return db
+// A correlated count uses the draft_id index instead of grouping every account's versions.
+const versionCount = sql<number>`(select count(*) from ${draftVersions} where ${draftVersions.draftId} = ${drafts.id})`;
+const accountDraftsQuery = prepared((db) =>
+  db
     .select({
-      draft: drafts,
+      draft: {
+        id: drafts.id,
+        title: drafts.title,
+        description: drafts.description,
+        repoOrg: drafts.repoOrg,
+        repoName: drafts.repoName,
+        repoHost: drafts.repoHost,
+        createdAt: drafts.createdAt,
+        updatedAt: drafts.updatedAt,
+        disabledAt: drafts.disabledAt,
+      },
       latest: { number: draftVersions.versionNumber, date: draftVersions.createdAt },
-      count: counts.versionCount,
+      count: versionCount,
     })
     .from(drafts)
     .leftJoin(draftVersions, eq(draftVersions.id, drafts.currentVersionId))
-    .leftJoin(counts, eq(counts.draftId, drafts.id))
-    .where(and(eq(drafts.accountId, sql.placeholder("accountId")), isNull(drafts.deletedAt)))
-    .orderBy(desc(drafts.updatedAt))
-    .prepare();
-});
+    .where(
+      and(
+        eq(drafts.accountId, sql.placeholder("accountId")),
+        isNull(drafts.deletedAt),
+        sql`(${sql.placeholder("status")} <> 'published' or ${drafts.disabledAt} is null)`,
+        sql`(${sql.placeholder("status")} <> 'disabled' or ${drafts.disabledAt} is not null)`,
+        sql`(${sql.placeholder("q")} = '' or instr(lower(${drafts.title} || ' ' || coalesce(${drafts.description}, '') || ' ' || coalesce(${drafts.repoName}, '')), lower(${sql.placeholder("q")})) > 0)`,
+        sql`(${sql.placeholder("afterUpdatedAt")} is null or ${drafts.updatedAt} < ${sql.placeholder("afterUpdatedAt")} or (${drafts.updatedAt} = ${sql.placeholder("afterUpdatedAt")} and ${drafts.id} < ${sql.placeholder("afterDraftId")}))`,
+      ),
+    )
+    .orderBy(desc(drafts.updatedAt), desc(drafts.id))
+    .limit(sql.placeholder("limit"))
+    .prepare(),
+);
 
-export async function listAccountDrafts(db: Database, accountId: string, context: UrlContext) {
-  const rows = await accountDraftsQuery(db).all({ accountId });
-  return rows.map(({ draft, latest, count: versionCount }) => ({
-    draftId: draft.id,
-    title: draft.title,
-    description: draft.description,
-    repoOrg: draft.repoOrg,
-    repoName: draft.repoName,
-    repoHost: draft.repoHost,
-    latestVersionNumber: latest?.number ?? null,
-    latestVersionAt: latest?.date ?? null,
-    versionCount: versionCount ?? 0,
-    createdAt: draft.createdAt,
-    updatedAt: draft.updatedAt,
-    disabled: Boolean(draft.disabledAt),
-    ...urls(draft.id, context),
-  }));
+export async function listAccountDrafts(
+  db: Database,
+  input: {
+    accountId: string;
+    context: UrlContext;
+    limit: number;
+    after?: { updatedAt: Date; draftId: string } | undefined;
+    q?: string | undefined;
+    status: DraftStatus;
+  },
+) {
+  const rows = await accountDraftsQuery(db).all({
+    accountId: input.accountId,
+    status: input.status,
+    q: input.q ?? "",
+    afterUpdatedAt: input.after?.updatedAt.getTime() ?? null,
+    afterDraftId: input.after?.draftId ?? "",
+    limit: input.limit + 1,
+  });
+  const urls = draftUrlBuilder(input.context);
+  return {
+    hasMore: rows.length > input.limit,
+    drafts: rows.slice(0, input.limit).map(({ draft, latest, count: versions }) => ({
+      draftId: draft.id,
+      title: draft.title,
+      description: draft.description,
+      repoOrg: draft.repoOrg,
+      repoName: draft.repoName,
+      repoHost: draft.repoHost,
+      latestVersionNumber: latest?.number ?? null,
+      latestVersionAt: latest?.date ?? null,
+      versionCount: versions ?? 0,
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      disabled: Boolean(draft.disabledAt),
+      ...urls(draft.id),
+    })),
+  };
 }
-export type AccountDraft = Awaited<ReturnType<typeof listAccountDrafts>>[number];
+
+const accountTotalsQuery = prepared((db) =>
+  db
+    .select({
+      drafts: sql<number>`count(*)`,
+      published: sql<number>`coalesce(sum(${drafts.disabledAt} is null), 0)`,
+      versions: sql<number>`coalesce(sum(${versionCount}), 0)`,
+    })
+    .from(drafts)
+    .where(and(eq(drafts.accountId, sql.placeholder("accountId")), isNull(drafts.deletedAt)))
+    .prepare(),
+);
+
+export async function getAccountDraftTotals(db: Database, accountId: string) {
+  const totals = await accountTotalsQuery(db).get({ accountId });
+  return {
+    drafts: Number(totals?.drafts ?? 0),
+    published: Number(totals?.published ?? 0),
+    versions: Number(totals?.versions ?? 0),
+  };
+}
+export type AccountDraft = Awaited<ReturnType<typeof listAccountDrafts>>["drafts"][number];
 
 const ownedDraftQuery = prepared((db) =>
   db

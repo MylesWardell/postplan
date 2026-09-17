@@ -46,7 +46,14 @@ test.skipIf(!dynamoEndpoint)(
           .versions[0]?.versionNumber,
       ).toBe(7);
       expect(
-        (await store.drafts.list({ accountId: "acct_bootstrap", context }))[0]?.latestVersionNumber,
+        (
+          await store.drafts.list({
+            accountId: "acct_bootstrap",
+            context,
+            limit: 10,
+            status: "all",
+          })
+        ).drafts[0]?.latestVersionNumber,
       ).toBe(7);
       const identities = await Promise.all(
         Array.from({ length: 4 }, () =>
@@ -100,7 +107,21 @@ test.skipIf(!dynamoEndpoint)(
       expect((await findDynamoPublicVersion(db, id, 1)).version?.versionNumber).toBe(1);
       days = 1;
       expect((await findDynamoPublicVersion(db, id)).draft).toBeNull();
-      expect(await store.drafts.list({ accountId: "acct_bootstrap", context })).toHaveLength(0);
+      expect(
+        (
+          await store.drafts.list({
+            accountId: "acct_bootstrap",
+            context,
+            limit: 10,
+            status: "all",
+          })
+        ).drafts,
+      ).toHaveLength(0);
+      expect(await store.drafts.totals({ accountId: "acct_bootstrap" })).toEqual({
+        drafts: 0,
+        published: 0,
+        versions: 0,
+      });
       await assert.rejects(upload({ html, draftId: id }), /not found/);
       days = 0;
       expect((await findDynamoPublicVersion(db, id)).draft).not.toBeNull();

@@ -1,4 +1,4 @@
-import type { AccountDraft } from "@postplan/api";
+import { DRAFT_PAGE_SIZE_MAX, type AccountDraft } from "@postplan/api";
 import type { Command } from "commander";
 import { createApiClient } from "../api";
 import { pluralize, timeAgo } from "../format";
@@ -16,7 +16,14 @@ export function registerListCommand(program: Command): void {
     .addOption(apiUrlOption())
     .option("--json", "Print the raw JSON response")
     .action(async (options: ListOptions) => {
-      const { drafts } = await createApiClient(readAuth(options.apiUrl)).drafts.list();
+      const client = createApiClient(readAuth(options.apiUrl));
+      const drafts: AccountDraft[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await client.drafts.list({ limit: DRAFT_PAGE_SIZE_MAX, cursor });
+        drafts.push(...page.drafts);
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
 
       if (options.json) {
         console.log(JSON.stringify(drafts, null, 2));

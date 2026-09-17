@@ -8,8 +8,9 @@ import { encode, optimistic, conditionalFailure } from "./dynamo";
 import type { UploadContext } from "@postplan/store";
 import { validateHtml } from "@postplan/store/html-policy";
 import { expired } from "@postplan/store/retention";
-import { getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
-import { cleanText } from "@postplan/store";
+import { draftUrlBuilder, getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
+import { cleanText, matchesDraftSearch } from "@postplan/store";
+import type { DraftStatus } from "@postplan/store";
 import type { UploadInput } from "@postplan/store";
 import { publicUploadAuth } from "@postplan/store";
 
@@ -70,7 +71,7 @@ export function activeCondition(db: DynamoDatabase, plan: DynamoPlan) {
 }
 const notFound = () => new ORPCError("NOT_FOUND", { message: "Draft not found." });
 
-export async function listDynamoDrafts(db: DynamoDatabase, accountId: string, context: UrlContext) {
+async function listAvailablePlans(db: DynamoDatabase, accountId: string) {
   const candidates = await db.query<DynamoPlan>({
     TableName: db.tables.plans,
     IndexName: "by-account",
@@ -81,10 +82,42 @@ export async function listDynamoDrafts(db: DynamoDatabase, accountId: string, co
   const result = [];
   for (const candidate of candidates) {
     const plan = await db.get<DynamoPlan>(db.tables.plans, { draftId: candidate.draftId });
-    if (!available(db, plan) || plan.accountId !== accountId) {
-      continue;
+    if (available(db, plan) && plan.accountId === accountId) {
+      result.push(plan);
     }
-    result.push({
+  }
+  return result;
+}
+export async function listDynamoDrafts(
+  db: DynamoDatabase,
+  input: {
+    accountId: string;
+    context: UrlContext;
+    limit: number;
+    after?: { updatedAt: Date; draftId: string } | undefined;
+    q?: string | undefined;
+    status: DraftStatus;
+  },
+) {
+  const after = input.after;
+  const matching = (await listAvailablePlans(db, input.accountId))
+    .filter(
+      (plan) =>
+        (input.status === "all" || (input.status === "disabled") === !!plan.disabledAt) &&
+        matchesDraftSearch(plan, input.q) &&
+        (!after ||
+          plan.updatedAt.getTime() < after.updatedAt.getTime() ||
+          (plan.updatedAt.getTime() === after.updatedAt.getTime() && plan.draftId < after.draftId)),
+    )
+    .toSorted(
+      (a, b) =>
+        b.updatedAt.getTime() - a.updatedAt.getTime() ||
+        (a.draftId < b.draftId ? 1 : a.draftId > b.draftId ? -1 : 0),
+    );
+  const urls = draftUrlBuilder(input.context);
+  return {
+    hasMore: matching.length > input.limit,
+    drafts: matching.slice(0, input.limit).map((plan) => ({
       draftId: plan.draftId,
       title: plan.title,
       description: plan.description,
@@ -97,10 +130,17 @@ export async function listDynamoDrafts(db: DynamoDatabase, accountId: string, co
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt,
       disabled: !!plan.disabledAt,
-      ...urls(plan.draftId, context),
-    });
-  }
-  return result.toSorted((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      ...urls(plan.draftId),
+    })),
+  };
+}
+export async function getDynamoDraftTotals(db: DynamoDatabase, accountId: string) {
+  const plans = await listAvailablePlans(db, accountId);
+  return {
+    drafts: plans.length,
+    published: plans.filter((plan) => !plan.disabledAt).length,
+    versions: plans.reduce((sum, plan) => sum + plan.versionCount, 0),
+  };
 }
 export async function getDynamoDraft(
   db: DynamoDatabase,

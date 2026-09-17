@@ -6,8 +6,9 @@ import * as queries from "./draft-queries";
 export function draftStore(db: Database) {
   const impl = implement(draftStoreContract);
   return impl.router({
-    list: impl.list.handler(async ({ input }) =>
-      queries.listAccountDrafts(db, input.accountId, input.context),
+    list: impl.list.handler(async ({ input }) => queries.listAccountDrafts(db, input)),
+    totals: impl.totals.handler(async ({ input }) =>
+      queries.getAccountDraftTotals(db, input.accountId),
     ),
     detail: impl.detail.handler(async ({ input }) =>
       queries.getAccountDraftWithVersions(db, input.accountId, input.draftId, input.context),

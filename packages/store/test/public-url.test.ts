@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  draftUrlBuilder,
   getDraftIdFromHost,
   getDraftPublicUrl,
   getDraftRawUrl,
@@ -63,4 +64,30 @@ test("extracts draft ids only from valid single-label subdomains", () => {
     getDraftIdFromHost({ publicBaseUrl: "https://postplan.dev", host: `${draftId}.postplan.dev` }),
     null,
   );
+});
+
+test("draft URL builder matches per-draft URL construction", () => {
+  const bases = [
+    undefined,
+    "",
+    "https://plans.example.com/",
+    "https://plans.example.com/base//",
+    wildcard,
+    "https://*.postplan.dev/",
+    "https://*.PostPlan.dev:8443/ignored?query=1#hash",
+    "http://user:pass@*.example.com",
+    "https://*.xn--bcher-kva.example",
+    "not a url",
+  ];
+  const ids = [draftId, "abc", "ABC123", "has space", "a.b", "ü", "../x"];
+  for (const publicBaseUrl of bases) {
+    const context = { publicBaseUrl, requestBaseUrl: "http://localhost:3000/" };
+    const build = draftUrlBuilder(context);
+    for (const id of ids) {
+      assert.deepEqual(build(id), {
+        publicUrl: getDraftPublicUrl({ draftId: id, ...context }),
+        rawUrl: getDraftRawUrl({ draftId: id, ...context }),
+      });
+    }
+  }
 });

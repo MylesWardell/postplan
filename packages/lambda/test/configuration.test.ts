@@ -86,7 +86,13 @@ test("the public SQLite store close releases all cached prepared statements", as
       input: { draftId: created.draftId, html: "<!doctype html><title>Updated</title>" },
     });
     assert(updated.ok);
-    await connection.store.drafts.list({ accountId: apiKey.accountId, context });
+    await connection.store.drafts.list({
+      accountId: apiKey.accountId,
+      context,
+      limit: 10,
+      status: "all",
+    });
+    await connection.store.drafts.totals({ accountId: apiKey.accountId });
     await connection.store.drafts.detail({
       accountId: apiKey.accountId,
       draftId: created.draftId,

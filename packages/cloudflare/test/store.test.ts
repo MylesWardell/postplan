@@ -126,10 +126,20 @@ test("D1 serializes version allocation, latest pointers and typed metadata", asy
   expect(results.map((row) => (row.ok ? row.versionNumber : -1)).sort((a, b) => a - b)).toEqual([
     2, 3, 4, 5, 6, 7,
   ]);
-  const listed = await store.drafts.list({ accountId: "acct_bootstrap", context });
+  const { drafts: listed } = await store.drafts.list({
+    accountId: "acct_bootstrap",
+    context,
+    limit: 10,
+    status: "all",
+  });
   expect(listed[0]?.latestVersionNumber).toBe(7);
   expect(listed[0]?.versionCount).toBe(7);
   expect(listed[0]?.createdAt).toBeInstanceOf(Date);
+  expect(await store.drafts.totals({ accountId: "acct_bootstrap" })).toEqual({
+    drafts: 1,
+    published: 1,
+    versions: 7,
+  });
   const found = await store.drafts.findPublicVersion({ draftId: first.draftId });
   expect(found.version?.gitDirty).toBe(true);
   expect(found.version?.externalImageHosts).toEqual([]);

@@ -6,8 +6,9 @@ import * as queries from "./dynamo-drafts";
 export function draftStore(db: DynamoDatabase) {
   const impl = implement(draftStoreContract);
   return impl.router({
-    list: impl.list.handler(async ({ input }) =>
-      queries.listDynamoDrafts(db, input.accountId, input.context),
+    list: impl.list.handler(async ({ input }) => queries.listDynamoDrafts(db, input)),
+    totals: impl.totals.handler(async ({ input }) =>
+      queries.getDynamoDraftTotals(db, input.accountId),
     ),
     detail: impl.detail.handler(async ({ input }) =>
       queries.getDynamoDraft(db, input.accountId, input.draftId, input.context),

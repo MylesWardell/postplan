@@ -21,7 +21,11 @@ export const contract = {
   drafts: {
     list: protectedContract
       .meta(openapi({ method: "GET", path: "/drafts", tags: ["Drafts"] }))
+      .input(schemas.listDraftsInput)
       .output(schemas.draftList),
+    totals: protectedContract
+      .meta(openapi({ method: "GET", path: "/drafts/totals", tags: ["Drafts"] }))
+      .output(schemas.draftTotals),
     detail: protectedContract
       .meta(openapi({ method: "GET", path: "/drafts/{draftId}", tags: ["Drafts"] }))
       .input(schemas.draftId)
