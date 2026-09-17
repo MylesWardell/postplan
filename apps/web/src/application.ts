@@ -1,4 +1,4 @@
-import handler from "@tanstack/react-start/server-entry";
+import { createStartHandler, defaultRenderHandler } from "@tanstack/react-start/server";
 import { createContextFactory } from "./context";
 import type { ServerDependencies } from "./context";
 import { createApiHandler } from "./api";
@@ -7,6 +7,10 @@ import { notFoundResponse } from "#frontend/response.server";
 import { hostDraftId } from "#lib/host-guard";
 import { respond } from "#lib/respond";
 import { applyContentSecurityPolicy, createNonce } from "#lib/content-security-policy";
+
+// Pages have no Suspense boundaries, so render to a string: streaming SSR encodes
+// every chunk and pipes it through router transform streams for no benefit.
+const handler = { fetch: createStartHandler(defaultRenderHandler) };
 export function createApplication(deps: ServerDependencies, compressResponse = true) {
   const createContext = createContextFactory(deps);
   const api = createApiHandler(createContext, compressResponse);

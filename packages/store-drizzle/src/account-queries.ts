@@ -1,4 +1,4 @@
-import { statement } from "./database";
+import { prepared, statement } from "./database";
 import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import type { Database } from "./database";
@@ -55,8 +55,8 @@ export async function seedAccounts(db: Database, bootstrapKey?: string): Promise
   await db.atomic(statements);
 }
 
-export async function findApiKeyByToken(db: Database, token: string): Promise<ApiKeyAuth | null> {
-  const [key] = await db
+const apiKeyByHashQuery = prepared((db) =>
+  db
     .select({
       id: apiKeys.id,
       accountId: apiKeys.accountId,
@@ -67,12 +67,17 @@ export async function findApiKeyByToken(db: Database, token: string): Promise<Ap
     .innerJoin(accounts, eq(accounts.id, apiKeys.accountId))
     .where(
       and(
-        eq(apiKeys.keyHash, hash(token)),
+        eq(apiKeys.keyHash, sql.placeholder("keyHash")),
         ne(apiKeys.id, publicUploadAuth.id),
         isNull(apiKeys.revokedAt),
       ),
     )
-    .limit(1);
+    .limit(1)
+    .prepare(),
+);
+
+export async function findApiKeyByToken(db: Database, token: string): Promise<ApiKeyAuth | null> {
+  const key = await apiKeyByHashQuery(db).get({ keyHash: hash(token) });
   if (!key) {
     return null;
   }

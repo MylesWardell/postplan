@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "vitest";
 import { migrateDatabase } from "@postplan/store-drizzle/migrate";
-import { statement } from "@postplan/store-drizzle/database";
+import { finalizePrepared, statement } from "@postplan/store-drizzle/database";
 import { eq } from "drizzle-orm";
 import * as schema from "@postplan/store-drizzle/schema";
 import {
@@ -55,6 +55,7 @@ test("SQLite survives reopen and rolls back a failed transaction", async () => {
     });
     assert.deepEqual(connection.client.query("PRAGMA foreign_key_check").all(), []);
   } finally {
+    finalizePrepared(connection.db);
     connection.client.close();
     // Release Drizzle's temporary prepared statements before deleting the file on Windows.
     Bun.gc(true);

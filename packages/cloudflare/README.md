@@ -41,7 +41,7 @@ This package owns the gateway, D1 driver, R2 adapter, Durable Object limiter, in
 
 Build output stays in `packages/cloudflare/dist` for Cloudflare and `apps/web/dist` for AWS. Each build clears its output to avoid accumulating obsolete Worker chunks. Routers are constructed once per isolate; per-request context remains isolated. Worker response compression is disabled because workerd stripped the oRPC plugin's encoding header in compatibility testing.
 
-The Worker registers oRPC's experimental `CloudflareTracer` once at module scope. Procedure and middleware spans use Workers Traces with the configured 1% sampling rate; the AWS OpenTelemetry SDK is not loaded. `enable_request_signal` lets oRPC observe client disconnects through the request signal. Keep both the compatibility flag and trace settings in generated remote configurations. Tracing adds diagnostic overhead and does not establish compliance with the Free CPU allowance.
+oRPC's experimental `CloudflareTracer` is opt-in: set `POSTPLAN_ORPC_TRACING` to `"true"` to register it at module scope. It wraps every procedure, middleware and validation step in a span, which more than doubled request CPU in the [in-process benchmark](../../docs/cloudflare-optimization-investigation.md#second-pass-in-process-cpu-benchmark), so it defaults to `"false"`. Workers Traces still records binding spans at the configured 1% sampling rate; the AWS OpenTelemetry SDK is not loaded. `enable_request_signal` lets oRPC observe client disconnects through the request signal. Keep the compatibility flag and trace settings in generated remote configurations.
 
 ## Storage and retention safeguards
 
