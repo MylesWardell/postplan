@@ -26,7 +26,7 @@ The command opens a browser page and asks you to paste the generated key back in
 bunx postplan auth set <api-key>
 ```
 
-List drafts owned by the signed-in account:
+List drafts owned by the signed-in account. The CLI follows every page of the bounded API list:
 
 ```sh
 bunx postplan list
