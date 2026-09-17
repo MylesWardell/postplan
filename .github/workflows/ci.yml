@@ -10,17 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 2
       - name: Restore Turborepo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .turbo
           key: ${{ runner.os }}-turbo-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-turbo-
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 26.8.2
       - uses: oven-sh/setup-bun@v2
@@ -66,8 +66,8 @@ jobs:
         ports:
           - 8000:8000
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 26.8.2
       - uses: oven-sh/setup-bun@v2
