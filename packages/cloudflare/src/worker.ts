@@ -14,7 +14,7 @@ const application = createApplication(
     store: createCloudflareStore(bindings).store,
     ...applicationStorage(bindings.POSTPLAN_DB, bindings.HTML_BUCKET),
   },
-  false,
+  { compressResponse: false, enableEvlog: false },
 );
 
 export default {

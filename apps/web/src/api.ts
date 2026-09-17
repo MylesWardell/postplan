@@ -18,7 +18,10 @@ import type { ContextFactory } from "./context";
 import { onlyApplication } from "#lib/host-guard";
 import { notFoundResponse } from "#frontend/response.server";
 
-export function createApiHandler(context: ContextFactory, compressResponse = true) {
+export function createApiHandler(
+  context: ContextFactory,
+  options: { compressResponse: boolean; enableEvlog: boolean },
+) {
   const zodConverter = new ZodToJsonSchemaConverter();
   const openapiGenerator = new OpenAPIGenerator({
     converters: [zodConverter],
@@ -29,7 +32,7 @@ export function createApiHandler(context: ContextFactory, compressResponse = tru
       new RequestLimitHandlerPlugin({ maxBodySize: 2 * 1024 * 1024 }),
       new ResponseHeadersHandlerPlugin(),
       new RateLimitHandlerPlugin(),
-      ...(compressResponse ? [new ResponseCompressionHandlerPlugin()] : []),
+      ...(options.compressResponse ? [new ResponseCompressionHandlerPlugin()] : []),
       new CORSHandlerPlugin({
         allowHeaders: [
           "Content-Disposition",
@@ -48,7 +51,7 @@ export function createApiHandler(context: ContextFactory, compressResponse = tru
           "RateLimit-Reset",
         ],
       }),
-      new EvlogHandlerPlugin({ logAbort: true }),
+      ...(options.enableEvlog ? [new EvlogHandlerPlugin({ logAbort: true })] : []),
       new SmartCoercionHandlerPlugin({ converters: [zodConverter] }),
       new OpenAPIReferenceHandlerPlugin({
         spec: () =>
