@@ -7,6 +7,7 @@ import { draftStore } from "./draft-store";
 import { sql } from "drizzle-orm";
 import { MemoryRateLimiter } from "@orpc/ratelimit/memory";
 import { seedAccounts } from "./account-queries";
+import { finalizePrepared } from "./database";
 export type { Database } from "./database";
 
 export function createDrizzleStore(
@@ -39,5 +40,16 @@ export function createDrizzleStore(
       return limiter.limit(input.key, { weight: input.weight });
     }),
   });
-  return { store: createRouterClient(router), close };
+  let closed = false;
+  return {
+    store: createRouterClient(router),
+    close() {
+      if (closed) {
+        return;
+      }
+      finalizePrepared(db);
+      close();
+      closed = true;
+    },
+  };
 }
