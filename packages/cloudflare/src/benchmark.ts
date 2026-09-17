@@ -92,6 +92,7 @@ const html = (size: number) => {
 const small = JSON.stringify({ html: html(5356) });
 const large = JSON.stringify({ html: html(512 * 1024 - 64) });
 let draftId = "";
+let plans = 58;
 const upload = (body: string) =>
   new Request(base + "/api/uploads", {
     method: "POST",
@@ -105,6 +106,8 @@ const cases: Record<string, () => Request> = {
   home: () => new Request(base + "/"),
   dashboard: () => new Request(base + "/dashboard", { headers: { cookie: session } }),
   list: () => new Request(base + "/api/drafts", { headers: { authorization: `Bearer ${token}` } }),
+  listMax: () =>
+    new Request(base + "/api/drafts?limit=100", { headers: { authorization: `Bearer ${token}` } }),
   public: () => new Request(base + "/d/" + draftId),
   upload: () => upload(small),
   uploadLarge: () => upload(large),
@@ -167,7 +170,8 @@ export class RateLimit extends DurableObject {
       const count = sql
         .exec("SELECT count(*) AS n FROM drafts WHERE account_id='acct_bootstrap'")
         .one().n as number;
-      for (let i = count; i < 58; i++) {
+      plans = Number(url.searchParams.get("plans") || plans);
+      for (let i = count; i < plans; i++) {
         const response = await this.handle(cases.upload!());
         if (response.status !== 201) {
           throw new Error(await response.text());
@@ -197,8 +201,8 @@ export class RateLimit extends DurableObject {
       }
     }
     if (name.startsWith("upload")) {
-      // Keep the 58-plan dataset stable for later cases and runs.
-      const keep = "SELECT id FROM drafts ORDER BY created_at, id LIMIT 58";
+      // Keep the seeded plan dataset stable for later cases and runs.
+      const keep = `SELECT id FROM drafts ORDER BY created_at, id LIMIT ${plans}`;
       sql.exec(`DELETE FROM upload_events WHERE draft_id NOT IN (${keep})`);
       sql.exec(`DELETE FROM draft_versions WHERE draft_id NOT IN (${keep})`);
       sql.exec(`DELETE FROM drafts WHERE id NOT IN (${keep})`);

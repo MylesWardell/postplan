@@ -10,6 +10,7 @@ export const PLAN = {
   home: 300,
   dashboard: 150,
   list: 300,
+  listMax: 150,
   public: 400,
   upload: 150,
   uploadLarge: 20,
@@ -53,6 +54,7 @@ if (!tag) {
 }
 const batches = readPositiveInteger("BENCH_BATCHES", 3);
 const samplingInterval = readPositiveInteger("BENCH_SAMPLING_INTERVAL", 100);
+const plans = readPositiveInteger("BENCH_PLANS", 58);
 const targets = readTargets(tag);
 const requested = only ? only.split(",") : Object.keys(PLAN);
 const unknown = requested.filter((name) => !(name in PLAN));
@@ -133,7 +135,7 @@ class InspectorClient {
 
 const clients = new Map<string, InspectorClient>();
 for (const target of targets) {
-  const seeded = await fetch(`${target.baseUrl}/seed`);
+  const seeded = await fetch(`${target.baseUrl}/seed?plans=${plans}`);
   if (!seeded.ok) {
     throw new Error(`Seed failed for ${target.tag}: ${await seeded.text()}`);
   }
@@ -216,6 +218,7 @@ for (const target of targets) {
         dirty: target.dirty ?? false,
         stateSha256: target.stateSha256 || null,
         patchSha256: target.patchSha256 || null,
+        plans,
         runtime: {
           bun: Bun.version,
           node: process.env.BENCH_NODE_VERSION ?? "unknown",
