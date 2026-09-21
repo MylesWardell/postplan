@@ -58,8 +58,10 @@ const payload = Buffer.from(
 const cookie = `postplan_session=${payload}.${createHmac("sha256", "local-session-only").update(payload).digest("base64url")}`;
 const dashboard = await fetch(base + "/dashboard", { headers: { cookie }, redirect: "manual" });
 assert.equal(dashboard.status, 200);
-assert.match(await dashboard.text(), /Connector acceptance/);
-assert.match(dashboard.headers.get("content-security-policy") || "", /nonce-/);
+const dashboardHtml = await dashboard.text();
+assert.match(dashboardHtml, /Connector acceptance/);
+assert.doesNotMatch(dashboardHtml, /<script\b/);
+assert.match(dashboard.headers.get("content-security-policy") || "", /script-src 'none'/);
 const key = z
   .object({ token: z.string(), apiKey: z.object({ id: z.string() }) })
   .parse(await (await request("/api/api-keys", "POST", { name: "connector-test" })).json());

@@ -36,3 +36,5 @@ crash.*.log
 packages/cloudflare/env.d.ts
 
 benchmark/cloudflare/results/
+
+.astro/

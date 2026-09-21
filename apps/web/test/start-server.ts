@@ -3,7 +3,7 @@ import { config } from "#config";
 import type { ServerDependencies } from "#context";
 import type * as ServerModule from "#server";
 
-// Exercise Start's transformed production routes and server functions, not uncompiled source.
+// Exercise Astro's built endpoints and Hono rendering, not uncompiled source.
 const entry = new URL("../dist/server/server.js", import.meta.url).href;
 const start: typeof ServerModule = await import(entry);
 

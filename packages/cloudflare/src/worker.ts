@@ -1,4 +1,5 @@
 import "./instrumentation";
+import { renderFrontend } from "@postplan/web/astro-render";
 import { createCloudflareStore } from "./database";
 import { createApplication } from "@postplan/web/application";
 import { applicationStorage } from "./application-storage";
@@ -14,7 +15,7 @@ const application = createApplication(
     store: createCloudflareStore(bindings).store,
     ...applicationStorage(bindings.POSTPLAN_DB, bindings.HTML_BUCKET),
   },
-  { compressResponse: false, enableEvlog: false },
+  { compressResponse: false, enableEvlog: false, renderFrontend },
 );
 
 export default {

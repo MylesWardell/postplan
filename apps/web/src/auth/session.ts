@@ -111,7 +111,7 @@ export function assertApplicationOrigin(req: Request): void {
   );
   if (
     new URL(req.url).hostname !== home.hostname ||
-    (req.method !== "GET" && req.headers.get("origin") !== home.origin)
+    (!["GET", "HEAD"].includes(req.method) && req.headers.get("origin") !== home.origin)
   ) {
     throw new ORPCError("FORBIDDEN", {
       message: "Session requests must use the application origin.",

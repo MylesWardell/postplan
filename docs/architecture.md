@@ -6,24 +6,28 @@
 
 Hono is the shared HTTP server framework for Bun, Lambda and Cloudflare. It routes `POST /api/uploads` directly to schema validation and the store upload operation, returning plain JSON without the oRPC HTTP handler/plugin pipeline. The other API paths retain oRPC, and the upload contract remains available to typed clients and OpenAPI documentation. Uploads preserve bearer authentication, IP/key quotas and rate-limit headers, request IDs, CORS, bounded JSON/decompression, and the existing TypeScript HTML policy. Runtime adapters retain their gateway, storage-budget and static-asset handling.
 
-TanStack Start owns page file routing, SSR, hydration, and server functions behind the Hono fallback. Routes and their data functions live in `apps/web/src/frontend/routes`. Server-side functions call oRPC directly; browser navigation uses Start's generated endpoints.
+Astro 7 builds and dispatches on-demand endpoints through the `astro/hono` handlers in `apps/web/src/fetch.ts`. The catch-all document endpoint uses the Hono router in `frontend/router.tsx`; views are rendered with Hono JSX. Loaders call oRPC in process. Navigation uses links and native forms, with no React, browser router, hydration bundle, or server-function endpoints.
+
+The outer Hono application handles public drafts and direct uploads before entering Astro. Other `/api` requests reach `pages/api/[...path].ts`, which mounts the existing oRPC OpenAPI Fetch handler following [oRPC's Astro adapter pattern](https://orpc.dev/docs/adapters/astro). The handler still excludes `drafts.upload`; its contract remains in the generated documentation and typed clients.
 
 ```text
 apps/web/src/
   index.ts          Bun host and static assets
   server.ts         Runtime initialization and request dependencies
-  application.ts    Shared Hono router: direct upload, oRPC API, pages
+  application.ts    Shared Hono router: public drafts, direct upload, Astro fallback
   context.ts        Store client and HTML storage context
   orpc.ts           Contract implementation and middleware
   routers/          Account, draft, and API-key procedures
   client.ts         Direct server-side caller for SSR
   db/               Provider selection and maintenance entry points
   lib/              HTML policy and public URL helpers
-  frontend/         Router, page routes, layouts, and styles
+  fetch.ts          Astro pipeline composed with astro/hono
+  pages/            Astro document and oRPC API endpoints
+  frontend/         Hono document/form router, loaders, JSX views
   instrumentation.ts Optional OTLP tracing
 ```
 
-The root route owns the document shell. A fresh router is created for each SSR request, with authentication stored in router context. Protected loaders and form actions also verify the session on the server. Application hydration scripts receive a per-response CSP nonce.
+The Hono JSX layout owns the document shell and title. Request dependencies travel through Astro locals and Hono context; routers retain no session state. Protected document routes, loaders, and form actions verify the session on the server. Cookie mutations require the exact application Origin. Application pages use `script-src 'none'`; the interactive API reference retains its separate CSP. Astro's generic origin check is disabled because bearer API clients may be cross-origin; the existing cookie-origin checks remain authoritative.
 
 ## HTTP API
 

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { createUploadHandler } from "#lib/upload-http";
-import { createStartHandler, defaultRenderHandler } from "@tanstack/react-start/server";
+import type { AppRequestContext } from "./frontend/context.server";
 import { createContextFactory } from "./context";
 import type { ServerDependencies } from "./context";
 import { createApiHandler } from "./api";
@@ -9,17 +9,14 @@ import { draftResponse } from "#frontend/drafts";
 import { notFoundResponse } from "#frontend/response.server";
 import { hostDraftId } from "#lib/host-guard";
 import { respond } from "#lib/respond";
-import { applyContentSecurityPolicy, createNonce } from "#lib/content-security-policy";
 
-// Pages have no Suspense boundaries, so render to a string: streaming SSR encodes
-// every chunk and pipes it through router transform streams for no benefit.
-const handler = { fetch: createStartHandler(defaultRenderHandler) };
 export interface ApplicationOptions {
   compressResponse?: boolean;
   enableEvlog?: boolean;
+  renderFrontend: (request: Request, context: AppRequestContext) => Promise<Response>;
 }
 
-export function createApplication(deps: ServerDependencies, options: ApplicationOptions = {}) {
+export function createApplication(deps: ServerDependencies, options: ApplicationOptions) {
   const createContext = createContextFactory(deps);
   const api = createApiHandler(createContext, {
     compressResponse: options.compressResponse ?? true,
@@ -64,16 +61,13 @@ export function createApplication(deps: ServerDependencies, options: Application
     }),
   );
   app.post("/api/uploads", (c) => upload(c.req.raw, c.env.peerIp));
-  const apiRoute = async (request: Request, peerIp: string | null) => {
-    const response = await api(request, peerIp);
-    return response.headers.get("content-type")?.includes("text/html")
-      ? applyContentSecurityPolicy(response, createNonce())
-      : response;
-  };
-  app.all("/api", (c) => apiRoute(c.req.raw, c.env.peerIp));
-  app.all("/api/*", (c) => apiRoute(c.req.raw, c.env.peerIp));
   app.all("*", (c) =>
-    handler.fetch(c.req.raw, { context: { deps, createContext, api, peerIp: c.env.peerIp } }),
+    options.renderFrontend(c.req.raw, {
+      deps,
+      createContext,
+      api,
+      peerIp: c.env.peerIp,
+    }),
   );
   // Keep the existing error envelope, logging and security headers around all routes.
   app.onError((error) => {

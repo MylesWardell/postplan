@@ -12,11 +12,6 @@ export interface AppRequestContext {
   api: ReturnType<typeof createApiHandler>;
   peerIp: string | null;
 }
-declare module "@tanstack/react-router" {
-  interface Register {
-    server: { requestContext: AppRequestContext };
-  }
-}
 export function requireConfiguredSignIn() {
   if (!config.sessionSecret || !config.publicBaseUrl) {
     throw messageResponse(

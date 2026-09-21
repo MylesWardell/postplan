@@ -71,17 +71,21 @@
     "./auth/*": {
       "source": "./src/auth/*.ts",
       "default": "./dist/src/auth/*.js"
+    },
+    "./astro-render": {
+      "source": "./src/astro-render.ts",
+      "default": "./dist/src/astro-render.js"
     }
   },
   "scripts": {
-    "build": "bun ../../scripts/clean.ts && bun --bun vite build && tsc -p tsconfig.json",
+    "build": "bun ../../scripts/clean.ts && bun --bun astro build && tsc -p tsconfig.json",
     "test": "bun --bun vitest run",
     "start": "bun dist/src/launch.js",
     "db:bootstrap": "bun dist/src/db/bootstrap.js",
-    "dev": "bun --bun vite dev",
+    "dev": "bun --bun astro dev",
     "db:generate": "bun run --filter @postplan/store-drizzle db:generate",
     "db:migrate": "bun dist/src/db/migrate.js",
-    "preview": "bun --bun vite preview"
+    "preview": "bun dist/src/launch.js"
   },
   "dependencies": {
     "@opentelemetry/auto-instrumentations-node": "^0.80.0",
@@ -102,21 +106,16 @@
     "@postplan/lambda": "workspace:*",
     "@postplan/store": "workspace:*",
     "@postplan/store-drizzle": "workspace:*",
-    "@tanstack/react-router": "^1.170.36",
-    "@tanstack/react-start": "^1.168.54",
+    "astro": "7.3.3",
     "hono": "4.13.8",
     "jose": "^6.2.12",
     "proxy-addr": "^2.0.7",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@astrojs/cloudflare": "14.3.2",
     "@types/bun": "catalog:",
     "@types/proxy-addr": "^2.0.3",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.1",
     "vite": "catalog:"
   }
 }

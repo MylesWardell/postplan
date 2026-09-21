@@ -17,14 +17,14 @@ bun run build
 
 ## Run the server
 
-Copy `.env.example` to `.env`, configure storage, and choose a database path. Use an absolute `DATABASE_PATH` during development so migrations and Vite open the same SQLite file.
+Copy `.env.example` to `.env`, configure storage, and choose a database path. Use an absolute `DATABASE_PATH` during development so migrations and Astro open the same SQLite file.
 
 ```sh
 bun run db:migrate
 bun run --filter @postplan/web dev
 ```
 
-Set variables in the shell or create `apps/web/.env` for Bun to load. Run server package commands from `apps/web` when they depend on its React JSX configuration. Rebuild shared packages after changing their exports.
+Set variables in the shell or create `apps/web/.env` for Bun to load. Run server package commands from `apps/web` when they depend on its Hono JSX configuration. Rebuild shared packages after changing their exports.
 
 SQLite startup seeds configured accounts and keys but does not apply schema changes. Review and run migrations before starting the service. DynamoDB uses an explicit bootstrap command. See [database operations](../apps/web/DATABASE.md).
 
@@ -34,7 +34,7 @@ SQLite startup seeds configured accounts and keys but does not apply schema chan
 apps/
   cleanup/         AWS cleanup executable and S3 deletion adapter
   cli/             CLI source, agent skill, and bundled executable
-  server/          Bun host, TanStack Start application, OAuth, and storage
+  web/             Bun host, Astro endpoints, Hono JSX views, OAuth, and storage
 packages/
   api/             oRPC contract, schemas, routes, and client types
   store/           Internal oRPC store contracts and shared domain helpers
@@ -52,7 +52,7 @@ bun run db:generate
 bun run pack:cli
 ```
 
-TanStack Router generates `apps/web/src/frontend/routeTree.gen.ts` before builds and type checks. Commit the generated file and do not edit it by hand.
+Astro endpoints live in `apps/web/src/pages`; the Hono document/form router and JSX views live in `apps/web/src/frontend`. Astro generates `.astro/` types during builds; those files are ignored. `apps/web/astro.config.ts` selects the Bun/Lambda adapter or the Cloudflare adapter using `POSTPLAN_RUNTIME`.
 
 ## Container image
 

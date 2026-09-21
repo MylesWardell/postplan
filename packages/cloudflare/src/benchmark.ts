@@ -9,6 +9,7 @@ import { DurableObject } from "cloudflare:workers";
 import { createHash, createHmac } from "node:crypto";
 import { createCloudflareStore } from "./database";
 import { createApplication } from "@postplan/web/application";
+import { renderFrontend } from "@postplan/web/astro-render";
 import { applicationStorage } from "./application-storage";
 import { handleCloudflareRequest } from "./request-pipeline";
 import migration from "../../store-drizzle/drizzle/0000_same_vulcan.sql?raw";
@@ -157,7 +158,7 @@ export class RateLimit extends DurableObject {
     } as unknown as Cloudflare.Env;
     const application = createApplication(
       { store: createCloudflareStore(env).store, ...applicationStorage(db, bucket) },
-      { compressResponse: false, enableEvlog: false },
+      { compressResponse: false, enableEvlog: false, renderFrontend },
     );
     return (incoming: Request) => handleCloudflareRequest(incoming, env, application);
   }
