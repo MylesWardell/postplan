@@ -1,0 +1,20 @@
+[package]
+name = "policy-wasm"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+html5ever = "=0.40.1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[patch.crates-io]
+html5ever = { path = "../vendor/html5ever-040" }
