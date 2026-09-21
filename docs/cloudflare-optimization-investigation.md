@@ -178,3 +178,101 @@ The built Worker is 2.0 MB: `index.js` is 866 KB and statically imports 13 chunk
 - Remote comparison, deployed-Worker validation, D1/R2 fixture cleanup and stop-control re-latching: no deployment was made, and public ingress remains disabled.
 - Differential corpus and 20,000-document fuzz runs: no parser candidate reached that gate.
 - Profile-gated items (per-request URL and `Request` reconstruction, OpenAPI plugin removal): remaining gateway URL parsing measured about 0.1 ms per request, below the promotion threshold.
+
+## Fifth pass: WASM tree construction for upload validation (priority 1)
+
+Issue #29 priority 1 only. Baseline `64f89f7` (master after #30); the candidate is that tree with upload validation routed to a WebAssembly parser through a benchmark patch. Production validation is still unchanged, nothing was deployed, and the prototype lives in gitignored `.local/p1/`, so the build recipe below is the record.
+
+### Candidate
+
+html5ever 0.40.1 compiled for `wasm32-unknown-unknown` with the whole policy walk in Rust, exposed as `alloc`/`dealloc`/`validate(ptr, len, flags)` over a length-prefixed record stream (error, title text, image src, has-scripts). Tree construction runs with `scripting_enabled: false` and a discarded BOM, and the walk follows `<template>` contents, which the parse5 policy skips. Declarative shadow roots are covered by that same walk: the sink keeps the default `attach_declarative_shadow` (which returns false), so a `shadowrootmode` template stays a template and its content is still inspected. Image `src` values are returned to JavaScript so host classification keeps using `URL`. The Rust policy mirrors the JavaScript one exactly, including ECMAScript trim and whitespace semantics, ASCII-only lowercasing, the non-unicode `/i` style regex, the UTF-16 `slice(0, 140)` title cut and error de-duplication.
+
+Six vendored html5ever patches were required. The first two came out of the WPT corpus; the last four out of the browser-oracle gate below, each from a Chrome-adjudicated minimal repro:
+
+- **CDATA sections.** `adjusted_current_node_present_but_not_in_html_namespace` only tested the namespace. Blink and parse5 additionally require the adjusted current node not to be a MathML text or HTML integration point, so `<svg><title><![CDATA[…]]>` was tokenized as CDATA rather than a bogus comment.
+- **`InTableBody` scope set.** `declare_tag_set!(table_outer = "table" "tbody" "tfoot")` should be `"tbody" "thead" "tfoot"`; with `thead` missing, `<template><thead>` followed by `<tbody>` dropped the `<tbody>`. This is an upstream bug still present in 0.40.1 and is worth reporting.
+
+- **`<form>` in a table inside a template.** `InTable` only inserted a `<form>` when the form element pointer was unset, so inside template contents — where the pointer is deliberately not used — `<template><table><form on=1>` dropped the form and its attributes. Blink and WPT's `template.dat` insert it.
+- **NUL before the body.** html5ever treated a U+0000 token in the modes before `InBody` as character data, so it implied `<html>`, `<head>` and `<body>` and closed the head. Blink ignores NUL in all of them, which is why `&#0;<frameset onload=1>` keeps a live frameset in a browser but not in the unpatched candidate.
+- **U+FFFD and frameset-ok.** For character tokens in body and in foreign content Blink treats U+FFFD like whitespace when deciding whether to clear the frameset-ok flag; foster-parented text still clears it. Without this, a U+FFFD before `<frameset onload=1>` lost the frameset.
+- **Implying `<body>` from `AfterHead` resets frameset-ok.** A `<template>` in the head clears frameset-ok in html5ever and it stays cleared; Blink sets it back to true when it implies the body, so `<template></template><l><frameset on>` keeps the handler.
+
+The 0.37.1 "customizable select" rewrite (removal of the `InSelect` insertion mode) is the reason 0.40.1 rather than 0.36.1 was chosen; it matches Chrome, and parse5 8.0.1 does not.
+
+### Differential results
+
+Corpora: the 1,959 WPT `html/syntax/parsing` tree-construction cases at `8460f63`, a 62-case targeted corpus seeded from `packages/store/test/html-policy.test.ts`, and a deterministic fuzz generator (tag/attribute/fragment dictionaries, WPT splicing, deep-nesting prefixes) at 200,000 documents for each of three seeds. Both sides ran with `<template>` contents walked so the comparison isolates parsing.
+
+| Corpus              |  Inputs | Candidate accepts a rejection | Missed scripts | Candidate stricter |   Error-set diffs | Title diffs | Image-host diffs |
+| ------------------- | ------: | ----------------------------: | -------------: | -----------------: | ----------------: | ----------: | ---------------: |
+| WPT tree structures |   1,959 |                             0 |              0 |                  0 |                 0 |           0 |                0 |
+| Targeted            |      62 |                             0 |              0 |                  2 |                 2 |           0 |                0 |
+| Fuzz, seeds 1/2/3   | 600,000 |                      33/27/29 |       89/80/85 |    1,061/983/1,032 | 3,566/3,369/3,498 | 131/150/126 |         11/21/12 |
+
+Every one of those divergences was delta-debugged to a minimal repro, and **all of them are the `<select>` family**: parse5 still implements the pre-"customizable select" insertion mode, so it moves elements out of `<select>`, while Chrome and the candidate keep them. The two directions both appear:
+
+- Production **rejects** documents a browser treats as inert text, because a raw-text container that a browser keeps inside `<select>` (`<xmp>`, `<style>`, `<title>`, `<noembed>`, `<noframes>`, `<plaintext>`) is dissolved by parse5 and its payload becomes real attributes — `<select><xmp><SCRIPT src>`, `<select><style><input href=javascript:>`, `<table><select><plaintext><caption on>`.
+- Production **accepts** documents whose payload a browser keeps live inside `<select>` — `<select><e on>`, `<select><iframe>`, `<select><img src=x onerror=1>`, and the image hosts of `<select><img src=//host>` are missing from `externalImageHosts`.
+
+Chrome 152 (`Document.parseHTMLUnsafe`, which parses with scripting disabled and declarative shadow roots enabled, matching the policy's parser options) adjudicated 26 of these minimal repros. **Chrome agreed with the candidate in every case except one**, a cosmetic title difference: for `<dd><svg><title><dt>t`, Chrome and parse5 keep `<dt>` inside the SVG `title` (an HTML integration point) and read the title as `t`, while html5ever breaks out of the foreign context and the candidate reports no title. Placement-only differences like this cannot hide a node from the walk; targeted probes confirmed `<dd><svg><title><dt onclick=1>`, `<dd><svg><title><dt><iframe>` and an `<img src=//h.test/x>` variant produce identical decisions, errors and hosts on both sides.
+
+The consequence for the issue's checklist is that its literal gate — zero cases where the candidate accepts an input the production tree policy rejects — cannot be met by any parser that is _more_ browser-accurate than parse5 8.0.1, and meeting it would mean preserving parse5's bugs. The gate should be restated against a browser oracle (or the union of both parsers' rejections).
+
+### Browser-oracle gate
+
+The parse5 comparison above cannot settle "is this safe", only "is this different", so the gate was re-run against Chrome 153.0.8010.52 as the oracle. A local server feeds each corpus to a page that parses every document with `DOMParser` (scripting disabled, declarative shadow roots left as templates) and runs the same policy over the resulting DOM; headless Chrome posts the digests back. A digest is `[ok, hasScripts, imageHosts, errors, title, depthRejected]`. Each document is judged twice, with and without `<template>` contents walked, so production is scored against the browser behaviour it actually implements (no template walk) and the candidate against its own (template walk). Empty documents and depth-rejected documents are excluded from the unsafe categories, and `xlink:href` versus `href` error wording is normalised.
+
+The categories that matter are **unsafe accepts** (the side says `ok` for a document Chrome's policy rejects), **missed scripts** (Chrome sees a script the side does not) and **missed image hosts**.
+
+| Corpus              |  Inputs | Production unsafe accepts | Production missed hosts | Candidate unsafe accepts | Candidate missed scripts | Candidate missed hosts |
+| ------------------- | ------: | ------------------------: | ----------------------: | -----------------------: | -----------------------: | ---------------------: |
+| WPT tree structures |   1,959 |                         0 |                       0 |                        0 |                        0 |                      0 |
+| Targeted            |      62 |                         2 |                       0 |                        0 |                        0 |                      0 |
+| Fuzz, seeds 1/2/3   | 600,000 |           1,060/979/1,037 |                   4/8/4 |                    0/0/0 |                    0/0/0 |                  0/0/0 |
+
+Production misses roughly one live document in 200 of the fuzz corpus. The candidate misses none, and it never misses a script anywhere.
+
+The candidate's residual differences are all in the safe direction or cosmetic, and every one was classified:
+
+- **Stricter than Chrome** (candidate rejects, Chrome accepts): 7/9/3 per seed, **all** `<select><button><selectedcontent>` documents. html5ever's customizable-select implementation keeps content that this Chrome build still drops, so the candidate sees blocked elements and handlers that are not live. Same for the 2 extra scripts, the 1 title difference and the 1 depth difference — all in that family.
+- **Error-set differences**: 26/23/8 per seed. Of the 57, 32 are the same select family; 24 are documents both sides reject on the nesting-depth limit, where the candidate stops collecting further errors; and 1 is a `<form>` that Blink inserts and both html5ever and parse5 drop, in a document both sides already reject for other reasons.
+
+### Production gaps found while building the oracle
+
+These are defects in today's parse5 policy, independent of any parser swap, all confirmed against Chrome 152:
+
+1. **Declarative shadow DOM is never inspected.** The walk follows `childNodes` only, so `<div><template shadowrootmode="open"><iframe>…` validates as `ok: true`; a browser attaches that content as a shadow root and renders it.
+2. **`<select>` contents are under-inspected**, as above: `<select><img src=x onerror=1>`, `<select><iframe>` and `<select><e on>` all pass.
+3. **A leading BOM is dropped by the server but not by the policy.** Served bytes strip U+FEFF, so `﻿<frameset onload=alert(1)>` parses with the handler in a real browsing context, while parse5 treats the BOM as character data and the frameset never appears.
+4. **`<svg><select><desc><select><select><img onerror=…>`** keeps the image in Chrome; production drops it.
+5. **NUL and U+FFFD do not stop a later `<frameset>` in a browser.** parse5 treats them as character data that implies the body and clears frameset-ok, so `&#0;<frameset onload=1>`, a U+FFFD before the same markup, `<svg>&#0;</svg><frameset onload=1>` and `&#0;<head onload=1>` all validate as `ok: true` while Chrome keeps the frameset and its handler. This is the same class as the BOM gap above.
+6. **A head `<template>` does not stop a later `<frameset>` either.** `<template></template><l><frameset on>` validates as `ok: true`; Chrome implies the body with frameset-ok restored and keeps the handler.
+7. **parse5 drops a `<form>` inside a table inside template contents.** `<template><table><form onclick=x>` leaves only the `<table>` in the template content, so the form and its handler are invisible even to a policy that does walk `content`. Fixing gap 1 by walking templates therefore does not fully close it; Blink inserts that form.
+
+The serving CSP (`script-src 'none'`, `form-action 'none'`, frames blocked) prevents script, form and frame exploitation of all seven today, so the practical exposure is images loading from hosts that never enter `externalImageHosts`, plus the loss of defense in depth. Fixing 1 and 3 in the current parse5 path is cheap (walk `content` and shadow-root templates; strip a leading BOM before parsing); 2 and 4 need the newer select behaviour, and 5–7 need Blink's NUL, U+FFFD, frameset-ok and template-table-form behaviour, none of which parse5 implements.
+
+### Performance
+
+Warm interleaved WSL benchmark, median application CPU per request (ms), three independent runs of `upload,uploadLarge,public`:
+
+| Case                       | Run 1 parse5 | Run 1 wasm | Run 2 parse5 | Run 2 wasm | Run 3 parse5 | Run 3 wasm |
+| -------------------------- | -----------: | ---------: | -----------: | ---------: | -----------: | ---------: |
+| Upload, 5,356 bytes        |         7.01 |       6.71 |         5.92 |       5.94 |         6.04 |       6.08 |
+| Upload, just under 512 KiB |        17.37 |      11.57 |        16.21 |      12.18 |        19.06 |      13.17 |
+| Public HTML, 5,356 bytes   |         2.58 |       3.08 |         2.34 |       2.46 |            — |          — |
+
+The 512 KiB upload is 28–33% cheaper (4.0–5.9 ms) in all three runs. The 5 KiB upload does not move: at that size parsing is a fraction of a millisecond and the request is dominated by body handling and storage. `public` never validates HTML; its run-1 gap is within the documented noise for unchanged paths, and run 3 is discarded because both targets returned 500s for that case on a loaded machine.
+
+Profiles of the 512 KiB batch attribute the change: parse5 tokenizer and tree frames (`_runParsingLoop`, `_stateData`, `getCurrentLocation`, `_callState`, `onCharacter`, `_emitCurrentCharacterToken`, `_insertCharacters`) total about 8 ms per request, and the wasm frames that replace them total about 3 ms. What remains at 512 KiB is `boundedBody`, `Request` construction, body reads and storage — so **the parser swap alone does not bring a 512 KiB upload under 10 ms** (11.6–13.2 ms measured warm, and deployed CPU is higher). It removes parsing as the dominant term.
+
+The benchmarked module predates the last four html5ever patches. All four touch rare branches (a NUL or U+FFFD token, `AfterHead`, `<form>` in a table inside a template) and none adds work to the tokenizer or the common insertion modes, so the numbers are treated as current; a re-run is cheap if the switch is taken.
+
+A Node micro-benchmark (interleaved, 15 rounds) of the same module: 5 KiB synthetic 0.107 → 0.038 ms, 5 KiB markup-dense 0.271 → 0.167 ms, 512 KiB synthetic 11.24 → 3.36 ms, 512 KiB markup-dense 34.71 → 16.46 ms. The module is 577,356 bytes, compiles in 6.1 ms once per process and instantiates in 0.27 ms.
+
+### Integration cost
+
+The Cloudflare Vite plugin's `CompiledWasm` module handling does not apply to this application's `ssr` environment: `import … from "./policy.wasm"` falls through to rolldown's own wasm loader (`"default" is not exported`), `?module` fails to resolve, and a `.bin` probe is equally unclaimed. Compiling at runtime from embedded bytes is refused by workerd, as expected. The benchmark therefore leaves the import external, copies the module into `dist/server/` and appends a `CompiledWasm` rule to the generated `wrangler.json`, which Wrangler honours because the Vite output is `no_bundle`. A production switch needs a supported version of that wiring, plus the 577 KB module in the bundle.
+
+### Assessment
+
+The candidate meets the security bar the issue asks for, once the bar is stated against a browser instead of parse5: over 602,021 documents it never accepted anything Chrome would treat as live, never missed a script a browser would run, and fixed two of the four production gaps by construction. It is meaningfully cheaper only for large uploads, and not cheap enough to make them fit Workers Free by itself. Before any switch: reframe the gate against the browser oracle, resolve the module-import wiring, and validate on a deployed Worker (both still outstanding, with public ingress disabled).
