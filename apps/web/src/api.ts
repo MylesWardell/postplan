@@ -27,6 +27,8 @@ export function createApiHandler(
     converters: [zodConverter],
   });
   const openapiHandler = new OpenAPIHandler(router, {
+    // Upload HTTP requests are handled directly by Hono; keep the contract for clients/docs.
+    filter: (_procedure, path) => path.join(".") !== "drafts.upload",
     plugins: [
       new RequestCompressionHandlerPlugin(),
       new RequestLimitHandlerPlugin({ maxBodySize: 2 * 1024 * 1024 }),

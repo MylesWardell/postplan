@@ -1,3 +1,6 @@
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { createUploadHandler } from "#lib/upload-http";
 import { createStartHandler, defaultRenderHandler } from "@tanstack/react-start/server";
 import { createContextFactory } from "./context";
 import type { ServerDependencies } from "./context";
@@ -22,25 +25,60 @@ export function createApplication(deps: ServerDependencies, options: Application
     compressResponse: options.compressResponse ?? true,
     enableEvlog: options.enableEvlog ?? true,
   });
+  const upload = createUploadHandler(createContext);
+  const app = new Hono<{ Bindings: { peerIp: string | null } }>();
+  // Preserve document-host isolation before any application route, including uploads.
+  app.use("*", async (c, next) => {
+    const draftId = hostDraftId(c.req.raw);
+    const draft = await draftResponse(c.req.raw, deps, draftId);
+    if (draft) {
+      return draft;
+    }
+    if (draftId) {
+      return notFoundResponse();
+    }
+    await next();
+    return c.res;
+  });
+  app.use(
+    "/api/uploads",
+    cors({
+      origin: "*",
+      allowMethods: ["POST", "OPTIONS"],
+      allowHeaders: [
+        "Content-Disposition",
+        "Standard-Server",
+        "Content-Type",
+        "Content-Encoding",
+        "Authorization",
+      ],
+      exposeHeaders: [
+        "Content-Disposition",
+        "Standard-Server",
+        "Retry-After",
+        "X-Request-Id",
+        "RateLimit-Limit",
+        "RateLimit-Remaining",
+        "RateLimit-Reset",
+      ],
+    }),
+  );
+  app.post("/api/uploads", (c) => upload(c.req.raw, c.env.peerIp));
+  const apiRoute = async (request: Request, peerIp: string | null) => {
+    const response = await api(request, peerIp);
+    return response.headers.get("content-type")?.includes("text/html")
+      ? applyContentSecurityPolicy(response, createNonce())
+      : response;
+  };
+  app.all("/api", (c) => apiRoute(c.req.raw, c.env.peerIp));
+  app.all("/api/*", (c) => apiRoute(c.req.raw, c.env.peerIp));
+  app.all("*", (c) =>
+    handler.fetch(c.req.raw, { context: { deps, createContext, api, peerIp: c.env.peerIp } }),
+  );
+  // Keep the existing error envelope, logging and security headers around all routes.
+  app.onError((error) => {
+    throw error;
+  });
   return (request: Request, peerIp: string | null = null) =>
-    respond(async () => {
-      const draftId = hostDraftId(request);
-      const draft = await draftResponse(request, deps, draftId);
-      if (draft) {
-        return draft;
-      }
-      if (draftId) {
-        return notFoundResponse();
-      }
-      const path = new URL(request.url).pathname;
-      if (path === "/api" || path.startsWith("/api/")) {
-        // API authentication, CORS and body limits belong to oRPC. Avoid the
-        // page router; Start's CSRF middleware applies only to server functions.
-        const response = await api(request, peerIp);
-        return response.headers.get("content-type")?.includes("text/html")
-          ? applyContentSecurityPolicy(response, createNonce())
-          : response;
-      }
-      return handler.fetch(request, { context: { deps, createContext, api, peerIp } });
-    });
+    respond(() => app.fetch(request, { peerIp }));
 }
