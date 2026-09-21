@@ -13,11 +13,6 @@
     ".claude/**",
     "**/.wrangler/**",
     "packages/cloudflare/generated/**",
-    "packages/cloudflare/env.d.ts",
-    "packages/html-validator/vendor/**",
-    "packages/html-validator/target/**",
-    "packages/html-validator/env.d.ts",
-    "packages/cloudflare-upload/generated/**",
-    "packages/cloudflare-upload/env.d.ts"
+    "packages/cloudflare/env.d.ts"
   ]
 }

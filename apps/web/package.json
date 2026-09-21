@@ -104,6 +104,7 @@
     "@postplan/store-drizzle": "workspace:*",
     "@tanstack/react-router": "^1.170.36",
     "@tanstack/react-start": "^1.168.54",
+    "hono": "4.13.8",
     "jose": "^6.2.12",
     "proxy-addr": "^2.0.7",
     "react": "^19.3.0",

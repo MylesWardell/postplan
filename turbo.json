@@ -12,9 +12,7 @@
         "@postplan/lambda#build",
         "@postplan/store-drizzle#build",
         "@postplan/store-dynamodb#build",
-        "@postplan/cloudflare#cf:types",
-        "@postplan/html-validator#cf:types",
-        "@postplan/cloudflare-upload#cf:types"
+        "@postplan/cloudflare#cf:types"
       ]
     },
     "//#lint:root:fix": {
@@ -22,9 +20,7 @@
         "@postplan/lambda#build",
         "@postplan/store-drizzle#build",
         "@postplan/store-dynamodb#build",
-        "@postplan/cloudflare#cf:types",
-        "@postplan/html-validator#cf:types",
-        "@postplan/cloudflare-upload#cf:types"
+        "@postplan/cloudflare#cf:types"
       ],
       "cache": false
     },

@@ -4,12 +4,15 @@
 
 `packages/api` defines the public oRPC contract, including HTTP routes, status codes, schemas, and client types. `apps/web/src/routers` implements it through the provider-independent `@postplan/store` client. `packages/store` defines internal account/draft store contracts; `packages/store-drizzle` and `packages/store-dynamodb` implement them with Drizzle/SQLite and DynamoDB respectively. Backend selection happens at startup. Keep every oRPC package on the pinned `2.0.0-beta.35` generation and review upgrades with the contract and transport tests.
 
-TanStack Start owns file routing, SSR, hydration, and server functions. Routes and their data functions live in `apps/web/src/frontend/routes`. Server-side functions call oRPC directly; browser navigation uses Start's generated endpoints.
+Hono is the shared HTTP server framework for Bun, Lambda and Cloudflare. It routes `POST /api/uploads` directly to schema validation and the store upload operation, returning plain JSON without the oRPC HTTP handler/plugin pipeline. The other API paths retain oRPC, and the upload contract remains available to typed clients and OpenAPI documentation. Uploads preserve bearer authentication, IP/key quotas and rate-limit headers, request IDs, CORS, bounded JSON/decompression, and the existing TypeScript HTML policy. Runtime adapters retain their gateway, storage-budget and static-asset handling.
+
+TanStack Start owns page file routing, SSR, hydration, and server functions behind the Hono fallback. Routes and their data functions live in `apps/web/src/frontend/routes`. Server-side functions call oRPC directly; browser navigation uses Start's generated endpoints.
 
 ```text
 apps/web/src/
   index.ts          Bun host and static assets
-  server.ts         TanStack Start entry and request dependencies
+  server.ts         Runtime initialization and request dependencies
+  application.ts    Shared Hono router: direct upload, oRPC API, pages
   context.ts        Store client and HTML storage context
   orpc.ts           Contract implementation and middleware
   routers/          Account, draft, and API-key procedures

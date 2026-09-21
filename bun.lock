@@ -74,6 +74,7 @@
         "@postplan/store-drizzle": "workspace:*",
         "@tanstack/react-router": "^1.170.36",
         "@tanstack/react-start": "^1.168.54",
+        "hono": "4.13.8",
         "jose": "^6.2.12",
         "proxy-addr": "^2.0.7",
         "react": "^19.3.0",
@@ -117,40 +118,6 @@
         "vitest": "4.1.0",
         "wrangler": "4.131.2",
         "zod": "catalog:",
-      },
-    },
-    "packages/cloudflare-upload": {
-      "name": "@postplan/cloudflare-upload",
-      "version": "0.1.0",
-      "dependencies": {
-        "@orpc/contract": "catalog:",
-        "@orpc/openapi": "catalog:",
-        "@orpc/server": "catalog:",
-        "@postplan/api": "workspace:*",
-        "@postplan/store": "workspace:*",
-        "hono": "4.13.8",
-        "zod": "catalog:",
-      },
-      "devDependencies": {
-        "@postplan/html-validator": "workspace:*",
-        "@types/node": "catalog:",
-        "esbuild": "0.28.1",
-        "miniflare": "5.20260911.1-alpha",
-        "wrangler": "4.131.2",
-      },
-    },
-    "packages/html-validator": {
-      "name": "@postplan/html-validator",
-      "version": "0.1.0",
-      "dependencies": {
-        "@postplan/store": "workspace:*",
-      },
-      "devDependencies": {
-        "@cloudflare/vitest-plugin": "1.1.9",
-        "@types/bun": "catalog:",
-        "@types/node": "catalog:",
-        "vitest": "4.1.0",
-        "wrangler": "4.131.2",
       },
     },
     "packages/lambda": {
@@ -807,10 +774,6 @@
     "@postplan/cleanup": ["@postplan/cleanup@workspace:apps/cleanup"],
 
     "@postplan/cloudflare": ["@postplan/cloudflare@workspace:packages/cloudflare"],
-
-    "@postplan/cloudflare-upload": ["@postplan/cloudflare-upload@workspace:packages/cloudflare-upload"],
-
-    "@postplan/html-validator": ["@postplan/html-validator@workspace:packages/html-validator"],
 
     "@postplan/lambda": ["@postplan/lambda@workspace:packages/lambda"],
 

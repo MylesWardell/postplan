@@ -6,23 +6,6 @@ on:
 permissions:
   contents: read
 jobs:
-  upload-worker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26.8.2
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.2
-      - run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt --component clippy --target wasm32-unknown-unknown
-      - run: bun install --frozen-lockfile
-      - run: bunx --no-install turbo run build --filter=@postplan/store --filter=@postplan/api
-      - run: bun run rust:test && bun run validator:test && bun run worker:build
-        working-directory: packages/html-validator
-      - run: bun run typecheck && bun run cf:build && bun run upload:test && node benchmark/bundle.mjs
-        working-directory: packages/cloudflare-upload
   check:
     runs-on: ubuntu-latest
     steps:
@@ -92,7 +75,7 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run build
-      - run: bun --bun vitest run test/api.test.ts test/ssr.test.ts test/concurrency.test.ts test/store.test.ts
+      - run: bun --bun vitest run test/api.test.ts test/upload-http.test.ts test/ssr.test.ts test/concurrency.test.ts test/store.test.ts
         working-directory: apps/web
         env:
           POSTPLAN_TEST_STORE: dynamodb

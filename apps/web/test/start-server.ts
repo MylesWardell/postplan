@@ -12,6 +12,7 @@ export function createServerOptions(deps: ServerDependencies) {
     deps,
     {
       createApplication(dependencies) {
+        Object.assign(start.config, config);
         const fetch = start.createApplication(dependencies);
         return (request, peerIp) => {
           // The Vite bundle owns a separate instance of the mutable test configuration.
