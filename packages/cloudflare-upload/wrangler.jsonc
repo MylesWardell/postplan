@@ -1,0 +1,53 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "postplan-hono-upload",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "UPLOAD_ENABLED": "false",
+    "TEST_ACCOUNT_ID": "",
+    "POSTPLAN_PUBLIC_BASE_URL": "https://example.invalid",
+  },
+  "secrets": {
+    "required": ["POSTPLAN_RATE_LIMIT_SECRET"],
+  },
+  "d1_databases": [
+    {
+      "binding": "POSTPLAN_DB",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_name": "configure-test-database",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "HTML_BUCKET",
+      "bucket_name": "configure-test-bucket",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITS",
+        "class_name": "RateLimit",
+        "script_name": "postplan-clone",
+      },
+    ],
+  },
+  "services": [
+    {
+      "binding": "HTML_VALIDATOR",
+      "service": "postplan-html-validator",
+    },
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.01,
+    },
+  },
+}

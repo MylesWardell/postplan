@@ -36,6 +36,8 @@ export interface HtmlValidationResult {
 
 export interface HtmlValidationOptions {
   maxBytes?: number;
+  /** Reject when parsed-tree depth reaches this boundary (document root is zero). */
+  maxDepth?: number;
 }
 
 // The subset of parse5's default tree nodes the policy walks. Kept structural
@@ -53,6 +55,10 @@ export function validateHtml(
   options: HtmlValidationOptions = {},
 ): HtmlValidationResult {
   const maxBytes = options.maxBytes ?? 512 * 1024;
+  const maxDepth = Math.min(options.maxDepth ?? MAX_DEPTH, MAX_DEPTH);
+  if (!Number.isSafeInteger(maxDepth) || maxDepth < 1) {
+    throw new RangeError("maxDepth must be a positive integer");
+  }
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -164,7 +170,7 @@ export function validateHtml(
   while (stack.length) {
     const { node, depth } = stack.pop()!;
     visit(node);
-    if (depth >= MAX_DEPTH) {
+    if (depth >= maxDepth) {
       tooDeep = true;
       continue;
     }
@@ -174,7 +180,7 @@ export function validateHtml(
     }
   }
   if (tooDeep) {
-    errors.push(`HTML is nested more than ${MAX_DEPTH} levels deep.`);
+    errors.push(`HTML is nested more than ${maxDepth} levels deep.`);
   }
 
   if (!title) {

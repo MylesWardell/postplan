@@ -119,6 +119,40 @@
         "zod": "catalog:",
       },
     },
+    "packages/cloudflare-upload": {
+      "name": "@postplan/cloudflare-upload",
+      "version": "0.1.0",
+      "dependencies": {
+        "@orpc/contract": "catalog:",
+        "@orpc/openapi": "catalog:",
+        "@orpc/server": "catalog:",
+        "@postplan/api": "workspace:*",
+        "@postplan/store": "workspace:*",
+        "hono": "4.13.8",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@postplan/html-validator": "workspace:*",
+        "@types/node": "catalog:",
+        "esbuild": "0.28.1",
+        "miniflare": "5.20260911.1-alpha",
+        "wrangler": "4.131.2",
+      },
+    },
+    "packages/html-validator": {
+      "name": "@postplan/html-validator",
+      "version": "0.1.0",
+      "dependencies": {
+        "@postplan/store": "workspace:*",
+      },
+      "devDependencies": {
+        "@cloudflare/vitest-plugin": "1.1.9",
+        "@types/bun": "catalog:",
+        "@types/node": "catalog:",
+        "vitest": "4.1.0",
+        "wrangler": "4.131.2",
+      },
+    },
     "packages/lambda": {
       "name": "@postplan/lambda",
       "version": "0.0.4",
@@ -774,6 +808,10 @@
 
     "@postplan/cloudflare": ["@postplan/cloudflare@workspace:packages/cloudflare"],
 
+    "@postplan/cloudflare-upload": ["@postplan/cloudflare-upload@workspace:packages/cloudflare-upload"],
+
+    "@postplan/html-validator": ["@postplan/html-validator@workspace:packages/html-validator"],
+
     "@postplan/lambda": ["@postplan/lambda@workspace:packages/lambda"],
 
     "@postplan/store": ["@postplan/store@workspace:packages/store"],
@@ -1253,6 +1291,8 @@
     "h3-v2": ["h3@2.0.1-rc.20", "", { "dependencies": { "rou3": "^0.8.1", "srvx": "^0.11.13" }, "peerDependencies": { "crossws": "^0.4.1" }, "optionalPeers": ["crossws"], "bin": { "h3": "bin/h3.mjs" } }, "sha512-28ljodXuUp0fZovdiSRq4G9OgrxCztrJe5VdYzXAB7ueRvI7pIUqLU14Xi3XqdYJ/khXjfpUOOD2EQa6CmBgsg=="],
 
     "hashery": ["hashery@1.5.1", "", { "dependencies": { "hookified": "^1.15.0" } }, "sha512-iZyKG96/JwPz1N55vj2Ie2vXbhu440zfUfJvSwEqEbeLluk7NnapfGqa7LH0mOsnDxTF85Mx8/dyR6HfqcbmbQ=="],
+
+    "hono": ["hono@4.13.8", "", {}, "sha512-/Gng7NfoykZl2pjukW5Z6+8Yxm3BPRf86GTbQnt0SbySkvax4fyL4H3HhY1cCpBGmiW9XDRFzRV+CXK2W8QudQ=="],
 
     "hookable": ["hookable@6.1.1", "", {}, "sha512-U9LYDy1CwhMCnprUfeAZWZGByVbhd54hwepegYTK7Pi5NvqEj63ifz5z+xukznehT7i6NIZRu89Ay1AZmRsLEQ=="],
 

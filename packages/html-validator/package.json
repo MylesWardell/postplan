@@ -1,0 +1,27 @@
+{
+  "name": "@postplan/html-validator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/validator.ts"
+  },
+  "scripts": {
+    "wasm:build": "bun scripts/build.ts",
+    "cf:types": "wrangler types env.d.ts",
+    "typecheck": "tsc --noEmit",
+    "validator:test": "bun run wasm:build && bun run cf:types && bun run typecheck && vitest run",
+    "rust:test": "cargo test --locked && cargo fmt --check && cargo clippy --locked -- -D warnings",
+    "worker:build": "bun run wasm:build && wrangler deploy --dry-run --outdir dist/worker"
+  },
+  "dependencies": {
+    "@postplan/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.1.9",
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "vitest": "4.1.0",
+    "wrangler": "4.131.2"
+  }
+}
