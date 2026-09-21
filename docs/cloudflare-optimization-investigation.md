@@ -222,20 +222,22 @@ The consequence for the issue's checklist is that its literal gate — zero case
 
 The parse5 comparison above cannot settle "is this safe", only "is this different", so the gate was re-run against Chrome 153.0.8010.52 as the oracle. A local server feeds each corpus to a page that parses every document with `DOMParser` (scripting disabled, declarative shadow roots left as templates) and runs the same policy over the resulting DOM; headless Chrome posts the digests back. A digest is `[ok, hasScripts, imageHosts, errors, title, depthRejected]`. Each document is judged twice, with and without `<template>` contents walked, so production is scored against the browser behaviour it actually implements (no template walk) and the candidate against its own (template walk). Empty documents and depth-rejected documents are excluded from the unsafe categories, and `xlink:href` versus `href` error wording is normalised.
 
-The categories that matter are **unsafe accepts** (the side says `ok` for a document Chrome's policy rejects), **missed scripts** (Chrome sees a script the side does not) and **missed image hosts**.
+The categories that matter are **unsafe accepts** (the side says `ok` for a document Chrome's policy rejects), **missed scripts** and **missed image hosts**. All three are scored only on documents the side actually accepts — `ok` and not rejected by the nesting-depth limit — because a script or host missed inside a document that is rejected anyway cannot reach a reader.
 
-| Corpus              |  Inputs | Production unsafe accepts | Production missed hosts | Candidate unsafe accepts | Candidate missed scripts | Candidate missed hosts |
-| ------------------- | ------: | ------------------------: | ----------------------: | -----------------------: | -----------------------: | ---------------------: |
-| WPT tree structures |   1,959 |                         0 |                       0 |                        0 |                        0 |                      0 |
-| Targeted            |      62 |                         2 |                       0 |                        0 |                        0 |                      0 |
-| Fuzz, seeds 1/2/3   | 600,000 |           1,060/979/1,037 |                   4/8/4 |                    0/0/0 |                    0/0/0 |                  0/0/0 |
+| Corpus                    |  Inputs | Production unsafe accepts | Production missed hosts | Candidate unsafe accepts | Candidate missed scripts | Candidate missed hosts |
+| ------------------------- | ------: | ------------------------: | ----------------------: | -----------------------: | -----------------------: | ---------------------: |
+| WPT tree structures       |   1,959 |                         0 |                       0 |                        0 |                        0 |                      0 |
+| Targeted                  |      62 |                         2 |                       0 |                        0 |                        0 |                      0 |
+| Fuzz, seeds 1/2/3         | 600,000 |           1,060/979/1,037 |                   4/8/4 |                    0/0/0 |                    0/0/0 |                  0/0/0 |
+| Fuzz, holdout seeds 4/5/6 | 600,000 |           1,001/992/1,049 |                   4/5/7 |                    0/0/0 |                    0/0/0 |                  0/0/0 |
 
-Production misses roughly one live document in 200 of the fuzz corpus. The candidate misses none, and it never misses a script anywhere.
+Production misses roughly one live document in 200 of the fuzz corpus; the candidate misses none. Seeds 1–3 are the corpus the six html5ever patches were derived from, so seeds 4–6 were run afterwards as a holdout with the module unchanged — the result is the same on inputs that never informed a patch.
 
-The candidate's residual differences are all in the safe direction or cosmetic, and every one was classified:
+Across all 1,202,021 documents the candidate's residual differences are in the safe direction or cosmetic, and every one was classified:
 
-- **Stricter than Chrome** (candidate rejects, Chrome accepts): 7/9/3 per seed, **all** `<select><button><selectedcontent>` documents. html5ever's customizable-select implementation keeps content that this Chrome build still drops, so the candidate sees blocked elements and handlers that are not live. Same for the 2 extra scripts, the 1 title difference and the 1 depth difference — all in that family.
-- **Error-set differences**: 26/23/8 per seed. Of the 57, 32 are the same select family; 24 are documents both sides reject on the nesting-depth limit, where the candidate stops collecting further errors; and 1 is a `<form>` that Blink inserts and both html5ever and parse5 drop, in a document both sides already reject for other reasons.
+- **Stricter than Chrome** (candidate rejects, Chrome accepts): 36 documents, **all** `<select><button><selectedcontent>`. html5ever's customizable-select implementation keeps content that this Chrome build still drops, so the candidate sees blocked elements and handlers that are not live. The 5 extra scripts are the same family.
+- **Error-set differences**: 124 documents. 63 are that select family, 54 are documents both sides reject on the nesting-depth limit (where the candidate stops collecting further errors), 4 are documents the candidate rejects with one error more than Chrome, and 3 are documents the candidate rejects with one error _fewer_ — including the `<form>` that Blink inserts and both html5ever and parse5 drop. Nothing reaches a reader out of a document both sides reject, but that last group is the shape a real gap would take, so it is worth keeping in view.
+- **Title and depth differences**: 7 titles (all in rejected or select-family documents) and 4 depth decisions. In 3 of the 4 the candidate applies the depth limit where Chrome's DOM measures a hair shallower; in 1 it accepts a document whose Blink depth is just over the limit. That limit is a complexity guard rather than a policy rule, and neither side found a violation in that document.
 
 ### Production gaps found while building the oracle
 
@@ -275,4 +277,4 @@ The Cloudflare Vite plugin's `CompiledWasm` module handling does not apply to th
 
 ### Assessment
 
-The candidate meets the security bar the issue asks for, once the bar is stated against a browser instead of parse5: over 602,021 documents it never accepted anything Chrome would treat as live, never missed a script a browser would run, and fixed two of the four production gaps by construction. It is meaningfully cheaper only for large uploads, and not cheap enough to make them fit Workers Free by itself. Before any switch: reframe the gate against the browser oracle, resolve the module-import wiring, and validate on a deployed Worker (both still outstanding, with public ingress disabled).
+The candidate meets the security bar the issue asks for, once the bar is stated against a browser instead of parse5: over 1,202,021 documents — 600,000 of them a holdout generated after the patches froze — it never accepted anything Chrome would treat as live, never missed a script or an image host in a document it accepted, and fixes five of the seven production gaps by construction. It is meaningfully cheaper only for large uploads, and not cheap enough to make them fit Workers Free by itself. Before any switch: reframe the gate against the browser oracle, resolve the module-import wiring, and validate on a deployed Worker (both still outstanding, with public ingress disabled).
