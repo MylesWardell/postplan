@@ -1,0 +1,766 @@
+{
+  "measuredAt": "2026-09-22",
+  "description": "Two independent interleaved baseline/fix runs; median of three application-CPU batch averages. Raw profiles remain in the ignored results directories.",
+  "runs": [
+    {
+      "tag": "admission-master-a",
+      "revision": "0c8aee7add0acb6dbf685321f29c9d35be7f70ae",
+      "source": "archive",
+      "sourceSha256": "1d11a375b25c7ef2c78b0f63ed91f773d9a1eace42427f10da4766abb6b190da",
+      "dirty": false,
+      "plans": 58,
+      "runtime": {
+        "bun": "1.4.2",
+        "node": "v22.20.0",
+        "wrangler": "4.135.0",
+        "platform": "linux",
+        "architecture": "x64"
+      },
+      "batches": 3,
+      "samplingIntervalMicroseconds": 100,
+      "scenarios": {
+        "upload": {
+          "n": 150,
+          "batchAppMsPerRequest": [6.702066666666666, 6.19948, 6.075306666666667],
+          "medianAppMsPerRequest": 6.19948,
+          "warmStatus": {
+            "201": 50
+          },
+          "batchStatuses": [
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            }
+          ]
+        },
+        "uploadLarge": {
+          "n": 20,
+          "batchAppMsPerRequest": [22.0125, 20.5953, 21.22905],
+          "medianAppMsPerRequest": 21.22905,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [20.0113, 18.024449999999998, 20.497300000000003],
+          "medianAppMsPerRequest": 20.0113,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadMalformed": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.389893333333333, 4.916353333333333, 3.914773333333333],
+          "medianAppMsPerRequest": 4.389893333333333,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadMalformedGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [8.457899999999999, 6.96845, 7.3732],
+          "medianAppMsPerRequest": 7.3732,
+          "warmStatus": {
+            "400": 7
+          },
+          "batchStatuses": [
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            }
+          ]
+        },
+        "uploadInvalidGzip": {
+          "n": 150,
+          "batchAppMsPerRequest": [3.31878, 3.661586666666667, 3.7586133333333334],
+          "medianAppMsPerRequest": 3.661586666666667,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadUnauthorized": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.062806666666667, 4.293166666666667, 4.115526666666667],
+          "medianAppMsPerRequest": 4.115526666666667,
+          "warmStatus": {
+            "401": 50
+          },
+          "batchStatuses": [
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            }
+          ]
+        },
+        "uploadIpLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.328106666666667, 4.123733333333333, 5.365966666666666],
+          "medianAppMsPerRequest": 4.328106666666667,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        },
+        "uploadKeyLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.649026666666667, 3.9066, 3.5843],
+          "medianAppMsPerRequest": 3.9066,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tag": "admission-fix-a",
+      "revision": "86bb02c",
+      "source": "working-tree",
+      "sourceSha256": "eba9308be969d956e82f96cefb6dd24dddba0572092e04c851428c19d31bf8ef",
+      "dirty": true,
+      "plans": 58,
+      "runtime": {
+        "bun": "1.4.2",
+        "node": "v22.20.0",
+        "wrangler": "4.135.0",
+        "platform": "linux",
+        "architecture": "x64"
+      },
+      "batches": 3,
+      "samplingIntervalMicroseconds": 100,
+      "scenarios": {
+        "upload": {
+          "n": 150,
+          "batchAppMsPerRequest": [6.650706666666666, 6.004026666666667, 6.463306666666667],
+          "medianAppMsPerRequest": 6.463306666666667,
+          "warmStatus": {
+            "201": 50
+          },
+          "batchStatuses": [
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            }
+          ]
+        },
+        "uploadLarge": {
+          "n": 20,
+          "batchAppMsPerRequest": [20.885749999999998, 19.6666, 22.242250000000002],
+          "medianAppMsPerRequest": 20.885749999999998,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [17.449, 17.56175, 19.75065],
+          "medianAppMsPerRequest": 17.56175,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadMalformed": {
+          "n": 150,
+          "batchAppMsPerRequest": [3.6714866666666666, 4.543346666666666, 4.50978],
+          "medianAppMsPerRequest": 4.50978,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadMalformedGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [8.1244, 7.5089500000000005, 6.863200000000001],
+          "medianAppMsPerRequest": 7.5089500000000005,
+          "warmStatus": {
+            "400": 7
+          },
+          "batchStatuses": [
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            }
+          ]
+        },
+        "uploadInvalidGzip": {
+          "n": 150,
+          "batchAppMsPerRequest": [3.5067800000000005, 3.7756600000000002, 3.1984133333333333],
+          "medianAppMsPerRequest": 3.5067800000000005,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadUnauthorized": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.5906199999999995, 4.172680000000001, 4.46776],
+          "medianAppMsPerRequest": 4.46776,
+          "warmStatus": {
+            "401": 50
+          },
+          "batchStatuses": [
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            }
+          ]
+        },
+        "uploadIpLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.08342, 4.173046666666667, 4.50236],
+          "medianAppMsPerRequest": 4.173046666666667,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        },
+        "uploadKeyLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [3.478893333333333, 3.500566666666667, 3.1697200000000003],
+          "medianAppMsPerRequest": 3.478893333333333,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tag": "admission-master-b",
+      "revision": "0c8aee7add0acb6dbf685321f29c9d35be7f70ae",
+      "source": "archive",
+      "sourceSha256": "1d11a375b25c7ef2c78b0f63ed91f773d9a1eace42427f10da4766abb6b190da",
+      "dirty": false,
+      "plans": 58,
+      "runtime": {
+        "bun": "1.4.2",
+        "node": "v22.20.0",
+        "wrangler": "4.135.0",
+        "platform": "linux",
+        "architecture": "x64"
+      },
+      "batches": 3,
+      "samplingIntervalMicroseconds": 100,
+      "scenarios": {
+        "upload": {
+          "n": 150,
+          "batchAppMsPerRequest": [6.694613333333334, 5.528866666666667, 5.844106666666667],
+          "medianAppMsPerRequest": 5.844106666666667,
+          "warmStatus": {
+            "201": 50
+          },
+          "batchStatuses": [
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            }
+          ]
+        },
+        "uploadLarge": {
+          "n": 20,
+          "batchAppMsPerRequest": [23.2543, 20.948349999999998, 19.3138],
+          "medianAppMsPerRequest": 20.948349999999998,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [18.378149999999998, 18.6448, 17.08135],
+          "medianAppMsPerRequest": 18.378149999999998,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadMalformed": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.221933333333333, 4.05698, 3.75798],
+          "medianAppMsPerRequest": 4.05698,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadMalformedGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [6.7280500000000005, 7.4569, 8.2339],
+          "medianAppMsPerRequest": 7.4569,
+          "warmStatus": {
+            "400": 7
+          },
+          "batchStatuses": [
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            }
+          ]
+        },
+        "uploadInvalidGzip": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.42666, 4.223526666666666, 3.8587733333333336],
+          "medianAppMsPerRequest": 4.223526666666666,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadUnauthorized": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.184633333333334, 4.3658399999999995, 4.461346666666667],
+          "medianAppMsPerRequest": 4.3658399999999995,
+          "warmStatus": {
+            "401": 50
+          },
+          "batchStatuses": [
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            }
+          ]
+        },
+        "uploadIpLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [5.185326666666667, 3.9380466666666667, 5.67778],
+          "medianAppMsPerRequest": 5.185326666666667,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        },
+        "uploadKeyLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [5.541053333333333, 4.43382, 4.250393333333333],
+          "medianAppMsPerRequest": 4.43382,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tag": "admission-fix-b",
+      "revision": "86bb02c",
+      "source": "working-tree",
+      "sourceSha256": "eba9308be969d956e82f96cefb6dd24dddba0572092e04c851428c19d31bf8ef",
+      "dirty": true,
+      "plans": 58,
+      "runtime": {
+        "bun": "1.4.2",
+        "node": "v22.20.0",
+        "wrangler": "4.135.0",
+        "platform": "linux",
+        "architecture": "x64"
+      },
+      "batches": 3,
+      "samplingIntervalMicroseconds": 100,
+      "scenarios": {
+        "upload": {
+          "n": 150,
+          "batchAppMsPerRequest": [6.411826666666666, 6.227946666666667, 5.940646666666667],
+          "medianAppMsPerRequest": 6.227946666666667,
+          "warmStatus": {
+            "201": 50
+          },
+          "batchStatuses": [
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            },
+            {
+              "201": 150
+            }
+          ]
+        },
+        "uploadLarge": {
+          "n": 20,
+          "batchAppMsPerRequest": [21.8394, 21.4917, 21.533549999999998],
+          "medianAppMsPerRequest": 21.533549999999998,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [18.148500000000002, 17.9849, 19.9724],
+          "medianAppMsPerRequest": 18.148500000000002,
+          "warmStatus": {
+            "201": 7
+          },
+          "batchStatuses": [
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            },
+            {
+              "201": 20
+            }
+          ]
+        },
+        "uploadMalformed": {
+          "n": 150,
+          "batchAppMsPerRequest": [3.983673333333334, 3.6050066666666667, 4.5111],
+          "medianAppMsPerRequest": 3.983673333333334,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadMalformedGzip": {
+          "n": 20,
+          "batchAppMsPerRequest": [6.651649999999999, 8.385250000000001, 7.4793],
+          "medianAppMsPerRequest": 7.4793,
+          "warmStatus": {
+            "400": 7
+          },
+          "batchStatuses": [
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            },
+            {
+              "400": 20
+            }
+          ]
+        },
+        "uploadInvalidGzip": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.2218, 4.708886666666666, 3.6470733333333336],
+          "medianAppMsPerRequest": 4.2218,
+          "warmStatus": {
+            "400": 50
+          },
+          "batchStatuses": [
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            },
+            {
+              "400": 150
+            }
+          ]
+        },
+        "uploadUnauthorized": {
+          "n": 150,
+          "batchAppMsPerRequest": [4.43006, 4.45134, 4.216453333333333],
+          "medianAppMsPerRequest": 4.43006,
+          "warmStatus": {
+            "401": 50
+          },
+          "batchStatuses": [
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            },
+            {
+              "401": 150
+            }
+          ]
+        },
+        "uploadIpLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [3.8083933333333335, 4.16184, 4.585786666666667],
+          "medianAppMsPerRequest": 4.16184,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        },
+        "uploadKeyLimited": {
+          "n": 150,
+          "batchAppMsPerRequest": [3.4459, 3.2300999999999997, 3.234386666666667],
+          "medianAppMsPerRequest": 3.234386666666667,
+          "warmStatus": {
+            "429": 50
+          },
+          "batchStatuses": [
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            },
+            {
+              "429": 150
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

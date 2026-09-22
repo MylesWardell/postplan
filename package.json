@@ -47,7 +47,7 @@
     "format:root": "oxfmt --check",
     "format:root:fix": "oxfmt .",
     "typecheck:benchmark": "tsc -p benchmark/tsconfig.json",
-    "test:benchmark": "vitest run benchmark/cloudflare/cpu-profile.test.ts",
+    "test:benchmark": "vitest run benchmark/cloudflare/cpu-profile.test.ts benchmark/cloudflare/status.test.ts",
     "check": "turbo run quality test",
     "pack:cli": "turbo run build --filter=postplan... && cd apps/cli && bun pm pack --ignore-scripts --destination ../../dist",
     "db:generate": "bun run --filter @postplan/web db:generate",
