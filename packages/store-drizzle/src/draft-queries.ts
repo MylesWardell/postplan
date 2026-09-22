@@ -4,7 +4,7 @@ import { ORPCError } from "@orpc/server";
 import { and, desc, eq, isNull, max, sql } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 
-import { publicUploadAuth } from "@postplan/store";
+import { requireUploadAuth } from "@postplan/store";
 import type { UploadContext, UploadInput } from "@postplan/store";
 import type { DraftStatus } from "@postplan/store";
 import type { UrlContext } from "@postplan/store";
@@ -269,12 +269,12 @@ const draftTitleQuery = prepared((db) =>
 );
 
 export async function uploadDraft(db: Database, ctx: UploadContext, input: UploadInput) {
+  const auth = requireUploadAuth(ctx.apiKey);
   const validation = validateHtml(input.html, { maxBytes: ctx.maxHtmlBytes });
   if (!validation.ok || typeof input.html !== "string") {
     return { ok: false as const, errors: validation.errors, warnings: validation.warnings };
   }
   const html = input.html;
-  const auth = ctx.apiKey ?? publicUploadAuth;
   const metadata = input.metadata ?? {};
   const draftId = input.draftId ?? newDraftId();
   if (input.draftId && !(await ownedDraftIdQuery(db).get({ draftId, accountId: auth.accountId }))) {

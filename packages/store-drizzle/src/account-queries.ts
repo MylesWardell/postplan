@@ -2,7 +2,6 @@ import { createHash, randomUUID } from "node:crypto";
 
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 
-import { publicUploadAuth } from "@postplan/store";
 import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "@postplan/store";
 
 import { prepared, statement } from "./database";
@@ -12,49 +11,35 @@ import { accounts, apiKeys, identities } from "./schema";
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 export async function seedAccounts(db: Database, bootstrapKey?: string): Promise<void> {
-  const statements = [];
-  for (const [auth, token] of [
-    [publicUploadAuth, "postplan-public-upload-sentinel"],
-    ...(bootstrapKey
-      ? [
-          [
-            {
-              id: "key_bootstrap",
-              accountId: "acct_bootstrap",
-              name: "Bootstrap API Key",
-              accountName: "Bootstrap Account",
-            },
-            bootstrapKey,
-          ] as const,
-        ]
-      : []),
-  ] as const) {
-    statements.push(
-      statement(
-        db
-          .insert(accounts)
-          .values({ id: auth.accountId, name: auth.accountName })
-          .onConflictDoUpdate({ target: accounts.id, set: { updatedAt: new Date() } }),
-      ),
-    );
-    statements.push(
-      statement(
-        db
-          .insert(apiKeys)
-          .values({
-            id: auth.id,
-            accountId: auth.accountId,
-            name: auth.name,
-            keyHash: hash(token),
-          })
-          .onConflictDoUpdate({
-            target: apiKeys.id,
-            set: { keyHash: hash(token), name: auth.name, revokedAt: null },
-          }),
-      ),
-    );
+  if (!bootstrapKey) {
+    return;
   }
-  await db.atomic(statements);
+  await db.atomic([
+    statement(
+      db
+        .insert(accounts)
+        .values({ id: "acct_bootstrap", name: "Bootstrap Account" })
+        .onConflictDoUpdate({ target: accounts.id, set: { updatedAt: new Date() } }),
+    ),
+    statement(
+      db
+        .insert(apiKeys)
+        .values({
+          id: "key_bootstrap",
+          accountId: "acct_bootstrap",
+          name: "Bootstrap API Key",
+          keyHash: hash(bootstrapKey),
+        })
+        .onConflictDoUpdate({
+          target: apiKeys.id,
+          set: {
+            keyHash: hash(bootstrapKey),
+            name: "Bootstrap API Key",
+            revokedAt: null,
+          },
+        }),
+    ),
+  ]);
 }
 
 const apiKeyByHashQuery = prepared((db) =>
@@ -71,7 +56,8 @@ const apiKeyByHashQuery = prepared((db) =>
     .where(
       and(
         eq(apiKeys.keyHash, sql.placeholder("keyHash")),
-        ne(apiKeys.id, publicUploadAuth.id),
+        ne(apiKeys.id, "key_public_upload"),
+        ne(apiKeys.accountId, "acct_public_upload"),
         isNull(apiKeys.revokedAt),
       ),
     )

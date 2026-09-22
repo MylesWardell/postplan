@@ -10,6 +10,7 @@ import {
   apiKeys,
   identities,
   draftVersions,
+  drafts,
   uploadEvents,
 } from "@postplan/store-drizzle/schema";
 
@@ -104,7 +105,7 @@ test("D1 shares account lifecycle and preserves identity under concurrent first 
     ),
   );
   expect(new Set(results.map((row) => row.accountId)).size).toBe(1);
-  expect(await db.select().from(accounts)).toHaveLength(3);
+  expect(await db.select().from(accounts)).toHaveLength(2);
   const updated = await store.accounts.findOrCreateIdentity({ provider: "test", subject: "user" });
   expect(updated.email).toBeNull();
   expect((await db.select().from(identities))[0]?.piiSubject).toBe("stable");
@@ -159,7 +160,7 @@ test("D1 rejects ownership/deletion races and rolls back every dependent write",
       context: { ...context, apiKey: null },
       input: { ...input, draftId: first.draftId },
     }),
-  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   await expect(
     store.drafts.upload({
       context: {
@@ -194,4 +195,53 @@ test("the shared store delegates rate limits to Durable Objects", async () => {
   expect((await store.rateLimit(input)).success).toBe(true);
   expect((await createCloudflareStore(env).store.rateLimit(input)).success).toBe(true);
   expect((await store.rateLimit(input)).success).toBe(false);
+});
+
+test("D1 rejects unauthenticated uploads before writes and keeps legacy drafts read-only", async () => {
+  const { store, context, db } = await fixture();
+  let writes = 0;
+  const authenticated = {
+    ...context,
+    putHtml: async () => {
+      writes++;
+    },
+  };
+  const input = { html: "<!doctype html><title>Legacy</title><p>Preserved</p>" };
+  await expect(
+    store.drafts.upload({ context: { ...authenticated, apiKey: null }, input }),
+  ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+  expect(writes).toBe(0);
+  expect(await db.select().from(drafts)).toHaveLength(0);
+  expect(await db.select().from(draftVersions)).toHaveLength(0);
+  const first = await store.drafts.upload({ context: authenticated, input });
+  if (!first.ok) {
+    throw new Error("Upload failed");
+  }
+  await db.insert(accounts).values({ id: "acct_public_upload", name: "Public Uploads" });
+  await db
+    .update(drafts)
+    .set({ accountId: "acct_public_upload" })
+    .where(eq(drafts.id, first.draftId));
+  const key = await store.accounts.createApiKey({
+    accountId: "acct_public_upload",
+    name: "legacy",
+  });
+  expect(await store.accounts.findApiKey({ token: key.token })).toBeNull();
+  for (const apiKey of [
+    null,
+    context.apiKey,
+    { ...context.apiKey!, accountId: "acct_public_upload" },
+  ]) {
+    await expect(
+      store.drafts.upload({
+        context: { ...authenticated, apiKey },
+        input: { ...input, draftId: first.draftId },
+      }),
+    ).rejects.toMatchObject({ code: apiKey === context.apiKey ? "NOT_FOUND" : "UNAUTHORIZED" });
+  }
+  expect(writes).toBe(1);
+  expect(await db.select().from(draftVersions)).toHaveLength(1);
+  expect((await store.drafts.findPublicVersion({ draftId: first.draftId })).draft?.accountId).toBe(
+    "acct_public_upload",
+  );
 });

@@ -35,7 +35,7 @@ async function upload(file: string, options: UploadOptions): Promise<void> {
     throw new CliError(`File does not exist: ${resolvedFile}`);
   }
 
-  const connection = readAuth(options.apiUrl, { requireApiKey: false });
+  const connection = readAuth(options.apiUrl);
   const html = fs.readFileSync(resolvedFile, "utf8");
   const draftId = options.new ? undefined : options.draft || findDraft(resolvedFile)?.draftId;
 

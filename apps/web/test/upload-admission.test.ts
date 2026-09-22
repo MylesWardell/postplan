@@ -6,7 +6,6 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { config } from "#config";
 import { createContextFactory } from "#context";
 import { createUploadHandler } from "#lib/upload-http";
-import { publicUploadAuth } from "@postplan/store";
 import { createTestStore } from "@postplan/store/testing";
 
 let database: Awaited<ReturnType<typeof createTestStore>>;
@@ -14,7 +13,6 @@ const previous = { ...config };
 
 beforeEach(async () => {
   database = await createTestStore();
-  config.allowAnonymousUploads = false;
   config.clientIpSource = "req-ip";
   config.apiGateway = false;
   config.trustProxy = false;
@@ -116,13 +114,6 @@ test.each(["ip", "key"])("rejects exceeded %s limit before consuming the body", 
   assert.equal(response.headers.get("RateLimit-Limit"), limiter === "ip" ? "10" : "8");
   assert.equal(lookup.mock.calls.length, limiter === "ip" ? 0 : 1);
   assert.equal(key.mock.calls.length, limiter === "ip" ? 0 : 1);
-});
-
-test("meters malformed anonymous uploads when enabled", async () => {
-  config.allowAnonymousUploads = true;
-  const { handler, key } = setup();
-  assert.equal((await handler(request("{", undefined, null), null)).status, 400);
-  assert.deepEqual(key.mock.calls[0], [publicUploadAuth.id]);
 });
 
 test.each(["gzip, gzip, gzip", "identity, identity, gzip", "br", "gzip, br"])(

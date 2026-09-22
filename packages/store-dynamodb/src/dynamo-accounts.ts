@@ -36,10 +36,7 @@ const accountAddress = (id: string) => ({ pk: `ACCOUNT#${id}`, sk: "META" });
 const tokenAddress = (tokenHash: string) => ({ pk: `TOKEN#${tokenHash}`, sk: "META" });
 
 export async function seedDynamoAccounts(db: DynamoDatabase, bootstrapKey?: string) {
-  const accounts = [
-    { id: "acct_public_upload", name: "Public Uploads" },
-    ...(bootstrapKey ? [{ id: "acct_bootstrap", name: "Bootstrap Account" }] : []),
-  ];
+  const accounts = bootstrapKey ? [{ id: "acct_bootstrap", name: "Bootstrap Account" }] : [];
   for (const account of accounts) {
     try {
       await db.put(
@@ -101,7 +98,13 @@ export async function findDynamoApiKey(
     return null;
   }
   const key = await db.get<DynamoApiKey>(db.tables.identity, keyAddress(lookup.keyId));
-  if (!key || key.revokedAt || key.keyHash !== keyHash || key.id === "key_public_upload") {
+  if (
+    !key ||
+    key.revokedAt ||
+    key.keyHash !== keyHash ||
+    key.id === "key_public_upload" ||
+    key.accountId === "acct_public_upload"
+  ) {
     return null;
   }
   const account = await db.get<Account>(db.tables.identity, accountAddress(key.accountId));

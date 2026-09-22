@@ -13,7 +13,6 @@ test("Hono uploads preserve raw JSON, CORS, body bounds and rate-limit responses
   const previous = { ...config, rateLimits: structuredClone(config.rateLimits) };
   const objects = new Map<string, string>();
   await store.accounts.seed({ bootstrapKey: "hono-upload-key" });
-  config.allowAnonymousUploads = false;
   // Four rejected bodies and three successful uploads consume the key allowance.
   config.rateLimits.uploadKey = { maxRequests: 7, window: 60000 };
   const server = Bun.serve({

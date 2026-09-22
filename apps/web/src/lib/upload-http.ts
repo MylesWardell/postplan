@@ -1,10 +1,9 @@
 import type { RateLimiter } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
 
-import { config } from "#config";
 import type { ContextFactory } from "#context";
 import { uploadInput, uploadOutput } from "@postplan/api/schemas";
-import { publicUploadAuth } from "@postplan/store";
+import { requireUploadAuth } from "@postplan/store";
 
 import { resolveApiContext } from "./api-context";
 import { clientIp } from "./client-ip";
@@ -73,10 +72,8 @@ export function createUploadHandler(createContext: ContextFactory) {
       // Meter every attempt before authentication lookup or reading the body.
       await admit(base.rateLimiters["upload-ip"], clientIp(request, peerIp) || "anonymous");
       const ctx = await resolveApiContext(base, headers);
-      if (!config.allowAnonymousUploads && !ctx.apiKey) {
-        throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
-      }
-      await admit(ctx.rateLimiters["upload-key"], ctx.apiKey?.id ?? publicUploadAuth.id);
+      const auth = requireUploadAuth(ctx.apiKey);
+      await admit(ctx.rateLimiters["upload-key"], auth.id);
 
       const encodings =
         request.headers

@@ -9,7 +9,7 @@ import type { UploadContext } from "@postplan/store";
 import { cleanText, matchesDraftSearch } from "@postplan/store";
 import type { DraftStatus } from "@postplan/store";
 import type { UploadInput } from "@postplan/store";
-import { publicUploadAuth } from "@postplan/store";
+import { requireUploadAuth } from "@postplan/store";
 import { validateHtml } from "@postplan/store/html-policy";
 import { draftUrlBuilder, getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
 import { expired } from "@postplan/store/retention";
@@ -253,6 +253,7 @@ export async function uploadDynamoDraft(
   ctx: UploadContext,
   input: UploadInput,
 ) {
+  const auth = requireUploadAuth(ctx.apiKey);
   const validation = validateHtml(input.html, { maxBytes: ctx.maxHtmlBytes });
   if (!validation.ok || typeof input.html !== "string") {
     return { ok: false as const, errors: validation.errors, warnings: validation.warnings };
@@ -261,7 +262,6 @@ export async function uploadDynamoDraft(
   if (Buffer.byteLength(JSON.stringify(metadata), "utf8") > 32 * 1024) {
     throw new ORPCError("BAD_REQUEST", { message: "Upload metadata exceeds 32 KiB." });
   }
-  const auth = ctx.apiKey ?? publicUploadAuth;
   const draftId = input.draftId ?? newId();
   const versionId = randomUUID();
   const objectKey = `drafts/${draftId}/versions/${versionId}.html`;
