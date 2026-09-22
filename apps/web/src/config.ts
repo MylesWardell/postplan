@@ -17,7 +17,6 @@ export interface Config {
   port: number;
   databasePath: string;
   planRetentionDays: number;
-  allowAnonymousUploads: boolean;
   apiGateway: boolean;
   bootstrapApiKey: string | undefined;
   publicBaseUrl: string | undefined;
@@ -48,11 +47,6 @@ export const config: Config = {
   port: Number(env.PORT || 3000),
   databasePath: env.DATABASE_PATH || "data/postplan.sqlite",
   planRetentionDays: parseRetentionDays(env.PLAN_RETENTION_DAYS),
-  allowAnonymousUploads: parseBoolean(
-    "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS",
-    env.POSTPLAN_ALLOW_ANONYMOUS_UPLOADS,
-    true,
-  ),
   apiGateway: parseBoolean("POSTPLAN_API_GATEWAY", env.POSTPLAN_API_GATEWAY, false),
   bootstrapApiKey: env.POSTPLAN_BOOTSTRAP_API_KEY,
   publicBaseUrl: env.POSTPLAN_PUBLIC_BASE_URL,

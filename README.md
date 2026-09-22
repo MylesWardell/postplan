@@ -21,10 +21,10 @@ bun install --frozen-lockfile
 bunx --no-install turbo run cf:build --filter=@postplan/cloudflare
 cd packages/cloudflare
 bun deploy/initialize.ts --local
-bunx --no-install wrangler dev --env-file .dev.vars --config dist/server/wrangler.json --persist-to .wrangler/state --local --port 5173 --var POSTPLAN_APPLICATION_ENABLED:true --var POSTPLAN_ALLOW_ANONYMOUS_UPLOADS:true --var POSTPLAN_SESSION_SECRET:local-session-only
+bunx --no-install wrangler dev --env-file .dev.vars --config dist/server/wrangler.json --persist-to .wrangler/state --local --port 5173 --var POSTPLAN_APPLICATION_ENABLED:true --var POSTPLAN_SESSION_SECRET:local-session-only
 ```
 
-Open **http://localhost:5173**. Data stays in `packages/cloudflare/.wrangler/state`; Ctrl+C stops the server. This local setup permits anonymous uploads and uses development-only secrets. Dashboard sign-in uses Shoo and needs internet access. Rebuild after code changes.
+Open **http://localhost:5173**. Data stays in `packages/cloudflare/.wrangler/state`; Ctrl+C stops the server. Every upload requires an API key. Sign in to the dashboard, create a key, then run `postplan auth set <api-key> --api-url http://localhost:5173` before uploading. This local setup uses development-only secrets. Dashboard sign-in uses Shoo and needs internet access. Rebuild after code changes.
 
 For the Bun/SQLite + S3 setup, see [development](docs/development.md) and [configuration](docs/configuration.md). Run `bun run check` from the root before committing.
 

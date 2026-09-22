@@ -247,7 +247,7 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     const malformed = await app(
       new Request(base + "/api/uploads", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", authorization: "Bearer ssr-owner-key" },
         body: "{",
       }),
     );
@@ -255,7 +255,11 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     const oversized = await app(
       new Request(base + "/api/uploads", {
         method: "POST",
-        headers: { "content-type": "application/json", "content-encoding": "gzip" },
+        headers: {
+          "content-type": "application/json",
+          "content-encoding": "gzip",
+          authorization: "Bearer ssr-owner-key",
+        },
         body: gzipSync(JSON.stringify({ html: "x".repeat(2 * 1024 * 1024 + 1) })),
       }),
     );

@@ -15,7 +15,6 @@ test("uploads never dispatch through Astro or the oRPC HTTP handler", async () =
   let pageCalls = 0;
   try {
     config.publicBaseUrl = "https://plans.example.com";
-    config.allowAnonymousUploads = false;
     await store.accounts.seed({ bootstrapKey: "dispatch-test" });
     const application = createApplication(
       {

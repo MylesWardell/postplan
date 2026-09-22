@@ -134,6 +134,7 @@
       "version": "0.0.4",
       "dependencies": {
         "@orpc/contract": "catalog:",
+        "@orpc/server": "catalog:",
         "@postplan/api": "workspace:*",
         "parse5": "^8.0.1",
         "zod": "catalog:",

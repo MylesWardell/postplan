@@ -22,7 +22,6 @@ resource "aws_lambda_function" "function" {
       AWS_LWA_INVOKE_MODE                   = "buffered"
       POSTPLAN_PUBLIC_BASE_URL              = "https://${var.wildcard_enabled ? "*." : ""}${var.domain_name}"
       POSTPLAN_ALLOWED_LOGIN_DOMAINS        = join(",", sort(tolist(var.allowed_login_domains)))
-      POSTPLAN_ALLOW_ANONYMOUS_UPLOADS      = "false"
       POSTPLAN_API_GATEWAY                  = "true"
       POSTPLAN_SESSION_SECRET_PARAMETER_ARN = var.session_secret_parameter_arn
       } : {

@@ -13,7 +13,6 @@ test("Hono uploads preserve raw JSON, CORS, body bounds and rate-limit responses
   const previous = { ...config, rateLimits: structuredClone(config.rateLimits) };
   const objects = new Map<string, string>();
   await store.accounts.seed({ bootstrapKey: "hono-upload-key" });
-  config.allowAnonymousUploads = false;
   config.rateLimits.uploadKey = { maxRequests: 3, window: 60000 };
   const server = Bun.serve({
     hostname: "127.0.0.1",
@@ -62,7 +61,11 @@ test("Hono uploads preserve raw JSON, CORS, body bounds and rate-limit responses
     assert.equal(objects.size, 0);
     const html = "<!doctype html><title>Hono</title><p>Direct upload</p>";
     const body = JSON.stringify({ html });
-    assert.equal((await send(body, { authorization: "Bearer invalid" })).status, 401);
+    for (const authorization of ["", "Bearer invalid", "Bearer postplan-public-upload-sentinel"]) {
+      assert.equal((await send(body, { authorization })).status, 401);
+      assert.equal(objects.size, 0);
+    }
+    assert.equal((await send("{", { authorization: "" })).status, 401);
     for (const [payload, encoding] of [
       [body, "identity"],
       [gzipSync(body), "gzip"],
