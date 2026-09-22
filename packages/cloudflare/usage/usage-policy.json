@@ -1,5 +1,5 @@
 {
-  "worker": "postplan-clone",
+  "worker": "postplan",
   "database_id": "6f150bc0-0a62-48b9-9958-4994397b5484",
   "bucket": "postplan-cf-probe-a3342cb9",
   "zone_ids": [],
