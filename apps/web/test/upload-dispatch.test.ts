@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
-import { test, vi } from "vitest";
+
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
-import { createTestStore } from "@postplan/store/testing";
-import { createApplication } from "../src/application";
+import { test, vi } from "vitest";
+
 import { config } from "#config";
+import { createTestStore } from "@postplan/store/testing";
+
+import { createApplication } from "../src/application";
 
 test("uploads never dispatch through Astro or the oRPC HTTP handler", async () => {
   const { store, close } = await createTestStore();

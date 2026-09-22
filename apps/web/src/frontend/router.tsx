@@ -1,9 +1,11 @@
-import { Hono, type MiddlewareHandler } from "hono";
-import { ORPCError } from "@orpc/server";
 import { parseFormData } from "@orpc/openapi/helpers";
+import { ORPCError } from "@orpc/server";
+import { Hono, type MiddlewareHandler } from "hono";
+
 import { completeSignIn, safeNextPath, signIn } from "#auth/handlers";
 import { assertApplicationOrigin, clearSessionCookie, readSession } from "#auth/session";
 import { redirect } from "#lib/redirect";
+
 import {
   authenticatedContext,
   requireConfiguredSignIn,
@@ -11,12 +13,12 @@ import {
 } from "./context.server";
 import { loadDashboard, loadDraft } from "./loaders";
 import { notFoundResponse, page } from "./response.server";
-import { webAction } from "./web";
-import { HomePage } from "./views/home";
 import { DashboardPage } from "./views/dashboard";
 import { DetailPage } from "./views/detail";
+import { HomePage } from "./views/home";
 import { KeysPage } from "./views/keys";
 import { signInResponse } from "./views/sign-in";
+import { webAction } from "./web";
 
 // Astro dispatches document requests here. No browser router or server-function transport.
 export const frontend = new Hono<{ Bindings: AppRequestContext }>({ strict: false });

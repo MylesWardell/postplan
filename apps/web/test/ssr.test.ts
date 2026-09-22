@@ -1,10 +1,9 @@
-import { createTestStore } from "@postplan/store/testing";
-import { gzipSync } from "node:zlib";
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { gzipSync } from "node:zlib";
+
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { createServerOptions } from "./start-server";
-import { config } from "#config";
+import { test } from "vitest";
+
 import {
   createAuthStateCookie,
   createSessionCookie,
@@ -12,6 +11,10 @@ import {
   readSession,
 } from "#auth/session";
 import { resetShooCaches } from "#auth/shoo";
+import { config } from "#config";
+import { createTestStore } from "@postplan/store/testing";
+
+import { createServerOptions } from "./start-server";
 
 // Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {

@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
-import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
 if (args.some((arg) => !["--local", "--remote"].includes(arg)) || args.length > 1) {

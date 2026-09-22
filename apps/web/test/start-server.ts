@@ -1,6 +1,6 @@
-import { createServerOptions as bunOptions } from "#index";
 import { config } from "#config";
 import type { ServerDependencies } from "#context";
+import { createServerOptions as bunOptions } from "#index";
 import type * as ServerModule from "#server";
 
 // Exercise Astro's built endpoints and Hono rendering, not uncompiled source.

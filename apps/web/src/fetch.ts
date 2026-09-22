@@ -1,5 +1,5 @@
-import { Hono } from "hono";
 import { FetchState, actions, middleware, pages } from "astro/hono";
+import { Hono } from "hono";
 
 const app = new Hono<{ Variables: { fetchState: FetchState } }>();
 app.use(async (c, next) => {

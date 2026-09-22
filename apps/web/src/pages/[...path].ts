@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+
 import { frontend } from "../frontend/router";
 
 export const prerender = false;

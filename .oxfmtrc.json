@@ -2,6 +2,20 @@
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "printWidth": 100,
   "bracketSpacing": true,
+  "sortImports": {
+    "internalPattern": ["@postplan/", "#"],
+    "groups": [
+      "side_effect",
+      "builtin",
+      "external",
+      ["internal", "subpath"],
+      ["parent", "sibling", "index"],
+      "style",
+      "side_effect_style",
+      "unknown"
+    ],
+    "sortSideEffects": false
+  },
   "ignorePatterns": [
     "**/dist/**",
     "**/node_modules/**",

@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { gzipSync, deflateRawSync } from "node:zlib";
+
 import { test } from "vitest";
-import { createTestStore } from "@postplan/store/testing";
-import { createServerOptions } from "./start-server";
+
 import { config } from "#config";
+import { createTestStore } from "@postplan/store/testing";
+
+import { createServerOptions } from "./start-server";
 
 test("Hono uploads preserve raw JSON, CORS, body bounds and rate-limit responses", async () => {
   const { store, close } = await createTestStore();

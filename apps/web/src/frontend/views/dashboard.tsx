@@ -1,6 +1,7 @@
 import type { DraftStatus } from "@postplan/api";
-import type { loadDashboard } from "../loaders";
+
 import { Layout } from "../layout";
+import type { loadDashboard } from "../loaders";
 import { date, Status } from "../shared";
 
 function dashboardHref(query: string, status: DraftStatus, cursor?: string) {

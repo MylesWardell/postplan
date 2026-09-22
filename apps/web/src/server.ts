@@ -1,10 +1,10 @@
-import { createApplication as createBaseApplication } from "./application";
-import type { ServerDependencies } from "./context";
-import { renderFrontend } from "./astro-render";
-
-import { config } from "./config";
 import { createRuntimeStore } from "#db/client";
 import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";
+
+import { createApplication as createBaseApplication } from "./application";
+import { renderFrontend } from "./astro-render";
+import { config } from "./config";
+import type { ServerDependencies } from "./context";
 
 export const createApplication = (deps: ServerDependencies) =>
   createBaseApplication(deps, { renderFrontend });

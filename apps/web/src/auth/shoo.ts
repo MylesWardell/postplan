@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
+
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { JWTPayload } from "jose";
+
 import { config } from "#config";
 const randomToken = (bytes: number) => randomBytes(bytes).toString("base64url");
 

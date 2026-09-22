@@ -4,6 +4,7 @@
 // Every batch excludes native SQLite execution (it stands in for remote D1, which is not
 // Worker CPU) and the benchmark's request construction before the median is calculated.
 import { readFileSync, writeFileSync } from "node:fs";
+
 import { applicationMilliseconds, median, parseCpuProfile } from "./cpu-profile";
 
 type BatchSummary = { batch: number; profile: string };

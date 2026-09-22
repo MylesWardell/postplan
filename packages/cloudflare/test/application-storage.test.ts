@@ -1,9 +1,10 @@
-import { env } from "cloudflare:workers";
 import { reset } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, expect, test } from "vitest";
+
+import schema from "../deploy/schema.sql?raw";
 import { applicationStorage } from "../src/application-storage";
 import { boundedBody } from "../src/body";
-import schema from "../deploy/schema.sql?raw";
 
 beforeEach(async () => {
   await env.POSTPLAN_DB.batch(

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+
 import { expect, test } from "vitest";
+
 import type { Store } from "@postplan/store";
 import { createTestStore } from "@postplan/store/testing";
 

@@ -1,9 +1,11 @@
-import { defineConfig } from "astro/config";
-import { fileURLToPath } from "node:url";
 import { relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { defineConfig } from "astro/config";
 import { defaultClientConditions, defaultServerConditions } from "vite";
-import { selectDatabase } from "../../packages/lambda/src/configuration";
+
 import { assertSqliteDatabase } from "../../packages/cloudflare/src/configuration";
+import { selectDatabase } from "../../packages/lambda/src/configuration";
 
 const target = process.env.POSTPLAN_RUNTIME || "aws";
 if (target !== "aws" && target !== "cloudflare") {

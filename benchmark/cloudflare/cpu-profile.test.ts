@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+
 import { applicationMilliseconds, median } from "./cpu-profile";
 import type { CpuProfile } from "./cpu-profile";
 

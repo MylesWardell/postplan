@@ -1,4 +1,5 @@
 import { createApp } from "astro/app/entrypoint";
+
 import type { AppRequestContext } from "./frontend/context.server";
 
 const app = createApp({ streaming: false });

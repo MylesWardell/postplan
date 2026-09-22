@@ -1,6 +1,7 @@
-import { openapi } from "@orpc/openapi";
 import { oc } from "@orpc/contract";
 import type { RouterContractClient } from "@orpc/contract";
+import { openapi } from "@orpc/openapi";
+
 import * as schemas from "./schemas/index";
 export * from "./schemas/index";
 

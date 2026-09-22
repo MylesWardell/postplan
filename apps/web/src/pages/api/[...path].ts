@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+
 import { applyContentSecurityPolicy, createNonce } from "#lib/content-security-policy";
 
 export const prerender = false;

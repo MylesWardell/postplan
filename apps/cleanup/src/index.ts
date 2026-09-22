@@ -1,7 +1,9 @@
 import { CloudWatchClient, PutMetricDataCommand } from "@aws-sdk/client-cloudwatch";
+
 import { createDynamoDatabase } from "@postplan/store-dynamodb";
-import { parseRetentionDays } from "@postplan/store/retention";
 import { cleanupPlans } from "@postplan/store-dynamodb/cleanup";
+import { parseRetentionDays } from "@postplan/store/retention";
+
 import { cleanupStorage } from "./storage";
 
 export async function handler() {

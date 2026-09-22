@@ -1,5 +1,6 @@
 import type { Child } from "hono/jsx";
 import { renderToString } from "hono/jsx/dom/server";
+
 import { Layout } from "./layout";
 
 export function page(element: Child, status = 200): Response {

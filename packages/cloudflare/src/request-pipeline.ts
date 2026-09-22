@@ -1,4 +1,5 @@
 import type { createApplication } from "@postplan/web/application";
+
 import { boundedBody } from "./body";
 import { cloudflareGateway } from "./gateway";
 

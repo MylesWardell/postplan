@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { execFile, execFileSync } from "node:child_process";
+import fs from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
-import fs from "node:fs";
-import { test } from "vitest";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+import { test } from "vitest";
 
 test("CLI displays the oRPC error message and upload validation details", async () => {
   const directory = fs.mkdtempSync(join(tmpdir(), "postplan-cli-"));

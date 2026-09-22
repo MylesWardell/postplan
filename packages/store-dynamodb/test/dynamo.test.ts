@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
+
 import { test, expect } from "vitest";
+
+import type { Store, UploadContext, UploadInput } from "@postplan/store";
+import { cleanupPlans } from "@postplan/store-dynamodb/cleanup";
 import { findDynamoPublicVersion, claimExpiredPlan } from "@postplan/store-dynamodb/dynamo-drafts";
 import type { DynamoPlan } from "@postplan/store-dynamodb/dynamo-drafts";
 import { DynamoRateLimiter } from "@postplan/store-dynamodb/dynamo-rate-limit";
-import { cleanupPlans } from "@postplan/store-dynamodb/cleanup";
+
 import { dynamoFixture, dynamoEndpoint } from "./fixture";
-import type { Store, UploadContext, UploadInput } from "@postplan/store";
 
 test.skipIf(!dynamoEndpoint)(
   "DynamoDB transactions, revocation, shared limits and retention cleanup",
