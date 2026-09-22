@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 import { busyMilliseconds, median } from "./cpu-profile";
 import type { CpuProfile } from "./cpu-profile";
+import { assertStatuses } from "./status";
 
 // Requests per profiled batch. Larger cases use fewer requests to keep batches short.
 export const PLAN = {
@@ -15,6 +16,13 @@ export const PLAN = {
   public: 400,
   upload: 150,
   uploadLarge: 20,
+  uploadGzip: 20,
+  uploadMalformed: 150,
+  uploadMalformedGzip: 20,
+  uploadInvalidGzip: 150,
+  uploadUnauthorized: 150,
+  uploadIpLimited: 150,
+  uploadKeyLimited: 150,
 } as const;
 
 type Scenario = keyof typeof PLAN;
@@ -153,6 +161,7 @@ for (const [scenarioIndex, name] of scenarios.entries()) {
   const results = new Map<string, BatchResult[]>();
   for (const target of targets) {
     const warm = await fetchRun(target, name, Math.ceil(n / 3));
+    assertStatuses(name, warm.status, Math.ceil(n / 3));
     warmStatuses.set(target.tag, warm.status);
     results.set(target.tag, []);
   }
@@ -175,9 +184,7 @@ for (const [scenarioIndex, name] of scenarios.entries()) {
         bytes: result.bytes,
       };
       results.get(target.tag)!.push(batchResult);
-      if (hasUnexpectedStatus(result.status)) {
-        console.warn(target.tag, name, "unexpected status", JSON.stringify(result));
-      }
+      assertStatuses(name, result.status, n);
     }
   }
   for (const target of targets) {
@@ -298,8 +305,4 @@ async function fetchRun(target: Target, scenario: Scenario, n: number): Promise<
     throw new Error(`${target.tag}/${scenario} failed: ${await response.text()}`);
   }
   return response.json() as Promise<RunResult>;
-}
-
-function hasUnexpectedStatus(status: Status): boolean {
-  return Object.keys(status).some((code) => Number(code) >= 300);
 }
