@@ -16,7 +16,13 @@ test("accepts expected successful and rejected batches", () => {
 });
 
 test("rejects unexpected successes, mixed statuses, empty and incomplete batches", () => {
-  for (const statuses of [{ "201": 3 }, { "429": 2, "500": 1 }, {}, { "429": 2 }]) {
+  const batches: Record<string, number>[] = [
+    { "201": 3 },
+    { "429": 2, "500": 1 },
+    {},
+    { "429": 2 },
+  ];
+  for (const statuses of batches) {
     expect(() => assertStatuses("uploadIpLimited", statuses, 3)).toThrow();
   }
 });
