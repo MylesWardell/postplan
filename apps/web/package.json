@@ -1,0 +1,121 @@
+{
+  "name": "@postplan/web",
+  "version": "0.0.4",
+  "private": true,
+  "files": [
+    "dist/"
+  ],
+  "type": "module",
+  "imports": {
+    "#auth/*": {
+      "source": "./src/auth/*.ts",
+      "default": "./dist/src/auth/*.js"
+    },
+    "#db/*": {
+      "source": "./src/db/*.ts",
+      "default": "./dist/src/db/*.js"
+    },
+    "#frontend/response.server": {
+      "source": "./src/frontend/response.server.tsx",
+      "default": "./dist/src/frontend/response.server.js"
+    },
+    "#frontend/*": {
+      "source": {
+        "bun": "./src/frontend/*.ts",
+        "default": "./src/frontend/*"
+      },
+      "default": "./dist/src/frontend/*.js"
+    },
+    "#lib/*": {
+      "source": "./src/lib/*.ts",
+      "default": "./dist/src/lib/*.js"
+    },
+    "#routers/*": {
+      "source": "./src/routers/*.ts",
+      "default": "./dist/src/routers/*.js"
+    },
+    "#api": {
+      "source": "./src/api.ts",
+      "default": "./dist/src/api.js"
+    },
+    "#client": {
+      "source": "./src/client.ts",
+      "default": "./dist/src/client.js"
+    },
+    "#config": {
+      "source": "./src/config.ts",
+      "default": "./dist/src/config.js"
+    },
+    "#context": {
+      "source": "./src/context.ts",
+      "default": "./dist/src/context.js"
+    },
+    "#index": {
+      "source": "./src/index.ts",
+      "default": "./dist/src/index.js"
+    },
+    "#server": {
+      "source": "./src/server.ts",
+      "default": "./dist/src/server.js"
+    },
+    "#orpc": {
+      "source": "./src/orpc.ts",
+      "default": "./dist/src/orpc.js"
+    }
+  },
+  "exports": {
+    "./application": {
+      "source": "./src/application.ts",
+      "default": "./dist/src/application.js"
+    },
+    "./auth/*": {
+      "source": "./src/auth/*.ts",
+      "default": "./dist/src/auth/*.js"
+    },
+    "./astro-render": {
+      "source": "./src/astro-render.ts",
+      "default": "./dist/src/astro-render.js"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && bun --bun astro build && tsc -p tsconfig.json",
+    "test": "bun --bun vitest run",
+    "start": "bun dist/src/launch.js",
+    "db:bootstrap": "bun dist/src/db/bootstrap.js",
+    "dev": "bun --bun astro dev",
+    "db:generate": "bun run --filter @postplan/store-drizzle db:generate",
+    "db:migrate": "bun dist/src/db/migrate.js",
+    "preview": "bun dist/src/launch.js"
+  },
+  "dependencies": {
+    "@opentelemetry/auto-instrumentations-node": "^0.80.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
+    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/sdk-trace-node": "^2.11.0",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/evlog": "catalog:",
+    "@orpc/json-schema": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/opentelemetry": "catalog:",
+    "@orpc/ratelimit": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "@postplan/api": "workspace:*",
+    "@postplan/lambda": "workspace:*",
+    "@postplan/store": "workspace:*",
+    "@postplan/store-drizzle": "workspace:*",
+    "astro": "7.3.3",
+    "hono": "4.13.8",
+    "jose": "^6.2.12",
+    "proxy-addr": "^2.0.8",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@astrojs/cloudflare": "14.3.2",
+    "@types/bun": "catalog:",
+    "@types/proxy-addr": "^2.0.3",
+    "vite": "catalog:"
+  }
+}

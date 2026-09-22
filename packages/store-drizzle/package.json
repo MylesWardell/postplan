@@ -1,0 +1,36 @@
+{
+  "name": "@postplan/store-drizzle",
+  "version": "0.0.4",
+  "private": true,
+  "files": [
+    "dist/src/",
+    "drizzle/"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./dist/src/*.js"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "db:generate": "drizzle-kit generate",
+    "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts"
+  },
+  "dependencies": {
+    "@orpc/ratelimit": "catalog:",
+    "@orpc/server": "catalog:",
+    "@postplan/store": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "nanoid": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "drizzle-kit": "0.31.10"
+  }
+}

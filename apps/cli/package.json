@@ -1,0 +1,30 @@
+{
+  "name": "postplan",
+  "version": "0.0.4",
+  "private": false,
+  "license": "MIT",
+  "bin": {
+    "postplan": "./bin/postplan.js"
+  },
+  "files": [
+    "bin/",
+    "skills/",
+    "README.md"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json && tsdown",
+    "test": "vitest run --dir test",
+    "prepack": "bun run build"
+  },
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "commander": "^15.0.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@postplan/api": "workspace:*"
+  }
+}

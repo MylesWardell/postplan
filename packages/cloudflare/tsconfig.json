@@ -1,0 +1,14 @@
+{
+  "extends": "../../apps/web/tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "noEmit": true,
+    "types": ["node", "vite/client", "@cloudflare/vitest-plugin/types"]
+  },
+  "include": [
+    "./**/*.ts",
+    "../../apps/web/src/frontend/**/*.ts",
+    "../../apps/web/src/frontend/**/*.tsx"
+  ],
+  "exclude": ["./dist", "./generated"]
+}

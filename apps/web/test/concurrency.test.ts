@@ -1,0 +1,58 @@
+import assert from "node:assert/strict";
+
+import { test } from "vitest";
+
+import { createCaller } from "#client";
+import { createContextFactory } from "#context";
+import { createTestStore } from "@postplan/store/testing";
+
+test("concurrent requests serialize draft versions and first logins", async () => {
+  const { store, close } = await createTestStore();
+  try {
+    await store.accounts.seed({ bootstrapKey: "concurrency-key" });
+    const context = createContextFactory({
+      store,
+      putHtml: async () => {},
+      getHtml: async () => "",
+    });
+    const caller = createCaller(
+      context(
+        new Request("https://plans.example.com", {
+          headers: { authorization: "Bearer concurrency-key" },
+        }),
+        null,
+        false,
+      ),
+    );
+    const html = "<!doctype html><title>Concurrent</title><p>Versions</p>";
+    const { body: first } = await caller.drafts.upload({ html });
+    assert.ok(first.ok);
+    if (!first.ok) {
+      throw new Error("Upload failed");
+    }
+    const versions = await Promise.all(
+      Array.from({ length: 6 }, () => caller.drafts.upload({ html, draftId: first.draftId })),
+    );
+    assert.deepEqual(
+      versions.map((version) => version.body.versionNumber).toSorted((a, b) => a - b),
+      [2, 3, 4, 5, 6, 7],
+    );
+    assert.equal(
+      (await caller.drafts.detail({ draftId: first.draftId })).versions[0]?.versionNumber,
+      7,
+    );
+    assert.equal(
+      (await caller.drafts.list()).drafts.find((draft) => draft.draftId === first.draftId)
+        ?.latestVersionNumber,
+      7,
+    );
+    const identities = await Promise.all(
+      Array.from({ length: 4 }, () =>
+        store.accounts.findOrCreateIdentity({ provider: "test", subject: "concurrent-user" }),
+      ),
+    );
+    assert.equal(new Set(identities.map((identity) => identity.accountId)).size, 1);
+  } finally {
+    await close();
+  }
+});

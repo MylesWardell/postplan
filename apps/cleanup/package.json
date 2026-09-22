@@ -1,0 +1,20 @@
+{
+  "name": "@postplan/cleanup",
+  "version": "0.0.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts",
+    "start": "bun dist/src/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch": "catalog:",
+    "@aws-sdk/client-s3": "catalog:",
+    "@postplan/store": "workspace:*",
+    "@postplan/store-dynamodb": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:"
+  }
+}

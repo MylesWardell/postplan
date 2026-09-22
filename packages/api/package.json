@@ -1,0 +1,27 @@
+{
+  "name": "@postplan/api",
+  "version": "0.0.4",
+  "private": true,
+  "files": [
+    "dist/src/"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/src/schemas/index.d.ts",
+      "default": "./dist/src/schemas/index.js"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@orpc/contract": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "zod": "catalog:"
+  }
+}

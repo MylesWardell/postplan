@@ -1,0 +1,78 @@
+{
+  "name": "postplan-workspace",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "@aws-sdk/client-cloudwatch": "^3.1131.0",
+      "@aws-sdk/client-dynamodb": "^3.1131.0",
+      "@aws-sdk/client-s3": "^3.1131.0",
+      "@aws-sdk/client-ssm": "^3.1131.0",
+      "@aws-sdk/lib-dynamodb": "^3.1131.0",
+      "@orpc/client": "2.0.0-beta.35",
+      "@orpc/cloudflare": "2.0.0-beta.35",
+      "@orpc/contract": "2.0.0-beta.35",
+      "@orpc/evlog": "2.0.0-beta.35",
+      "@orpc/json-schema": "2.0.0-beta.35",
+      "@orpc/openapi": "2.0.0-beta.35",
+      "@orpc/opentelemetry": "2.0.0-beta.35",
+      "@orpc/ratelimit": "2.0.0-beta.35",
+      "@orpc/server": "2.0.0-beta.35",
+      "@orpc/zod": "2.0.0-beta.35",
+      "@types/bun": "1.4.2",
+      "@types/node": "^26.5.1",
+      "drizzle-orm": "^0.45.2",
+      "nanoid": "^6.0.1",
+      "vite": "^8.3.0",
+      "zod": "^4.6.5"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "postinstall": "bun scripts/setup/link-skills.ts",
+    "link-skills": "bun scripts/setup/link-skills.ts",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "dev": "turbo run dev",
+    "start": "turbo run start --filter=@postplan/web",
+    "lint": "turbo run lint:root",
+    "lint:fix": "turbo run lint:root:fix",
+    "lint:root": "oxlint --deny-warnings apps packages scripts benchmark",
+    "lint:root:fix": "oxlint --fix apps packages scripts benchmark",
+    "format": "turbo run format:root",
+    "format:fix": "turbo run format:root:fix",
+    "format:root": "oxfmt --check",
+    "format:root:fix": "oxfmt .",
+    "typecheck:benchmark": "tsc -p benchmark/tsconfig.json",
+    "test:benchmark": "vitest run benchmark/cloudflare/cpu-profile.test.ts",
+    "check": "turbo run quality test",
+    "pack:cli": "turbo run build --filter=postplan... && cd apps/cli && bun pm pack --ignore-scripts --destination ../../dist",
+    "db:generate": "bun run --filter @postplan/web db:generate",
+    "db:migrate": "bun run --filter @postplan/web build && bun apps/web/dist/src/db/migrate.js"
+  },
+  "devDependencies": {
+    "@postplan/store": "workspace:*",
+    "@postplan/store-drizzle": "workspace:*",
+    "@postplan/store-dynamodb": "workspace:*",
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "oxfmt": "0.68.0",
+    "oxlint": "1.83.0",
+    "oxlint-tsgolint": "7.0.2002",
+    "tsdown": "0.23.0",
+    "turbo": "2.11.2",
+    "typescript": "^7.0.2",
+    "vitest": "5.0.1"
+  },
+  "engines": {
+    "bun": ">=1.4.2",
+    "node": ">=26.8.2"
+  },
+  "packageManager": "bun@1.4.2",
+  "trustedDependencies": [
+    "esbuild"
+  ]
+}

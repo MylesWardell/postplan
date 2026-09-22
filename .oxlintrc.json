@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "typescript/no-unsafe-type-assertion": "off",
+    "eslint/curly": ["error", "all"]
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/.turbo/**",
+    "pnpm-lock.yaml",
+    "**/routeTree.gen.ts",
+    "**/.wrangler/**",
+    "packages/cloudflare/generated/**",
+    "packages/cloudflare/env.d.ts"
+  ]
+}

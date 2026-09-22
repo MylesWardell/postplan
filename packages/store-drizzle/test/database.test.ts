@@ -1,0 +1,121 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { eq } from "drizzle-orm";
+import { test } from "vitest";
+
+import {
+  createApiKey,
+  findApiKeyByToken,
+  findOrCreateAccountForIdentity,
+  revokeApiKey,
+  seedAccounts,
+} from "@postplan/store-drizzle/account-queries";
+import { createDatabase } from "@postplan/store-drizzle/client";
+import { finalizePrepared, statement } from "@postplan/store-drizzle/database";
+import { migrateDatabase } from "@postplan/store-drizzle/migrate";
+import * as schema from "@postplan/store-drizzle/schema";
+
+test("SQLite survives reopen and rolls back a failed transaction", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "postplan-sqlite-"));
+  const filename = join(directory, "postplan.sqlite");
+  let connection = createDatabase(filename);
+  try {
+    migrateDatabase(connection.db);
+    await seedAccounts(connection.db, "persistent-key");
+    await assert.rejects(
+      connection.db.atomic([
+        statement(
+          connection.db.insert(schema.accounts).values({ id: "rolled-back", name: "Rollback" }),
+        ),
+        statement(
+          connection.db
+            .insert(schema.apiKeys)
+            .values({ id: "invalid", name: "Invalid", accountId: "missing", keyHash: "hash" }),
+        ),
+      ]),
+    );
+    connection.client.close();
+    connection = createDatabase(filename);
+    assert.equal(
+      (await findApiKeyByToken(connection.db, "persistent-key"))?.accountId,
+      "acct_bootstrap",
+    );
+    assert.equal(
+      connection.db
+        .select()
+        .from(schema.accounts)
+        .where(eq(schema.accounts.id, "rolled-back"))
+        .all().length,
+      0,
+    );
+    assert.ok(connection.db.select().from(schema.accounts).get()?.createdAt instanceof Date);
+    assert.deepEqual(connection.client.query("PRAGMA integrity_check").get(), {
+      integrity_check: "ok",
+    });
+    assert.deepEqual(connection.client.query("PRAGMA foreign_key_check").all(), []);
+  } finally {
+    finalizePrepared(connection.db);
+    connection.client.close();
+    // Release Drizzle's temporary prepared statements before deleting the file on Windows.
+    Bun.gc(true);
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("migrations, bootstrap keys, revocation and identity updates use SQLite semantics", async () => {
+  const { db, client } = createDatabase(":memory:");
+  try {
+    migrateDatabase(db);
+    migrateDatabase(db);
+    await seedAccounts(db, "bootstrap-test");
+    await seedAccounts(db, "bootstrap-test");
+    assert.equal((await findApiKeyByToken(db, "bootstrap-test"))?.accountId, "acct_bootstrap");
+    assert.equal(await findApiKeyByToken(db, "postplan-public-upload-sentinel"), null);
+    const key = await createApiKey(db, "acct_bootstrap", "test");
+    assert.equal(await revokeApiKey(db, "someone-else", key.apiKey.id), false);
+    const lastUsed = () =>
+      db.select().from(schema.apiKeys).where(eq(schema.apiKeys.id, key.apiKey.id)).get()
+        ?.lastUsedAt;
+    assert.deepEqual(Object.keys((await findApiKeyByToken(db, key.token))!).toSorted(), [
+      "accountId",
+      "accountName",
+      "id",
+      "name",
+    ]);
+    const recorded = lastUsed();
+    assert.ok(recorded instanceof Date);
+    const stale = new Date(recorded.getTime() - 30_000);
+    db.update(schema.apiKeys)
+      .set({ lastUsedAt: stale })
+      .where(eq(schema.apiKeys.id, key.apiKey.id))
+      .run();
+    assert.ok(await findApiKeyByToken(db, key.token));
+    assert.equal(lastUsed()?.getTime(), stale.getTime());
+    db.update(schema.apiKeys)
+      .set({ lastUsedAt: new Date(recorded.getTime() - 60_000) })
+      .where(eq(schema.apiKeys.id, key.apiKey.id))
+      .run();
+    assert.ok(await findApiKeyByToken(db, key.token));
+    assert.ok(lastUsed()!.getTime() >= recorded.getTime());
+    assert.equal(await revokeApiKey(db, "acct_bootstrap", key.apiKey.id), true);
+    assert.equal(await findApiKeyByToken(db, key.token), null);
+    const first = await findOrCreateAccountForIdentity(db, {
+      provider: "test",
+      subject: "user",
+      profile: { email: "test@example.com", piiSubject: "stable" },
+    });
+    const second = await findOrCreateAccountForIdentity(db, { provider: "test", subject: "user" });
+    assert.equal(first.accountId, second.accountId);
+    assert.equal(second.email, null);
+    const [identity] = await db
+      .select()
+      .from(schema.identities)
+      .where(eq(schema.identities.accountId, first.accountId));
+    assert.equal(identity?.piiSubject, "stable");
+  } finally {
+    client.close();
+  }
+});

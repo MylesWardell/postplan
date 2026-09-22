@@ -1,0 +1,76 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "postplan-clone",
+  "account_id": "84a90b37c273b2f2f4e06ead4020b05a",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": ["nodejs_compat", "enable_request_signal"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "binding": "ASSETS",
+    "run_worker_first": true,
+  },
+  "vars": {
+    "CLIENT_IP_SOURCE": "req-ip",
+    "MAX_HTML_BYTES": "32768",
+    "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS": "false",
+    "POSTPLAN_APPLICATION_ENABLED": "true",
+    "POSTPLAN_DATABASE": "sqlite",
+    "POSTPLAN_LOCAL": "false",
+    "POSTPLAN_ORPC_TRACING": "false",
+    "REQUEST_ID_HEADER": "x-request-id",
+    "TRUST_PROXY": "false",
+  },
+  "d1_databases": [
+    {
+      "binding": "POSTPLAN_DB",
+      "database_name": "postplan-cf-probe-a3342cb9",
+      "database_id": "6f150bc0-0a62-48b9-9958-4994397b5484",
+      "migrations_dir": "../store-drizzle/drizzle",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "binding": "HTML_BUCKET",
+      "bucket_name": "postplan-cf-probe-a3342cb9",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RATE_LIMITS",
+        "class_name": "RateLimit",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["RateLimit"],
+    },
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "redact_query_string": false,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "persist": true,
+      "invocation_logs": true,
+    },
+    "traces": {
+      "enabled": true,
+      "persist": true,
+      "head_sampling_rate": 0.01,
+    },
+  },
+  "secrets": {
+    "required": [
+      "POSTPLAN_RATE_LIMIT_SECRET",
+      "POSTPLAN_SESSION_SECRET",
+      "POSTPLAN_PUBLIC_BASE_URL",
+    ],
+  },
+}

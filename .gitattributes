@@ -1,0 +1,8 @@
+# Keep text files consistent with oxfmt's `endOfLine: "lf"` on every platform.
+* text=auto eol=lf
+
+# Agent skills are vendored/authored docs shared across tools (see skills-lock.json).
+# Keep bytes verbatim so line endings don't churn and hashes stay stable.
+.agents/skills/** -text
+.claude/skills/** -text
+skills-lock.json -text

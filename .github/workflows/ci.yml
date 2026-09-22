@@ -1,0 +1,90 @@
+name: CI
+on:
+  push:
+    branches: [master]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      - name: Restore Turborepo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.8.2
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run typecheck:benchmark
+      - run: bun run test:benchmark
+      - run: bash benchmark/cloudflare/run.test.sh
+      - run: bunx --no-install turbo run cf:build cf:test --filter=@postplan/cloudflare
+        env:
+          POSTPLAN_RATE_LIMIT_SECRET: local-test-only
+      - run: bunx --no-install tsc -p packages/cloudflare/tsconfig.json
+      - name: Exercise the enabled Cloudflare application locally
+        env:
+          POSTPLAN_RATE_LIMIT_SECRET: local-test-only
+          POSTPLAN_BOOTSTRAP_API_KEY: local-application-test
+        run: |
+          cd packages/cloudflare
+          bun deploy/initialize.ts --local
+          node node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --persist-to .wrangler/state --local --port 5173 --var POSTPLAN_APPLICATION_ENABLED:true --var POSTPLAN_SESSION_SECRET:local-session-only > generated/acceptance.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:5173/healthz > /dev/null; then break; fi
+            sleep 1
+          done
+          bun test/http.ts
+          bunx --no-install wrangler d1 execute POSTPLAN_DB --local --persist-to .wrangler/state --command 'INSERT INTO usage_guard VALUES (1,1)' --yes
+          bun deploy/initialize.ts --local
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/dashboard)" = 503
+      - name: Verify production Cloudflare deployment package
+        run: |
+          bunx --no-install turbo run cf:build:production --filter=@postplan/cloudflare
+          bun run --filter @postplan/cloudflare cf:deploy:production --dry-run
+      - run: bun run pack:cli
+      - run: node apps/cli/bin/postplan.js --help
+      - run: docker build --tag postplan:ci .
+      - run: docker build --target lambda-app --tag postplan:lambda-app .
+      - run: docker build --target lambda-cleanup --tag postplan:lambda-cleanup .
+  dynamodb:
+    runs-on: ubuntu-latest
+    services:
+      dynamodb:
+        image: amazon/dynamodb-local:3.3.0
+        ports:
+          - 8000:8000
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26.8.2
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun --bun vitest run test/api.test.ts test/upload-http.test.ts test/upload-dispatch.test.ts test/ssr.test.ts test/concurrency.test.ts test/store.test.ts
+        working-directory: apps/web
+        env:
+          POSTPLAN_TEST_STORE: dynamodb
+          POSTPLAN_TEST_DYNAMODB_ENDPOINT: http://127.0.0.1:8000
+      - run: bun run test
+        working-directory: packages/store-dynamodb
+        env:
+          POSTPLAN_TEST_DYNAMODB_ENDPOINT: http://127.0.0.1:8000

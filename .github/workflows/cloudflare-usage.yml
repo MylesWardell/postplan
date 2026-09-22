@@ -1,0 +1,58 @@
+name: Cloudflare usage guard
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Monitor enforces thresholds; audit is read-only; kill stops immediately"
+        type: choice
+        default: audit
+        options: [audit, monitor, kill]
+  pull_request:
+    paths:
+      - ".github/workflows/cloudflare-usage.yml"
+      - "packages/cloudflare/usage/**"
+      - "packages/cloudflare/test/test_usage_guard.py"
+  push:
+    branches: [master]
+    paths:
+      - ".github/workflows/cloudflare-usage.yml"
+      - "packages/cloudflare/usage/**"
+      - "packages/cloudflare/test/test_usage_guard.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-usage-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'account' }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s packages/cloudflare/test -p 'test_*.py' -v
+
+  guard:
+    # Schedules only become active after this workflow is merged into master.
+    # No Cloudflare credentials or mutations on pull requests or branch dispatches.
+    if: github.ref == 'refs/heads/master' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check usage or stop the experiment
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_USAGE_API_TOKEN: ${{ secrets.CLOUDFLARE_USAGE_API_TOKEN }}
+          GUARD_MODE: ${{ inputs.mode || 'monitor' }}
+        run: python3 packages/cloudflare/usage/usage_guard.py --mode "$GUARD_MODE"

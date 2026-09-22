@@ -1,0 +1,32 @@
+{
+  "name": "@postplan/store",
+  "version": "0.0.4",
+  "private": true,
+  "files": [
+    "dist/src/"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./dist/src/*.js"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts"
+  },
+  "dependencies": {
+    "@orpc/contract": "catalog:",
+    "@postplan/api": "workspace:*",
+    "parse5": "^8.0.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:"
+  }
+}

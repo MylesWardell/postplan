@@ -1,0 +1,82 @@
+import { EvlogHandlerPlugin } from "@orpc/evlog";
+import { SmartCoercionHandlerPlugin } from "@orpc/json-schema";
+import { OpenAPIGenerator } from "@orpc/openapi";
+import { OpenAPIHandler } from "@orpc/openapi/fetch";
+import { OpenAPIReferenceHandlerPlugin } from "@orpc/openapi/plugins";
+import { RateLimitHandlerPlugin } from "@orpc/ratelimit";
+import {
+  RequestLimitHandlerPlugin,
+  RequestCompressionHandlerPlugin,
+  ResponseCompressionHandlerPlugin,
+  ResponseHeadersHandlerPlugin,
+  CORSHandlerPlugin,
+} from "@orpc/server/plugins";
+import { ZodToJsonSchemaConverter } from "@orpc/zod";
+
+import { notFoundResponse } from "#frontend/response.server";
+import { onlyApplication } from "#lib/host-guard";
+import { router } from "#routers/index";
+import { contract } from "@postplan/api";
+
+import type { ContextFactory } from "./context";
+
+export function createApiHandler(
+  context: ContextFactory,
+  options: { compressResponse: boolean; enableEvlog: boolean },
+) {
+  const zodConverter = new ZodToJsonSchemaConverter();
+  const openapiGenerator = new OpenAPIGenerator({
+    converters: [zodConverter],
+  });
+  const openapiHandler = new OpenAPIHandler(router, {
+    // Upload HTTP requests are handled directly by Hono; keep the contract for clients/docs.
+    filter: (_procedure, path) => path.join(".") !== "drafts.upload",
+    plugins: [
+      new RequestCompressionHandlerPlugin(),
+      new RequestLimitHandlerPlugin({ maxBodySize: 2 * 1024 * 1024 }),
+      new ResponseHeadersHandlerPlugin(),
+      new RateLimitHandlerPlugin(),
+      ...(options.compressResponse ? [new ResponseCompressionHandlerPlugin()] : []),
+      new CORSHandlerPlugin({
+        allowHeaders: [
+          "Content-Disposition",
+          "Standard-Server",
+          "Content-Type",
+          "Content-Encoding",
+          "Authorization",
+        ],
+        exposeHeaders: [
+          "Content-Disposition",
+          "Standard-Server",
+          "Retry-After",
+          "X-Request-Id",
+          "RateLimit-Limit",
+          "RateLimit-Remaining",
+          "RateLimit-Reset",
+        ],
+      }),
+      ...(options.enableEvlog ? [new EvlogHandlerPlugin({ logAbort: true })] : []),
+      new SmartCoercionHandlerPlugin({ converters: [zodConverter] }),
+      new OpenAPIReferenceHandlerPlugin({
+        spec: () =>
+          openapiGenerator.generate(contract, {
+            base: {
+              info: { title: "Postplan API", version: "1.0.0" },
+              servers: [{ url: "/api" }],
+              components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer" } } },
+            },
+          }),
+        providerConfig: { authentication: { securitySchemes: { bearerAuth: {} } } },
+      }),
+    ],
+  });
+  return function handleOpenAPIRequest(request: Request, peerIp: string | null = null) {
+    return onlyApplication(request, async () => {
+      const { response } = await openapiHandler.handle(request, {
+        prefix: "/api",
+        context: context(request, peerIp, false),
+      });
+      return response ?? notFoundResponse();
+    });
+  };
+}

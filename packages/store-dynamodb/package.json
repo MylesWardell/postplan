@@ -1,0 +1,40 @@
+{
+  "name": "@postplan/store-dynamodb",
+  "version": "0.0.4",
+  "private": true,
+  "files": [
+    "dist/src/",
+    "dist/test/fixture.js",
+    "dist/test/fixture.d.ts"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./dist/src/*.js"
+    },
+    "./testing": {
+      "types": "./dist/test/fixture.d.ts",
+      "default": "./dist/test/fixture.js"
+    }
+  },
+  "scripts": {
+    "build": "bun ../../scripts/clean.ts && tsc -p tsconfig.json",
+    "test": "bun --bun vitest run --config ../../scripts/testing/vitest.config.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "catalog:",
+    "@aws-sdk/lib-dynamodb": "catalog:",
+    "@orpc/ratelimit": "catalog:",
+    "@orpc/server": "catalog:",
+    "@postplan/store": "workspace:*",
+    "nanoid": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:"
+  }
+}

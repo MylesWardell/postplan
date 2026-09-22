@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS usage_guard (
+  id INTEGER PRIMARY KEY CHECK(id=1),
+  killed INTEGER NOT NULL CHECK(killed IN (0,1))
+);
+CREATE TABLE IF NOT EXISTS application_budget (
+  id INTEGER PRIMARY KEY CHECK(id=1),
+  writes INTEGER NOT NULL DEFAULT 0,
+  reads INTEGER NOT NULL DEFAULT 0,
+  bytes INTEGER NOT NULL DEFAULT 0,
+  CHECK(writes BETWEEN 0 AND 2000),
+  CHECK(reads BETWEEN 0 AND 250000),
+  CHECK(bytes BETWEEN 0 AND 1073741824)
+);
+INSERT OR IGNORE INTO application_budget(id) VALUES (1);
+
+CREATE INDEX IF NOT EXISTS cloudflare_deleted_drafts ON drafts(deleted_at);

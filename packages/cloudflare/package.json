@@ -1,0 +1,34 @@
+{
+  "name": "@postplan/cloudflare",
+  "version": "0.0.4",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cf:types": "wrangler types --config wrangler.jsonc env.d.ts",
+    "cf:build": "cd ../../apps/web && POSTPLAN_RUNTIME=cloudflare bun --bun astro build",
+    "cf:build:production": "POSTPLAN_CLOUDFLARE_CONFIG=wrangler.production.jsonc bun run cf:build",
+    "cf:dev": "cd ../../apps/web && POSTPLAN_RUNTIME=cloudflare bun --bun astro dev",
+    "cf:deploy:production": "wrangler deploy --config dist/server/wrangler.json",
+    "cf:test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "cf:initialize": "bun deploy/initialize.ts"
+  },
+  "dependencies": {
+    "@orpc/cloudflare": "catalog:",
+    "@orpc/server": "catalog:",
+    "@postplan/store": "workspace:*",
+    "@postplan/store-drizzle": "workspace:*",
+    "@postplan/web": "workspace:*",
+    "drizzle-orm": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.56.0",
+    "@cloudflare/vitest-plugin": "1.1.13",
+    "@types/node": "catalog:",
+    "astro": "7.3.3",
+    "vite": "catalog:",
+    "vitest": "4.1.0",
+    "wrangler": "4.135.0",
+    "zod": "catalog:"
+  }
+}
