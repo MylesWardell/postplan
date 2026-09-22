@@ -95,12 +95,6 @@ export interface UploadInput {
   description?: string;
   metadata?: Record<string, unknown>;
 }
-export const publicUploadAuth: ApiKeyAuth = {
-  id: "key_public_upload",
-  name: "Public Uploads",
-  accountId: "acct_public_upload",
-  accountName: "Public Uploads",
-};
 export interface RateLimitConfig {
   window: number;
   maxRequests: number;

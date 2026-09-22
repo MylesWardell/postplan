@@ -14,7 +14,6 @@
   "vars": {
     "CLIENT_IP_SOURCE": "req-ip",
     "MAX_HTML_BYTES": "32768",
-    "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS": "false",
     "POSTPLAN_APPLICATION_ENABLED": "true",
     "POSTPLAN_DATABASE": "sqlite",
     "POSTPLAN_LOCAL": "false",

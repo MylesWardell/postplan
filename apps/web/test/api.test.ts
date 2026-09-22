@@ -62,9 +62,7 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     const anonymous = client();
     const html = "<!doctype html><html><head><title>Draft</title></head><body>Résumé</body></html>";
     assert.equal((await fetch(`${base}/healthz`)).status, 200);
-    config.allowAnonymousUploads = false;
     await assert.rejects(anonymous.drafts.upload({ html }), /API key/);
-    config.allowAnonymousUploads = originalConfig.allowAnonymousUploads;
     await assert.rejects(anonymous.drafts.list(), /Sign in/);
     const { body: upload } = await owner.drafts.upload({ html, description: "Original" });
     assert.equal(upload.ok, true);
@@ -121,7 +119,10 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
       /Invalid API key/,
     );
     assert.equal((await fetch(`${base}/api/drafts`, { headers: { cookie } })).status, 401);
-    assert.equal((await anonymous.drafts.upload({ html })).body.ok, true);
+    await assert.rejects(client(undefined, { cookie, origin: base }).drafts.upload({ html }), {
+      code: "UNAUTHORIZED",
+    });
+    await assert.rejects(anonymous.drafts.upload({ html }), { code: "UNAUTHORIZED" });
     await assert.rejects(owner.drafts.upload({ html: "<form></form>" }), (error: unknown) => {
       assert.ok(error instanceof ORPCError);
       assert.equal(error.code, "UNPROCESSABLE_CONTENT");
@@ -140,6 +141,7 @@ test("oRPC and REST share draft ownership, versions, storage and session boundar
     await revokedClient.account.me();
     await owner.apiKeys.revoke({ apiKeyId: key.apiKey.id });
     await assert.rejects(revokedClient.account.me(), /Invalid API key/);
+    await assert.rejects(revokedClient.drafts.upload({ html }), { code: "UNAUTHORIZED" });
     await assert.rejects(client(key.token).account.me(), /Invalid API key/);
     for (let i = 0; i < 9; i++) {
       await owner.apiKeys.create({ name: "Rate test" });

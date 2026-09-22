@@ -69,3 +69,28 @@ test("compiled CLI resolves package version and exposes commands", () => {
   assert.match(help, /auth/);
   assert.match(help, /list/);
 });
+
+test("CLI upload requires credentials before making an HTTP request", async () => {
+  const directory = fs.mkdtempSync(join(tmpdir(), "postplan-cli-auth-"));
+  const file = join(directory, "draft.html");
+  fs.writeFileSync(file, "<!doctype html><title>Draft</title>");
+  try {
+    const cli = fileURLToPath(new URL("../bin/postplan.js", import.meta.url));
+    await assert.rejects(
+      promisify(execFile)(
+        process.execPath,
+        [cli, "upload", file, "--api-url", "http://127.0.0.1:1"],
+        {
+          env: { ...process.env, HOME: directory, USERPROFILE: directory, POSTPLAN_API_KEY: "" },
+        },
+      ),
+      (error: unknown) => {
+        assert.ok(error instanceof Error && "stderr" in error);
+        assert.match(String(error.stderr), /Missing API key.*postplan auth set/);
+        return true;
+      },
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});

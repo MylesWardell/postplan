@@ -1,9 +1,8 @@
 import { ORPCError } from "@orpc/server";
 
-import { config } from "#config";
 import type { ContextFactory } from "#context";
 import { uploadInput, uploadOutput } from "@postplan/api/schemas";
-import { publicUploadAuth } from "@postplan/store";
+import { requireUploadAuth } from "@postplan/store";
 
 import { resolveApiContext } from "./api-context";
 import { respond } from "./respond";
@@ -43,6 +42,8 @@ export function createUploadHandler(createContext: ContextFactory) {
   return async (request: Request, peerIp: string | null): Promise<Response> => {
     const headers = new Headers();
     const response = await respond(async () => {
+      const ctx = await resolveApiContext(createContext(request, peerIp, false), headers);
+      const auth = requireUploadAuth(ctx.apiKey);
       let bytes = await readBody(request.body);
       const encodings =
         request.headers
@@ -75,11 +76,10 @@ export function createUploadHandler(createContext: ContextFactory) {
       if (!parsed.success) {
         throw new ORPCError("BAD_REQUEST", { message: "Invalid upload input." });
       }
-      const ctx = await resolveApiContext(createContext(request, peerIp, false), headers);
       let remaining = Infinity;
       for (const [limiter, key] of [
         [ctx.rateLimiters["upload-ip"], ctx.sourceIp || "anonymous"],
-        [ctx.rateLimiters["upload-key"], ctx.apiKey?.id ?? publicUploadAuth.id],
+        [ctx.rateLimiters["upload-key"], auth.id],
       ] as const) {
         const result = await limiter.limit(key);
         if (!result.success || (result.remaining ?? Infinity) <= remaining) {
@@ -101,9 +101,6 @@ export function createUploadHandler(createContext: ContextFactory) {
             data: { limit: result.limit, remaining: result.remaining, reset: result.reset },
           });
         }
-      }
-      if (!config.allowAnonymousUploads && !ctx.apiKey) {
-        throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
       }
       const result = await ctx.store.drafts.upload({ context: ctx, input: parsed.data });
       if (!result.ok) {

@@ -1,9 +1,8 @@
 import { ratelimit } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
 
-import { config } from "#config";
 import { publicOS, protectedOS } from "#orpc";
-import { publicUploadAuth, cleanText } from "@postplan/store";
+import { requireUploadAuth, cleanText } from "@postplan/store";
 
 // Opaque keyset cursor: the last row's update time and id.
 function encodeCursor(draft: { updatedAt: Date; draftId: string }) {
@@ -81,6 +80,7 @@ export const enableDraft = protectedOS.drafts.enable.handler(({ context: ctx, in
   }),
 );
 export const uploadDraft = publicOS.drafts.upload
+  .use(({ context, next }) => next({ context: { apiKey: requireUploadAuth(context.apiKey) } }))
   .use(
     ratelimit({
       limiter: ({ context }) => context.rateLimiters["upload-ip"],
@@ -90,16 +90,10 @@ export const uploadDraft = publicOS.drafts.upload
   .use(
     ratelimit({
       limiter: ({ context }) => context.rateLimiters["upload-key"],
-      key: ({ context }) => context.apiKey?.id ?? publicUploadAuth.id,
+      key: ({ context }) => context.apiKey.id,
     }),
   )
   .handler(async ({ context: ctx, input, errors }) => {
-    if (!config.allowAnonymousUploads && !ctx.apiKey) {
-      throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
-    }
-    if (ctx.session && !ctx.apiKey) {
-      throw new ORPCError("UNAUTHORIZED", { message: "Use an API key to upload drafts." });
-    }
     const result = await ctx.store.drafts.upload({ context: ctx, input: input });
     if (!result.ok) {
       throw errors.UNPROCESSABLE_CONTENT({

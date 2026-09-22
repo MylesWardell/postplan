@@ -25,7 +25,9 @@
 | `UPLOAD_IP_RATE_LIMIT_WINDOW_MS`, `UPLOAD_IP_RATE_LIMIT_MAX` | Anonymous upload limit.                                                              |
 | `UPLOAD_RATE_LIMIT_WINDOW_MS`, `UPLOAD_RATE_LIMIT_MAX`       | Authenticated upload limit.                                                          |
 
-Uploads are public by default. Set `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS=false` to require an API key for uploads; the AWS deployment and example environment use this private-team setting. API keys control administrative endpoints and attach uploads to an account.
+Every upload requires a valid bearer API key, including local development and in-process uploads. Browser sessions alone do not authorize uploads. `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS` has been removed and cannot enable anonymous writes. API keys attach uploads to their authenticated account.
+
+Existing drafts owned by `acct_public_upload` are retired from editing: their public URLs remain readable under the existing visibility and retention rules, but no credential can create or update uploads under that reserved owner. They are never reassigned to a user account. Existing SQL sentinel rows are retained for historical foreign keys, but are no longer seeded or accepted as credentials. To publish a replacement, authenticate and create a new draft; do not reuse the legacy draft ID.
 
 ## DynamoDB and Lambda
 

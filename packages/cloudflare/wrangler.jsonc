@@ -13,7 +13,6 @@
   "vars": {
     "POSTPLAN_DATABASE": "sqlite",
     "POSTPLAN_APPLICATION_ENABLED": "false",
-    "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS": "false",
     "POSTPLAN_PUBLIC_BASE_URL": "http://localhost:5173",
     "POSTPLAN_LOCAL": "true",
     "POSTPLAN_ORPC_TRACING": "false",

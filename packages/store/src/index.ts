@@ -7,6 +7,7 @@ import { draftStoreContract } from "./draft-store";
 
 export * from "./models";
 export * from "./text";
+export * from "./upload-auth";
 export { accountStoreContract, draftStoreContract };
 export type {
   AccountDraft,
