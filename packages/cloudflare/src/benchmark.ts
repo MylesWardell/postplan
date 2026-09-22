@@ -7,6 +7,7 @@
 import "./instrumentation";
 
 import { createHash, createHmac } from "node:crypto";
+import { gzipSync } from "node:zlib";
 
 import { DurableObject } from "cloudflare:workers";
 
@@ -98,10 +99,13 @@ const small = JSON.stringify({ html: html(5356) });
 const large = JSON.stringify({ html: html(512 * 1024 - 64) });
 let draftId = "";
 let plans = 58;
-const upload = (body: string) =>
+// Prepare compression once, outside the profiled request loop.
+const compressedLarge = gzipSync(large);
+const compressedMalformed = gzipSync(" ".repeat(512 * 1024) + "{");
+const upload = (body: string | Uint8Array<ArrayBuffer>, extra: Record<string, string> = {}) =>
   new Request(base + "/api/uploads", {
     method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json", ...extra },
     body,
   });
 
@@ -116,11 +120,20 @@ const cases: Record<string, () => Request> = {
   public: () => new Request(base + "/d/" + draftId),
   upload: () => upload(small),
   uploadLarge: () => upload(large),
+  uploadGzip: () => upload(compressedLarge, { "content-encoding": "gzip" }),
+  uploadMalformed: () => upload("{"),
+  uploadMalformedGzip: () => upload(compressedMalformed, { "content-encoding": "gzip" }),
+  uploadInvalidGzip: () => upload("invalid gzip", { "content-encoding": "gzip" }),
+  uploadUnauthorized: () =>
+    upload(compressedLarge, { authorization: "", "content-encoding": "gzip" }),
+  uploadIpLimited: () => upload(compressedLarge, { "content-encoding": "gzip" }),
+  uploadKeyLimited: () => upload(compressedLarge, { "content-encoding": "gzip" }),
 };
 
 // Exported under the existing SQLite Durable Object class name so wrangler.jsonc needs no changes.
 export class RateLimit extends DurableObject {
   handle?: (request: Request) => Promise<Response>;
+  private deniedNamespace: string | undefined;
 
   setup() {
     const sql = this.ctx.storage.sql;
@@ -140,6 +153,7 @@ export class RateLimit extends DurableObject {
     }
     const db = fakeD1(sql);
     const bucket = fakeR2();
+    let activeNamespace: string | undefined;
     const env = {
       POSTPLAN_APPLICATION_ENABLED: "true",
       POSTPLAN_PUBLIC_BASE_URL: base,
@@ -151,17 +165,27 @@ export class RateLimit extends DurableObject {
       RATE_LIMITS: {
         getByName: () => ({
           limit: async (rule: { maxRequests: number }) => ({
-            success: true,
+            success: activeNamespace !== this.deniedNamespace || this.deniedNamespace === undefined,
             limit: rule.maxRequests,
-            remaining: rule.maxRequests,
+            remaining: activeNamespace === this.deniedNamespace ? 0 : rule.maxRequests,
             reset: Date.now() + 60000,
           }),
         }),
       },
       ASSETS: { fetch: () => new Response("Not found", { status: 404 }) },
     } as unknown as Cloudflare.Env;
+    const store = createCloudflareStore(env).store;
     const application = createApplication(
-      { store: createCloudflareStore(env).store, ...applicationStorage(db, bucket) },
+      {
+        store: {
+          ...store,
+          rateLimit: (input) => {
+            activeNamespace = input.namespace;
+            return store.rateLimit(input);
+          },
+        },
+        ...applicationStorage(db, bucket),
+      },
       { compressResponse: false, enableEvlog: false, renderFrontend },
     );
     return (incoming: Request) => handleCloudflareRequest(incoming, env, application);
@@ -196,6 +220,14 @@ export class RateLimit extends DurableObject {
     const status: Record<number, number> = {};
     let bytes = 0;
     let sample = "";
+    // Deterministic denials exercise the real admission path and limiter-name hashing,
+    // without measuring remote Durable Object latency or persistent limiter writes.
+    this.deniedNamespace =
+      name === "uploadIpLimited"
+        ? "upload-ip"
+        : name === "uploadKeyLimited"
+          ? "upload-key"
+          : undefined;
     for (let i = 0; i < n; i++) {
       const response = await this.handle(build());
       status[response.status] = (status[response.status] || 0) + 1;
@@ -205,6 +237,7 @@ export class RateLimit extends DurableObject {
         sample = text.slice(0, 200);
       }
     }
+    this.deniedNamespace = undefined;
     if (name.startsWith("upload")) {
       // Keep the seeded plan dataset stable for later cases and runs.
       const keep = `SELECT id FROM drafts ORDER BY created_at, id LIMIT ${plans}`;
