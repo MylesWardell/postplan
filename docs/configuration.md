@@ -35,7 +35,7 @@ Lambda supplies `AWS_REGION` and temporary credentials, including `AWS_SESSION_T
 
 ## Dashboard-managed Cloudflare settings
 
-Store personal login allow/block lists as Worker **Secrets** under **Settings → Variables and Secrets**, not in checked-in Wrangler vars. The production config requires `POSTPLAN_ALLOWED_LOGIN_EMAILS` and `POSTPLAN_PUBLIC_BASE_URL` there alongside the signing secrets. See [Cloudflare setup](../packages/cloudflare/README.md#deployment).
+Store personal login allow/block lists as Worker **Secrets** under **Settings â†’ Variables and Secrets**, not in checked-in Wrangler vars. Login restrictions are optional. Set `POSTPLAN_ALLOWED_LOGIN_EMAILS` to restrict a private server. The production config requires `POSTPLAN_PUBLIC_BASE_URL` alongside the signing secrets. See [Cloudflare setup](../packages/cloudflare/README.md#deployment).
 
 ## Web sign-in
 

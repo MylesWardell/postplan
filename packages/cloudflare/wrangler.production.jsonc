@@ -70,7 +70,6 @@
     "required": [
       "POSTPLAN_RATE_LIMIT_SECRET",
       "POSTPLAN_SESSION_SECRET",
-      "POSTPLAN_ALLOWED_LOGIN_EMAILS",
       "POSTPLAN_PUBLIC_BASE_URL",
     ],
   },

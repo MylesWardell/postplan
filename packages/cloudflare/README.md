@@ -22,14 +22,15 @@ Run `bun packages/cloudflare/test/http.ts` from another terminal at the reposito
 
 `wrangler.jsonc` is for local development. `wrangler.production.jsonc` selects the production Worker and storage bindings. For your own deployment, update its account, Worker, D1 and R2 identifiers and the [usage policy](usage/usage-policy.json).
 
-Before deploying, open the Worker in the Cloudflare dashboard → **Settings → Variables and Secrets**. Set these as **Secret** values:
+Before deploying, open the Worker in the Cloudflare dashboard â†’ **Settings â†’ Variables and Secrets**. Set these as **Secret** values:
 
 - `POSTPLAN_RATE_LIMIT_SECRET`: a random rate-limit signing secret.
 - `POSTPLAN_SESSION_SECRET`: an independent random session signing secret.
-- `POSTPLAN_ALLOWED_LOGIN_EMAILS`: the exact addresses permitted to sign in, comma-separated.
 - `POSTPLAN_PUBLIC_BASE_URL`: the deployment's HTTPS URL.
 
-Replace any existing plaintext binding with a Secret of the same name. Keep personal addresses out of Wrangler `vars`, build variables and command arguments. These names are required by the production config, so deployment fails if a secret is missing. Wrangler preserves dashboard secrets across deployments. See [Cloudflare secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
+To restrict a private server, optionally add `POSTPLAN_ALLOWED_LOGIN_EMAILS` as a Secret containing the allowed addresses, comma-separated. Without login access rules, any Shoo user can sign in.
+
+Replace any existing plaintext binding with a Secret of the same name. Keep personal addresses out of Wrangler `vars`, build variables and command arguments. The three secrets listed above are required by the production config; the login allowlist is optional. Wrangler preserves dashboard secrets across deployments. See [Cloudflare secrets](https://developers.cloudflare.com/workers/configuration/secrets/).
 
 From the repository root:
 
