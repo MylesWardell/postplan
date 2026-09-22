@@ -57,6 +57,10 @@
       "env": ["POSTPLAN_DATABASE", "POSTPLAN_CLOUDFLARE_CONFIG"],
       "cache": false
     },
+    "cf:build:production": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "cf:test": {
       "dependsOn": ["^build", "cf:types"],
       "cache": false

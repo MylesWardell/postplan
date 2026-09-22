@@ -68,7 +68,13 @@ async function authCallback(req: Request, store: Store): Promise<Response> {
     );
   }
   const email = claimText(claims.email);
-  if (!isLoginAllowed(email, claims.email_verified, config.allowedLoginDomains)) {
+  if (
+    !isLoginAllowed(email, claims.email_verified, {
+      allowedEmails: config.allowedLoginEmails,
+      blockedEmails: config.blockedLoginEmails,
+      allowedDomains: config.allowedLoginDomains,
+    })
+  ) {
     return messageResponse(
       "Sign-in not allowed",
       "This email address is not permitted to sign in.",
