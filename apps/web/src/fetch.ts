@@ -10,10 +10,13 @@ app.use(async (c, next) => {
     const { default: server } = await import("./server");
     return server.fetch(c.req.raw);
   }
+
   await next();
   return c.res;
 });
+
 app.use(actions());
 app.use(middleware());
 app.use(pages());
+
 export default app;

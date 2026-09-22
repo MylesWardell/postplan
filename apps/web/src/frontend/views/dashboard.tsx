@@ -2,18 +2,24 @@ import type { DraftStatus } from "@postplan/api";
 import type { loadDashboard } from "../loaders";
 import { Layout } from "../layout";
 import { date, Status } from "../shared";
+
 function dashboardHref(query: string, status: DraftStatus, cursor?: string) {
   const params = new URLSearchParams();
+
   if (query) {
     params.set("q", query);
   }
+
   if (status !== "all") {
     params.set("status", status);
   }
+
   if (cursor) {
     params.set("cursor", cursor);
   }
+
   const search = params.toString();
+
   return search ? `/dashboard?${search}` : "/dashboard";
 }
 
