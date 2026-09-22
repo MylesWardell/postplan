@@ -117,8 +117,26 @@ export function safeNextPath(value: unknown): string {
   if (typeof value !== "string") {
     return "/dashboard";
   }
-  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+  if (
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    Array.from(value).some(
+      (character) => character.charCodeAt(0) <= 0x1f || character.charCodeAt(0) === 0x7f,
+    )
+  ) {
     return "/dashboard";
   }
-  return value;
+  try {
+    const origin = new URL(webOrigin()).origin;
+    const destination = new URL(value, origin);
+    // Dot-segment normalization can turn a local path into a leading //.
+    // Reject it before serializing the URL back into a relative Location.
+    if (destination.origin !== origin || destination.pathname.startsWith("//")) {
+      return "/dashboard";
+    }
+    return `${destination.pathname}${destination.search}${destination.hash}`;
+  } catch {
+    return "/dashboard";
+  }
 }
