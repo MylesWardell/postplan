@@ -63,11 +63,21 @@ The scheduled handler marks up to 25 expired plans and deletes up to 25 versions
 
 No Cron trigger is enabled by default. When activating a reviewed deployment, configure an hourly trigger (`0 * * * *`) for cleanup. The stop latch also prevents scheduled cleanup. The [GitHub usage guard](./usage/README.md) checks account usage hourly and supports a manual kill switch; it latches D1, disables public exposure and removes Cron triggers without automatically restoring service. Its schedule starts after merge to `master`. Analytics and GitHub scheduling can lag, so the cron is not a billing hard cap.
 
-## Remote configuration
+## Remote configuration and deployment
 
-The source Wrangler configuration is local-only, with a placeholder D1 ID. Use an ignored `generated/wrangler.remote.json` with the intended resource identities, `main: "../src/worker.ts"`, migrations path `../../store-drizzle/drizzle`, exact HTTPS public URL and `POSTPLAN_LOCAL: "false"`. Select it through `POSTPLAN_CLOUDFLARE_CONFIG`, initialize using `bun deploy/initialize.ts --remote`, then build and deploy the generated `dist/server/wrangler.json`. Configuration changes require rebuilding.
+The source `wrangler.jsonc` configuration is local-only, with a placeholder D1 ID. `wrangler.production.jsonc` is the reviewed configuration for the existing `postplan-clone` Worker and its D1, R2 and Durable Object bindings. It contains no secrets. The deployment keeps `POSTPLAN_RATE_LIMIT_SECRET` and `POSTPLAN_SESSION_SECRET` as Worker secrets and restricts Shoo login to the exact address in `POSTPLAN_ALLOWED_LOGIN_EMAILS`.
 
-Root `.env.cloudflare.local` contains CLI-only `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Load them into the CLI environment without printing them; never use that file as Worker secrets. Configure independent random Worker secrets for `POSTPLAN_RATE_LIMIT_SECRET` and `POSTPLAN_SESSION_SECRET`, plus the intended login-domain settings. Supply the bootstrap key only during initialization. Keep secrets out of checked-in vars and command arguments.
+Cloudflare Workers Builds runs from the repository root on pushes to `master` with these settings:
+
+- Build command: `bunx --no-install turbo run cf:build:production --filter=@postplan/cloudflare`
+- Deploy command: `bun run --filter @postplan/cloudflare cf:deploy:production`
+- Root directory: `/`
+
+The build selects `wrangler.production.jsonc`, and Astro writes the deployable configuration to `dist/server/wrangler.json`. The deploy step publishes that exact output, so application code and assets are rebuilt before every production deployment. Configuration changes require a new build. For an intentional manual deployment, run the same two commands from the repository root.
+
+For another remote environment, create an ignored `generated/wrangler.remote.json` with the intended resource identities, `main: "../src/worker.ts"`, migrations path `../../store-drizzle/drizzle`, exact HTTPS public URL and `POSTPLAN_LOCAL: "false"`. Select it through `POSTPLAN_CLOUDFLARE_CONFIG`, initialize using `bun deploy/initialize.ts --remote`, then build and deploy the generated `dist/server/wrangler.json`.
+
+Root `.env.cloudflare.local` may contain CLI-only `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Load them into the CLI environment without printing them; never use that file as Worker secrets. Configure independent random Worker secrets for `POSTPLAN_RATE_LIMIT_SECRET` and `POSTPLAN_SESSION_SECRET`. Exact login allow/block lists and domain allowlists are non-secret deployment policy in Wrangler `vars`; see [configuration and authentication](../../docs/configuration.md). Supply the bootstrap key only during initialization. Keep secrets out of checked-in vars and command arguments.
 
 Keep Workers Free and R2 private Standard. Do not enable paid WAF or upgrade the plan. Validate account-wide headroom before any remote experiment. Enabling application routes does not clear an existing stop latch; recovery requires a separate deliberate operation after checking usage and exposure settings.
 

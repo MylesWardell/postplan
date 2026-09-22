@@ -24,6 +24,8 @@ export interface Config {
   maxHtmlBytes: number;
   sessionSecret: string | undefined;
   shooBaseUrl: string;
+  allowedLoginEmails: string[];
+  blockedLoginEmails: string[];
   allowedLoginDomains: string[];
   // Edge/proxy topology. Defaults preserve the Railway behaviour; see
   // src/lib/client-ip.ts and docs/aws-deployment-plan.md for the AWS values.
@@ -59,6 +61,14 @@ export const config: Config = {
   // routes respond 503 and the API/serving paths are unaffected.
   sessionSecret: env.POSTPLAN_SESSION_SECRET,
   shooBaseUrl: (env.SHOO_BASE_URL || "https://shoo.dev").replace(/\/+$/, ""),
+  allowedLoginEmails: parseLoginEmails(
+    "POSTPLAN_ALLOWED_LOGIN_EMAILS",
+    env.POSTPLAN_ALLOWED_LOGIN_EMAILS,
+  ),
+  blockedLoginEmails: parseLoginEmails(
+    "POSTPLAN_BLOCKED_LOGIN_EMAILS",
+    env.POSTPLAN_BLOCKED_LOGIN_EMAILS,
+  ),
   allowedLoginDomains: parseAllowedLoginDomains(env.POSTPLAN_ALLOWED_LOGIN_DOMAINS),
   trustProxy: parseTrustProxy(env.TRUST_PROXY),
   clientIpSource: parseClientIpSource(env.CLIENT_IP_SOURCE),
@@ -121,6 +131,29 @@ export function parseAllowedLoginDomains(value: string | undefined): string[] {
     );
   }
   return [...new Set(domains)];
+}
+
+export function parseLoginEmails(name: string, value: string | undefined): string[] {
+  const raw = value?.trim();
+  if (!raw) {
+    return [];
+  }
+
+  const emails = raw.split(",").map((entry) => entry.trim().toLowerCase());
+  if (emails.some((email) => !isEmail(email))) {
+    throw new Error(`Invalid ${name} (expected comma-separated email addresses).`);
+  }
+  return [...new Set(emails)];
+}
+
+function isEmail(value: string): boolean {
+  const separator = value.lastIndexOf("@");
+  return (
+    separator > 0 &&
+    separator === value.indexOf("@") &&
+    separator < value.length - 1 &&
+    isDomain(value.slice(separator + 1))
+  );
 }
 
 function isDomain(value: string): boolean {

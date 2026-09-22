@@ -7,21 +7,23 @@
 
 ## Optional variables
 
-| Variable                                                     | Purpose                                                                                               |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `DATABASE_PATH`                                              | SQLite file. Defaults to `data/postplan.sqlite`; use an absolute path in production.                  |
-| `POSTPLAN_BOOTSTRAP_API_KEY`                                 | Creates or updates the bootstrap administrator key on startup.                                        |
-| `AWS_ENDPOINT_URL`                                           | Selects S3-compatible storage instead of native AWS S3.                                               |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`                 | Static storage credentials. Omit on EC2 when using an instance role.                                  |
-| `AWS_S3_FORCE_PATH_STYLE`                                    | Defaults to true for custom endpoints and false for native S3.                                        |
-| `POSTPLAN_PUBLIC_BASE_URL`                                   | Public base URL, including wildcard forms such as `https://*.postplan.dev`.                           |
-| `POSTPLAN_SESSION_SECRET`                                    | Enables web sign-in with `POSTPLAN_PUBLIC_BASE_URL`.                                                  |
-| `POSTPLAN_ALLOWED_LOGIN_DOMAINS`                             | Comma-separated verified email domains, such as `example.com,test.dev`. Empty permits all Shoo users. |
-| `SHOO_BASE_URL`                                              | Shoo identity broker. Defaults to `https://shoo.dev`.                                                 |
-| `TRUST_PROXY`, `CLIENT_IP_SOURCE`, `REQUEST_ID_HEADER`       | Trusted proxy topology and audit headers.                                                             |
-| `MAX_HTML_BYTES`                                             | Maximum accepted HTML size.                                                                           |
-| `UPLOAD_IP_RATE_LIMIT_WINDOW_MS`, `UPLOAD_IP_RATE_LIMIT_MAX` | Anonymous upload limit.                                                                               |
-| `UPLOAD_RATE_LIMIT_WINDOW_MS`, `UPLOAD_RATE_LIMIT_MAX`       | Authenticated upload limit.                                                                           |
+| Variable                                                     | Purpose                                                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `DATABASE_PATH`                                              | SQLite file. Defaults to `data/postplan.sqlite`; use an absolute path in production. |
+| `POSTPLAN_BOOTSTRAP_API_KEY`                                 | Creates or updates the bootstrap administrator key on startup.                       |
+| `AWS_ENDPOINT_URL`                                           | Selects S3-compatible storage instead of native AWS S3.                              |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`                 | Static storage credentials. Omit on EC2 when using an instance role.                 |
+| `AWS_S3_FORCE_PATH_STYLE`                                    | Defaults to true for custom endpoints and false for native S3.                       |
+| `POSTPLAN_PUBLIC_BASE_URL`                                   | Public base URL, including wildcard forms such as `https://*.postplan.dev`.          |
+| `POSTPLAN_SESSION_SECRET`                                    | Enables web sign-in with `POSTPLAN_PUBLIC_BASE_URL`.                                 |
+| `POSTPLAN_ALLOWED_LOGIN_EMAILS`                              | Comma-separated exact verified email addresses.                                      |
+| `POSTPLAN_BLOCKED_LOGIN_EMAILS`                              | Comma-separated exact verified email addresses that must be denied.                  |
+| `POSTPLAN_ALLOWED_LOGIN_DOMAINS`                             | Comma-separated verified email domains, such as `example.com,test.dev`.              |
+| `SHOO_BASE_URL`                                              | Shoo identity broker. Defaults to `https://shoo.dev`.                                |
+| `TRUST_PROXY`, `CLIENT_IP_SOURCE`, `REQUEST_ID_HEADER`       | Trusted proxy topology and audit headers.                                            |
+| `MAX_HTML_BYTES`                                             | Maximum accepted HTML size.                                                          |
+| `UPLOAD_IP_RATE_LIMIT_WINDOW_MS`, `UPLOAD_IP_RATE_LIMIT_MAX` | Anonymous upload limit.                                                              |
+| `UPLOAD_RATE_LIMIT_WINDOW_MS`, `UPLOAD_RATE_LIMIT_MAX`       | Authenticated upload limit.                                                          |
 
 Uploads are public by default. Set `POSTPLAN_ALLOW_ANONYMOUS_UPLOADS=false` to require an API key for uploads; the AWS deployment and example environment use this private-team setting. API keys control administrative endpoints and attach uploads to an account.
 
@@ -37,7 +39,9 @@ Set `POSTPLAN_SESSION_SECRET` and `POSTPLAN_PUBLIC_BASE_URL` to enable `/dashboa
 
 Shoo handles sign-in. Postplan uses PKCE S256, verifies Shoo's ES256 identity token against its JWKS, and stores the stable `pairwise_sub` claim. Postplan then issues its own 30-day HMAC-signed session cookie. Dashboard routes only run on the apex application host; draft subdomains cannot serve them.
 
-The sign-in flow requests Shoo's `pii` consent for email, name, and profile picture. Postplan replaces those profile values after each login, while retaining the stable PII subject identifier. Declining consent denies sign-in. `POSTPLAN_ALLOWED_LOGIN_DOMAINS` requires a verified email with an exact, case-insensitive domain match.
+The sign-in flow requests Shoo's `pii` consent for email, name, and profile picture. Postplan replaces those profile values after each login, while retaining the stable PII subject identifier. Declining consent denies sign-in.
+
+Login access rules are comma-separated and case-insensitive. `POSTPLAN_ALLOWED_LOGIN_EMAILS` allows exact addresses, while `POSTPLAN_ALLOWED_LOGIN_DOMAINS` allows every address in an exact domain; if both are set, matching either allowlist permits sign-in. `POSTPLAN_BLOCKED_LOGIN_EMAILS` always wins over both allowlists. A blocklist by itself permits every other verified address. If any access rule is set, a syntactically valid verified email is required. With all three variables empty, Shoo login remains unrestricted.
 
 Draft ownership comes from the API key or browser session used to upload it. Anonymous uploads remain public but do not belong to an account. Git and CI provenance sent by the CLI is display and audit data, not authorization data.
 

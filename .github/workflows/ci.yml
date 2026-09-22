@@ -53,6 +53,10 @@ jobs:
           bunx --no-install wrangler d1 execute POSTPLAN_DB --local --persist-to .wrangler/state --command 'INSERT INTO usage_guard VALUES (1,1)' --yes
           bun deploy/initialize.ts --local
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/dashboard)" = 503
+      - name: Verify production Cloudflare deployment package
+        run: |
+          bunx --no-install turbo run cf:build:production --filter=@postplan/cloudflare
+          bun run --filter @postplan/cloudflare cf:deploy:production --dry-run
       - run: bun run pack:cli
       - run: node apps/cli/bin/postplan.js --help
       - run: docker build --tag postplan:ci .

@@ -6,7 +6,9 @@
   "scripts": {
     "cf:types": "wrangler types --config wrangler.jsonc env.d.ts",
     "cf:build": "cd ../../apps/web && POSTPLAN_RUNTIME=cloudflare bun --bun astro build",
+    "cf:build:production": "POSTPLAN_CLOUDFLARE_CONFIG=wrangler.production.jsonc bun run cf:build",
     "cf:dev": "cd ../../apps/web && POSTPLAN_RUNTIME=cloudflare bun --bun astro dev",
+    "cf:deploy:production": "wrangler deploy --config dist/server/wrangler.json",
     "cf:test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json",
     "cf:initialize": "bun deploy/initialize.ts"
