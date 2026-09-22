@@ -10,14 +10,19 @@ bun run check
 bun run build
 ```
 
+## Deployment options
+
+The Cloudflare Worker deployment was built for my personal use, optimized to be mostly free to run, with efficiency as the priority. The serverless Lambda deployment was built for my company, whose infrastructure runs on AWS. Both use the same application with platform-specific storage and runtime adapters.
+
 ## Documentation
 
 - [CLI usage](docs/cli.md)
 - [Development](docs/development.md)
 - [Configuration and authentication](docs/configuration.md)
 - [Architecture and API](docs/architecture.md)
-- [AWS deployment plan](docs/aws-deployment-plan.md)
-- [Cloudflare gateway and hosting plan](docs/cloudflare-deployment-plan.md)
+- [AWS deployment](infra/terraform/README.md)
+- [Cloudflare deployment](packages/cloudflare/README.md)
+- [Benchmarks](benchmark/cloudflare/README.md)
 - [Database operations](apps/web/DATABASE.md)
 
 ## Licence

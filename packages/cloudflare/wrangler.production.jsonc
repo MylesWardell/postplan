@@ -14,13 +14,11 @@
   "vars": {
     "CLIENT_IP_SOURCE": "req-ip",
     "MAX_HTML_BYTES": "32768",
-    "POSTPLAN_ALLOWED_LOGIN_EMAILS": "myles.wardell212@gmail.com",
     "POSTPLAN_ALLOW_ANONYMOUS_UPLOADS": "false",
     "POSTPLAN_APPLICATION_ENABLED": "true",
     "POSTPLAN_DATABASE": "sqlite",
     "POSTPLAN_LOCAL": "false",
     "POSTPLAN_ORPC_TRACING": "false",
-    "POSTPLAN_PUBLIC_BASE_URL": "https://postplan-clone.myles-wardell212.workers.dev",
     "REQUEST_ID_HEADER": "x-request-id",
     "TRUST_PROXY": "false",
   },
@@ -69,6 +67,11 @@
     },
   },
   "secrets": {
-    "required": ["POSTPLAN_RATE_LIMIT_SECRET", "POSTPLAN_SESSION_SECRET"],
+    "required": [
+      "POSTPLAN_RATE_LIMIT_SECRET",
+      "POSTPLAN_SESSION_SECRET",
+      "POSTPLAN_ALLOWED_LOGIN_EMAILS",
+      "POSTPLAN_PUBLIC_BASE_URL",
+    ],
   },
 }

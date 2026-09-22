@@ -43,6 +43,6 @@ Connections enable WAL, foreign keys and a five-second busy timeout. Transaction
 
 This is a fresh SQLite baseline, not an in-place upgrade of PostgreSQL. Existing installations need a separate export/import: preserve IDs, key hashes and object keys; convert dates to epoch milliseconds, booleans to integers and JSON to text; verify row counts, relationships and content hashes before switching. No existing database has been converted or modified.
 
-Back up with SQLite's online backup API or `VACUUM INTO` to a new file, then copy that completed snapshot off-host. Do not copy only the live main file while WAL writes are active. Verify `PRAGMA integrity_check` and `PRAGMA foreign_key_check` on a restored copy. See [SQLite backups](https://sqlite.org/backup.html) and the [AWS plan](../../docs/aws-deployment-plan.md).
+Back up with SQLite's online backup API or `VACUUM INTO` to a new file, then copy that completed snapshot off-host. Do not copy only the live main file while WAL writes are active. Verify `PRAGMA integrity_check` and `PRAGMA foreign_key_check` on a restored copy. See [SQLite backups](https://sqlite.org/backup.html).
 
 Tests use the production SQLite adapter for migrations, identities, concurrent versions, HTTP and SSR forms.

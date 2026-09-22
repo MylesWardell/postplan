@@ -1,7 +1,7 @@
 account_id = "123456789012"
 region = "ap-southeast-2"
 name = "postplan"
-github_repository = "MylesWardell/postplan-clone"
+github_repository = "example/postplan"
 github_environment = "production"
 # Set if already configured in this account; do not create a duplicate provider.
 # github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"

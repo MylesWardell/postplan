@@ -28,7 +28,7 @@ export interface Config {
   blockedLoginEmails: string[];
   allowedLoginDomains: string[];
   // Edge/proxy topology. Defaults preserve the Railway behaviour; see
-  // src/lib/client-ip.ts and docs/aws-deployment-plan.md for the AWS values.
+  // src/lib/client-ip.ts and docs/configuration.md for the AWS values.
   trustProxy: TrustProxySetting;
   clientIpSource: ClientIpSource;
   requestIdHeader: string;

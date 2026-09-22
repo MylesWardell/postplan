@@ -6,12 +6,12 @@ mock_provider "aws" {
 }
 variables {
   account_id        = "123456789012"
-  github_repository = "MylesWardell/postplan-clone"
+  github_repository = "example/postplan"
 }
 run "restricted_publisher" {
   command = plan
   assert {
-    condition     = jsondecode(aws_iam_role.publisher.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:MylesWardell/postplan-clone:environment:production"
+    condition     = jsondecode(aws_iam_role.publisher.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == "repo:example/postplan:environment:production"
     error_message = "OIDC trust must name the exact repo/environment."
   }
   assert {

@@ -52,21 +52,21 @@ test("login domain rules require an exact, verified email domain", () => {
 
 test("exact email allow and block rules are case-insensitive and block wins", () => {
   const allowed = {
-    allowedEmails: ["myles.wardell212@gmail.com"],
+    allowedEmails: ["owner@example.com"],
     blockedEmails: [],
     allowedDomains: [],
   };
-  assert.equal(isLoginAllowed("Myles.Wardell212@GMAIL.COM", true, allowed), true);
-  assert.equal(isLoginAllowed("someone.else@gmail.com", true, allowed), false);
-  assert.equal(isLoginAllowed("myles.wardell212@gmail.com", false, allowed), false);
+  assert.equal(isLoginAllowed("Owner@EXAMPLE.COM", true, allowed), true);
+  assert.equal(isLoginAllowed("another@example.com", true, allowed), false);
+  assert.equal(isLoginAllowed("owner@example.com", false, allowed), false);
 
   const blocked = {
-    allowedEmails: ["myles.wardell212@gmail.com"],
-    blockedEmails: ["myles.wardell212@gmail.com"],
-    allowedDomains: ["gmail.com"],
+    allowedEmails: ["owner@example.com"],
+    blockedEmails: ["owner@example.com"],
+    allowedDomains: ["example.com"],
   };
-  assert.equal(isLoginAllowed("myles.wardell212@gmail.com", true, blocked), false);
-  assert.equal(isLoginAllowed("someone.else@gmail.com", true, blocked), true);
+  assert.equal(isLoginAllowed("owner@example.com", true, blocked), false);
+  assert.equal(isLoginAllowed("another@example.com", true, blocked), true);
 });
 
 test("a blocklist alone allows other verified email addresses", () => {

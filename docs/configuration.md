@@ -33,6 +33,10 @@ Set `POSTPLAN_IDENTITY_TABLE`, `POSTPLAN_PLANS_TABLE`, `POSTPLAN_RECORDS_TABLE`,
 
 Lambda supplies `AWS_REGION` and temporary credentials, including `AWS_SESSION_TOKEN`. Set `POSTPLAN_SESSION_SECRET_PARAMETER_ARN` and optionally `POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN` to load SSM SecureStrings before startup. `POSTPLAN_API_GATEWAY=true` selects trusted API Gateway request-context handling and is only suitable behind the Lambda Web Adapter. The [Terraform runbook](../infra/terraform/README.md) configures these settings, images, and the cleanup schedule.
 
+## Dashboard-managed Cloudflare settings
+
+Store personal login allow/block lists as Worker **Secrets** under **Settings → Variables and Secrets**, not in checked-in Wrangler vars. The production config requires `POSTPLAN_ALLOWED_LOGIN_EMAILS` and `POSTPLAN_PUBLIC_BASE_URL` there alongside the signing secrets. See [Cloudflare setup](../packages/cloudflare/README.md#deployment).
+
 ## Web sign-in
 
 Set `POSTPLAN_SESSION_SECRET` and `POSTPLAN_PUBLIC_BASE_URL` to enable `/dashboard` and `/cli/auth`. If either value is missing, those routes return 503 without affecting uploads or public drafts.

@@ -1,6 +1,6 @@
 # Terraform infrastructure
 
-Two independent roots provision the [serverless design](../../docs/aws-serverless-terraform-plan.md):
+Two independent roots provision the AWS deployment:
 
 - `bootstrap/`: versioned state bucket, immutable ECR repositories and a GitHub OIDC image-publishing role.
 - `app/`: HTTP API and regional HTTPS domains, app/cleanup Lambdas and aliases, four DynamoDB tables, private HTML storage, disabled-by-default cleanup schedule, failure queue, logs, alarms and an account-wide budget.
@@ -84,7 +84,7 @@ The app enforces uniqueness/ownership via conditional transactions and uses cons
 
 Set `plan_retention_days` in tfvars (or `TF_VAR_plan_retention_days`) to configure `PLAN_RETENTION_DAYS` identically on both functions: default 90, 0 disables automatic expiry. Values are whole nonnegative days with a safe-arithmetic ceiling. The application computes age from the last successful upload and applies changes to existing plans.
 
-The cleanup contract is defined in the [retention plan](../../docs/aws-serverless-terraform-plan.md#cleanup-protocol). It claims stale plans conditionally, waits 24 hours, deletes S3 and child records with retries, then sets a seven-day tombstone TTL. The worker pages through results, preserves failed work, reconciles upload intents/orphans and emits `OldestPendingAgeSeconds` (zero when idle) without dimensions to `Postplan/<name>` after every successful run. The overdue alarm treats missing metrics as failure when cleanup is enabled.
+The cleanup worker claims stale plans conditionally, waits 24 hours, deletes S3 and child records with retries, then sets a seven-day tombstone TTL. The worker pages through results, preserves failed work, reconciles upload intents/orphans and emits `OldestPendingAgeSeconds` (zero when idle) without dimensions to `Postplan/<name>` after every successful run. The overdue alarm treats missing metrics as failure when cleanup is enabled.
 
 Before enabling `cleanup_enabled`, verify the real worker against disposable records, partial failures and its failure destination. Scheduler delivery failures and asynchronous worker failures go to the failure queue; retain/replay messages and inspect durable database work records. The queue retains messages for 14 days, so it is not the only retry ledger.
 
@@ -96,4 +96,4 @@ PITR retains durable metadata for seven days; it cannot recover deleted HTML. No
 
 Update image digests through a saved Terraform plan; Terraform publishes versions and advances the `live` aliases. Keep compatible previous digests for rollback. A rollback to SQLite after DynamoDB has received writes requires a data migration. Pause cleanup during incident recovery and preserve expiry checks in rollback code.
 
-Run the full acceptance list in the design before opening traffic: native forms/CLI, sessions, concurrent uploads, key revocation, domain isolation, payload limits, expiry races, cleanup retries, restore, alerts and measured cold starts. Finish each deployment with a full zero-diff plan. Local validation and mock tests do not replace that deployed acceptance.
+Before opening traffic, verify: native forms/CLI, sessions, concurrent uploads, key revocation, domain isolation, payload limits, expiry races, cleanup retries, restore, alerts and measured cold starts. Finish each deployment with a full zero-diff plan. Local validation and mock tests do not replace that deployed acceptance.
