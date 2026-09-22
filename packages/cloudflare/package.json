@@ -25,7 +25,7 @@
     "@types/node": "catalog:",
     "astro": "7.3.3",
     "vite": "catalog:",
-    "vitest": "5.0.1",
+    "vitest": "4.1.0",
     "wrangler": "4.135.0",
     "zod": "catalog:"
   }
