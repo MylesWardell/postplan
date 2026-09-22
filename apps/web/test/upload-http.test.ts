@@ -14,7 +14,8 @@ test("Hono uploads preserve raw JSON, CORS, body bounds and rate-limit responses
   const objects = new Map<string, string>();
   await store.accounts.seed({ bootstrapKey: "hono-upload-key" });
   config.allowAnonymousUploads = false;
-  config.rateLimits.uploadKey = { maxRequests: 3, window: 60000 };
+  // Four rejected bodies and three successful uploads consume the key allowance.
+  config.rateLimits.uploadKey = { maxRequests: 7, window: 60000 };
   const server = Bun.serve({
     hostname: "127.0.0.1",
     port: 0,
@@ -81,7 +82,7 @@ test("Hono uploads preserve raw JSON, CORS, body bounds and rate-limit responses
     assert.equal(objects.size, 3);
     const limited = await send(body);
     assert.equal(limited.status, 429);
-    assert.equal(limited.headers.get("ratelimit-limit"), "3");
+    assert.equal(limited.headers.get("ratelimit-limit"), "7");
     assert.equal(limited.headers.get("ratelimit-remaining"), "0");
     assert.ok(Number(limited.headers.get("retry-after")) > 0);
     assert.equal(limited.headers.get("access-control-allow-origin"), "*");
