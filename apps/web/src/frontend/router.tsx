@@ -57,6 +57,7 @@ const authenticated: MiddlewareHandler<{ Bindings: AppRequestContext }> = async 
     const url = new URL(request.url);
     return signInResponse(safeNextPath(url.pathname + url.search));
   }
+
   assertApplicationOrigin(request);
   await next();
   return c.res;
@@ -118,5 +119,6 @@ frontend.post("/dashboard/drafts/:draftId/:action", authenticated, async (c) => 
     default:
       return notFoundResponse();
   }
+
   return redirect(`/dashboard/drafts/${draftId}?saved=1`);
 });

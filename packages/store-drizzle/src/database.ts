@@ -1,4 +1,5 @@
 import type { SQL, Query } from "drizzle-orm";
+import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 
 import type * as schema from "./schema";
@@ -10,8 +11,8 @@ export type Database = Pick<
   "select" | "insert" | "update" | "delete" | "get"
 > & { atomic(statements: Query[]): Promise<void> };
 
-import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core";
 const dialect = new SQLiteSyncDialect({ casing: "snake_case" });
+
 export function statement(query: SQL | { toSQL(): Query }): Query {
   return "toSQL" in query ? query.toSQL() : dialect.sqlToQuery(query);
 }
@@ -20,6 +21,7 @@ export function statement(query: SQL | { toSQL(): Query }): Query {
 // remaining work, so hot queries are built once per database with placeholders.
 type Finalizable = { stmt?: { finalize?: () => void } };
 const preparedByDatabase = new WeakMap<Database, Map<object, Finalizable>>();
+
 export function prepared<T>(build: (db: Database) => T): (db: Database) => T {
   const key = {};
   return (db) => {

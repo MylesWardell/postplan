@@ -18,6 +18,7 @@ export async function loadDashboard(request: Request, context: AppRequestContext
       if (cursor && error instanceof ORPCError && error.code === "BAD_REQUEST") {
         return listPage(undefined);
       }
+
       throw error;
     }),
     caller.drafts.totals(),

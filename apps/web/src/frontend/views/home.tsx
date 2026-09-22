@@ -1,6 +1,7 @@
 import type { Session } from "#auth/types";
 
 import { Layout } from "../layout";
+
 export function HomePage({ session }: { session: Session | null }) {
   return (
     <Layout title="Share your next idea" session={session}>

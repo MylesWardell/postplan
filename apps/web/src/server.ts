@@ -12,6 +12,7 @@ export const createApplication = (deps: ServerDependencies) =>
 export { config };
 
 let application: Promise<ReturnType<typeof createApplication>> | undefined;
+
 export default {
   async fetch(request: Request) {
     application ??= (async () => {

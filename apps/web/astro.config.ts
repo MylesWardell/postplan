@@ -11,6 +11,7 @@ const target = process.env.POSTPLAN_RUNTIME || "aws";
 if (target !== "aws" && target !== "cloudflare") {
   throw new Error(`Unsupported POSTPLAN_RUNTIME: ${target}`);
 }
+
 const cloudflare = target === "cloudflare";
 if (cloudflare) {
   assertSqliteDatabase(process.env.POSTPLAN_DATABASE);

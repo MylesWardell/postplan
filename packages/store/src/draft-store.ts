@@ -15,6 +15,7 @@ import { draft, draftVersion, draftUpdates, urlContext } from "./models";
 import type { UploadContext, UploadInput } from "./models";
 
 const owned = z.object({ accountId: z.string(), draftId: z.string() });
+
 export const draftStoreContract = {
   // Keyset page ordered by (updatedAt, draftId) descending. `after` is the last row of the
   // previous page; stores return at most `limit` rows and whether another page exists.

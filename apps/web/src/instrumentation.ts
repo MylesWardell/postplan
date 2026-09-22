@@ -17,6 +17,7 @@ const sdk = endpoint
     })
   : undefined;
 sdk?.start();
+
 export async function shutdownInstrumentation(): Promise<void> {
   await sdk?.shutdown();
 }

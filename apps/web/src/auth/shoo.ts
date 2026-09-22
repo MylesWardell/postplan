@@ -4,6 +4,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { JWTPayload } from "jose";
 
 import { config } from "#config";
+
 const randomToken = (bytes: number) => randomBytes(bytes).toString("base64url");
 
 // shoo (shoo.dev) protocol facts, extracted from its source:

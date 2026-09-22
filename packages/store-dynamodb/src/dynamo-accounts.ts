@@ -13,6 +13,7 @@ interface Account {
   name: string;
   createdAt: Date;
 }
+
 export interface DynamoApiKey {
   pk: string;
   sk: string;

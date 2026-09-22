@@ -1,6 +1,7 @@
 import { Layout } from "../layout";
 import type { loadDraft } from "../loaders";
 import { date, Status } from "../shared";
+
 export function DetailPage({
   session,
   draft,

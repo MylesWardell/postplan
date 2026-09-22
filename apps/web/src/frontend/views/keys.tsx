@@ -3,12 +3,14 @@ import type { ApiKeySummary } from "@postplan/api";
 
 import { Layout } from "../layout";
 import { date } from "../shared";
+
 export interface KeysPageProps {
   session: Session;
   keys: ApiKeySummary[];
   token?: string;
   keyName?: string;
 }
+
 export function KeysPage({ session, keys, token, keyName }: KeysPageProps) {
   return (
     <Layout title="API keys" session={session} active="keys">

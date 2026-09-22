@@ -43,10 +43,12 @@ interface UrlContext {
   publicBaseUrl?: string;
   requestBaseUrl: string;
 }
+
 const urls = (draftId: string, context: UrlContext) => ({
   publicUrl: getDraftPublicUrl({ draftId, ...context }),
   rawUrl: getDraftRawUrl({ draftId, ...context }),
 });
+
 export const versionKey = (number: number) => `VERSION#${String(number).padStart(16, "0")}`;
 export function available(db: DynamoDatabase, plan: DynamoPlan | undefined): plan is DynamoPlan {
   return (
@@ -91,6 +93,7 @@ async function listAvailablePlans(db: DynamoDatabase, accountId: string) {
   }
   return result;
 }
+
 export async function listDynamoDrafts(
   db: DynamoDatabase,
   input: {
@@ -242,7 +245,9 @@ export async function updateDynamoDraft(
     return { ok: true as const };
   });
 }
+
 const newId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
+
 export async function uploadDynamoDraft(
   db: DynamoDatabase,
   ctx: UploadContext,

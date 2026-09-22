@@ -1,5 +1,6 @@
 import { Layout } from "../layout";
 import { page } from "../response.server";
+
 export function signInResponse(next: string): Response {
   return page(
     <Layout title="Sign in">

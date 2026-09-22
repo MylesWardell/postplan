@@ -10,6 +10,7 @@ import { accountStore } from "./account-store";
 import type { Database } from "./database";
 import { finalizePrepared } from "./database";
 import { draftStore } from "./draft-store";
+
 export type { Database } from "./database";
 
 export function createDrizzleStore(
