@@ -109,7 +109,7 @@
     "astro": "7.3.3",
     "hono": "4.13.8",
     "jose": "^6.2.12",
-    "proxy-addr": "^2.0.7",
+    "proxy-addr": "^2.0.8",
     "zod": "catalog:"
   },
   "devDependencies": {
