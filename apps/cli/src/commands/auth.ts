@@ -1,6 +1,8 @@
 import { once } from "node:events";
 import readline from "node:readline/promises";
+
 import type { Command } from "commander";
+
 import { createApiClient } from "../api";
 import { CliError } from "../errors";
 import { readAuth, saveCredentials } from "../state";

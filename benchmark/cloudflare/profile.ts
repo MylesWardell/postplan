@@ -1,6 +1,7 @@
 // Seeds one or two benchmark Workers, then CPU-profiles every configured batch.
 // Usage: bun profile.ts <tag> [case,case...]
 import { mkdir, writeFile } from "node:fs/promises";
+
 import { busyMilliseconds, median } from "./cpu-profile";
 import type { CpuProfile } from "./cpu-profile";
 

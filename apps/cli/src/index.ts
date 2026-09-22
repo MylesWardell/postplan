@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+
 import { registerAuthCommand } from "./commands/auth";
 import { registerListCommand } from "./commands/list";
 import { registerUploadCommand } from "./commands/upload";

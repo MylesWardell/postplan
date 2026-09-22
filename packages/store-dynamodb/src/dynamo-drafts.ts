@@ -1,18 +1,21 @@
 import { createHash, randomUUID } from "node:crypto";
-import { customAlphabet } from "nanoid";
-import { ORPCError } from "@orpc/server";
+
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { ORPCError } from "@orpc/server";
+import { customAlphabet } from "nanoid";
+
 import type { DraftRow, DraftVersionRow } from "@postplan/store";
-import type { DynamoDatabase } from "./dynamo";
-import { encode, optimistic, conditionalFailure } from "./dynamo";
 import type { UploadContext } from "@postplan/store";
-import { validateHtml } from "@postplan/store/html-policy";
-import { expired } from "@postplan/store/retention";
-import { draftUrlBuilder, getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
 import { cleanText, matchesDraftSearch } from "@postplan/store";
 import type { DraftStatus } from "@postplan/store";
 import type { UploadInput } from "@postplan/store";
 import { publicUploadAuth } from "@postplan/store";
+import { validateHtml } from "@postplan/store/html-policy";
+import { draftUrlBuilder, getDraftPublicUrl, getDraftRawUrl } from "@postplan/store/public-url";
+import { expired } from "@postplan/store/retention";
+
+import type { DynamoDatabase } from "./dynamo";
+import { encode, optimistic, conditionalFailure } from "./dynamo";
 
 export interface DynamoPlan extends DraftRow {
   draftId: string;
@@ -40,10 +43,12 @@ interface UrlContext {
   publicBaseUrl?: string;
   requestBaseUrl: string;
 }
+
 const urls = (draftId: string, context: UrlContext) => ({
   publicUrl: getDraftPublicUrl({ draftId, ...context }),
   rawUrl: getDraftRawUrl({ draftId, ...context }),
 });
+
 export const versionKey = (number: number) => `VERSION#${String(number).padStart(16, "0")}`;
 export function available(db: DynamoDatabase, plan: DynamoPlan | undefined): plan is DynamoPlan {
   return (
@@ -88,6 +93,7 @@ async function listAvailablePlans(db: DynamoDatabase, accountId: string) {
   }
   return result;
 }
+
 export async function listDynamoDrafts(
   db: DynamoDatabase,
   input: {
@@ -239,7 +245,9 @@ export async function updateDynamoDraft(
     return { ok: true as const };
   });
 }
+
 const newId = customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 12);
+
 export async function uploadDynamoDraft(
   db: DynamoDatabase,
   ctx: UploadContext,

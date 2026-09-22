@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "cf:types": "wrangler types --config wrangler.jsonc env.d.ts",
-    "cf:build": "POSTPLAN_RUNTIME=cloudflare vite build ../../apps/web --config ../../apps/web/vite.config.ts",
-    "cf:dev": "POSTPLAN_RUNTIME=cloudflare vite ../../apps/web --config ../../apps/web/vite.config.ts",
+    "cf:build": "cd ../../apps/web && POSTPLAN_RUNTIME=cloudflare bun --bun astro build",
+    "cf:dev": "cd ../../apps/web && POSTPLAN_RUNTIME=cloudflare bun --bun astro dev",
     "cf:test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -p tsconfig.json",
     "cf:initialize": "bun deploy/initialize.ts"
@@ -23,6 +23,7 @@
     "@cloudflare/vite-plugin": "1.54.9",
     "@cloudflare/vitest-plugin": "1.1.9",
     "@types/node": "catalog:",
+    "astro": "7.3.3",
     "vite": "catalog:",
     "vitest": "4.1.0",
     "wrangler": "4.131.2",

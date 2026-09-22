@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+
 import { test } from "vitest";
-import { clientIp } from "#lib/client-ip";
+
 import { config } from "#config";
+import { clientIp } from "#lib/client-ip";
+
 test("ALB ignores forged X-Real-IP and prepended forwarding entries", () => {
   const previous = { ...config };
   try {

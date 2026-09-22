@@ -1,13 +1,16 @@
-import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { expect, test } from "vitest";
-import { selectDatabase } from "../src/configuration";
-import { createRuntimeStore } from "../src/store";
+
 import { createDatabase } from "@postplan/store-drizzle/client";
 import { migrateDatabase } from "@postplan/store-drizzle/migrate";
+
+import { selectDatabase } from "../src/configuration";
+import { createRuntimeStore } from "../src/store";
 
 test("AWS selects exactly one database and explicit selection overrides legacy detection", () => {
   const existing = { AWS_LAMBDA_FUNCTION_NAME: "app", POSTPLAN_IDENTITY_TABLE: "identity" };

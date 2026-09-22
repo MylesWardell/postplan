@@ -1,5 +1,7 @@
-import { DRAFT_PAGE_SIZE_MAX, type AccountDraft } from "@postplan/api";
 import type { Command } from "commander";
+
+import { DRAFT_PAGE_SIZE_MAX, type AccountDraft } from "@postplan/api";
+
 import { createApiClient } from "../api";
 import { pluralize, timeAgo } from "../format";
 import { readAuth } from "../state";

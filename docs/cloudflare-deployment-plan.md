@@ -8,7 +8,7 @@ CPU release gate: the [bounded remote test](./cloudflare-cpu-test.md) found repe
 
 ## Decision
 
-Use Workers for the selectable gateway, API and TanStack Start dashboard; D1 for relational application metadata; SQLite-backed Durable Objects scoped to individual rate-limit subjects; private R2 Standard for uploaded HTML; and Workers Static Assets for built frontend files. Keep the existing Bun/SQLite and AWS deployments.
+Use Workers for the selectable gateway, API and Astro/Hono JSX dashboard; D1 for relational application metadata; SQLite-backed Durable Objects scoped to individual rate-limit subjects; private R2 Standard for uploaded HTML; and Workers Static Assets for built frontend files. Keep the existing Bun/SQLite and AWS deployments.
 
 D1 owns accounts, identities, API keys, drafts, versions, upload intents, capacity accounting and cleanup jobs. Durable Objects own only rate-limit counters. This keeps relational transactions in one database and independent IP/key coordination in independent objects. It avoids building a distributed identity/draft directory solely to support database partitioning. D1 is the managed relational choice recommended by the Cloudflare product-selection skill; Durable Objects remain part of this hosting option for a concrete coordination requirement.
 
@@ -21,7 +21,7 @@ The target is a $0 Cloudflare application/database/storage bill at small usage. 
 ```mermaid
 flowchart TD
   Browser[Browser or existing CLI] --> Gateway[Cloudflare Worker gateway]
-  Gateway --> App[TanStack Start dashboard and oRPC API]
+  Gateway --> App[Astro/Hono JSX dashboard and oRPC API]
   Gateway --> Static[Workers Static Assets]
   App --> Store[Cloudflare Store adapter]
   Store --> D1[(D1 relational metadata)]
@@ -39,7 +39,7 @@ D1 still has a single-threaded primary and finite throughput. This selection sim
 
 No distributed account directory, cross-object database transaction, global limiter, KV, Queues, Containers, S3, DynamoDB or AWS gateway is required for this option.
 
-Cloudflare documents an existing-app TanStack Start integration using its Vite plugin and Wrangler. Adapt that integration to this repository's custom server entry, rather than replacing the app with a template. [TanStack Start on Workers](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/).
+The Astro Cloudflare adapter uses the existing custom Worker entrypoint from Wrangler. The Worker retains gateway, usage guard, D1/R2 and scheduled cleanup handling; `renderFrontend` supplies Astro request locals behind the direct Hono paths. [Astro Cloudflare adapter](https://docs.astro.build/en/guides/integrations-guide/cloudflare/).
 
 ## Original implementation and required seams
 
@@ -60,7 +60,7 @@ Cloudflare bindings: `POSTPLAN_DB` (D1), `RATE_LIMITS` (Durable Object namespace
 
 ### Worker configuration and release requirements
 
-- Add project-local Wrangler and Cloudflare Vite dependencies compatible with the existing Vite/TanStack versions; use the Bun lockfile and inspect the installed Wrangler schema. No global CLI or silent dependency upgrades. Record resolved versions in the spike results.
+- Add project-local Wrangler and Cloudflare Vite dependencies compatible with the existing Vite/Astro versions; use the Bun lockfile and inspect the installed Wrangler schema. No global CLI or silent dependency upgrades. Record resolved versions in the spike results.
 - Use `wrangler.jsonc`, a compatibility date equal to the implementation date, and `nodejs_compat` for the app's Node crypto dependencies. Generate binding/runtime types using project-local `wrangler types`; regenerate after configuration changes. Match exported Durable Object classes to bindings and SQLite class-registration configuration supported by that Wrangler version.
 - Select `CLOUDFLARE_ENV` before dev/build. Give each environment explicit bindings, vars, routes and resource identities where inheritance does not apply. Inspect the framework-generated configuration and deploy that environment's artifact. Never assume `--env` or `CLOUDFLARE_ENV` at deploy time changes a built target. Keep outputs separated so a subsequent build cannot silently replace the reviewed artifact.
 - Verify local tests use simulated bindings, with remote bindings disabled. Verify the account, namespace and bucket before remote tests. Do not rely on omitted resource identifiers to create the intended resources automatically.
@@ -163,7 +163,7 @@ Workers/D1/DO free quota exhaustion causes failed requests/operations. R2 has me
 6. **Deployed free-tier experiment:** deploy a separate preview Worker/D1 database/limiter namespace/R2 bucket using an existing account after implementation. Configure secrets and permitted Shoo callback origin. Run the same flows remotely, restart/redeploy, benchmark cold/warm SSR and maximum-size uploads, and observe daily usage including cleanup. Local emulation does not prove provider CPU/free-tier acceptance.
 7. **Promotion decision:** deliver measured CPU, latency, request/row amplification, storage growth, backup restore evidence and remaining account headroom. Mark the option ready only when all application flows and the cost envelope pass. Until then the existing deployment remains the default.
 
-Runtime layout: `packages/cloudflare` owns the Worker, D1 driver, R2 adapter, Durable Object, Vite plugin, Wrangler configuration, tests and usage guard. `packages/lambda` owns AWS adapters and default build options. `apps/web/vite.config.ts` selects runtime options using `POSTPLAN_RUNTIME` (`aws` by default, or `cloudflare`) while sharing TanStack/React configuration. `POSTPLAN_DATABASE` selects exactly one backend: AWS supports `sqlite` or `dynamodb`; Cloudflare supports only `sqlite` (D1). `packages/store-drizzle` contains portable SQLite queries and an atomic batch interface, with Bun access isolated behind `/client`. Wrangler owns experimental Cloudflare resources; existing AWS Terraform state remains independent.
+Runtime layout: `packages/cloudflare` owns the Worker, D1 driver, R2 adapter, Durable Object, Vite plugin, Wrangler configuration, tests and usage guard. `packages/lambda` owns AWS adapters and default build options. `apps/web/astro.config.ts` selects runtime options using `POSTPLAN_RUNTIME` (`aws` by default, or `cloudflare`) while sharing Astro/Hono JSX configuration. `POSTPLAN_DATABASE` selects exactly one backend: AWS supports `sqlite` or `dynamodb`; Cloudflare supports only `sqlite` (D1). `packages/store-drizzle` contains portable SQLite queries and an atomic batch interface, with Bun access isolated behind `/client`. Wrangler owns experimental Cloudflare resources; existing AWS Terraform state remains independent.
 
 ## Recovery and scope
 

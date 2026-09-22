@@ -1,7 +1,9 @@
-import { openapi } from "@orpc/openapi";
 import { oc } from "@orpc/contract";
 import type { RouterContractClient } from "@orpc/contract";
+import { openapi } from "@orpc/openapi";
+
 import * as schemas from "./schemas/index";
+
 export * from "./schemas/index";
 
 const publicContract = oc.errors({
@@ -12,6 +14,7 @@ const publicContract = oc.errors({
 const protectedContract = publicContract
   .errors({ UNAUTHORIZED: {}, FORBIDDEN: {}, NOT_FOUND: {} })
   .meta(openapi({ spec: (current) => ({ ...current, security: [{ bearerAuth: [] }] }) }));
+
 export const contract = {
   account: {
     me: protectedContract

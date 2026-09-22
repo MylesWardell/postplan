@@ -6,7 +6,7 @@ Deployment design for three developers publishing at most one plan each per hour
 
 Use a Regional API Gateway **HTTP API** with a custom HTTPS domain, one Bun application Lambda, DynamoDB on-demand, and private S3. A separate small Lambda runs daily retention cleanup. Default region: `ap-southeast-2`, configurable. Serve built application assets from the application Lambda initially.
 
-Keep Bun, TanStack Start, oRPC, Shoo sign-in, signed session cookies and the CLI contract. Replace SQLite persistence. No VPC, NAT gateway, server, RDS, Redis, load balancer or provisioned concurrency is needed.
+Keep Bun, Astro/Hono JSX, oRPC, Shoo sign-in, signed session cookies and the CLI contract. Replace SQLite persistence. No VPC, NAT gateway, server, RDS, Redis, load balancer or provisioned concurrency is needed.
 
 This adjusts the earlier CloudFront + Function URL suggestion. CloudFront OAC with an IAM-protected Function URL requires clients to hash POST/PUT bodies, complicating native forms and bearer authentication. HTTP API works with existing forms through the Web Adapter and provides custom domains directly. Defer CloudFront until traffic warrants it. [OAC requirements](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-lambda.html), [Web Adapter](https://github.com/aws/aws-lambda-web-adapter).
 
@@ -102,7 +102,7 @@ Terraform stores secret ARNs only. Supply SecureString values separately through
 
 Add a pinned Lambda Web Adapter to a dedicated Docker target. Keep the Bun host, port 3000 and built assets; remove persistent filesystem writes and use `/tmp` only for temporary files. Initialize configuration/persistence before `/healthz` reports ready. Cleanup has its own executable and no HTTP listener.
 
-Use buffered HTTP API responses. Test TanStack SSR/server functions, native form POSTs, multiple `Set-Cookie` headers, redirects, bearer authorization, compression and binary/base64 handling through the actual adapter. Verify 512 KiB HTML uploads plus JSON/event overhead against the smallest transport limit. Bound or paginate list/history responses to fit buffered Lambda limits. Streaming is outside this initial design.
+Use buffered HTTP API responses. Test Astro/Hono SSR and oRPC endpoints, native form POSTs, multiple `Set-Cookie` headers, redirects, bearer authorization, compression and binary/base64 handling through the actual adapter. Verify 512 KiB HTML uploads plus JSON/event overhead against the smallest transport limit. Bound or paginate list/history responses to fit buffered Lambda limits. Streaming is outside this initial design.
 
 When using subdomains, issue a regional ACM certificate for both `plans.example.com` and `*.plans.example.com` and map both to the same API stage without a path prefix. Preserve public hostname/scheme for draft isolation, origin checks and OAuth redirects. Derive client IP from trusted API Gateway context through the adapter, not arbitrary forwarded headers. Test spoofed host/IP headers and disable the generated execute-api endpoint. [HTTP API domains](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-custom-domain-names.html), [endpoint control](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-disable-default-endpoint.html).
 

@@ -1,11 +1,9 @@
-import { createTestStore } from "@postplan/store/testing";
-import { gzipSync } from "node:zlib";
-import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { gzipSync } from "node:zlib";
+
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
-import { createServerOptions } from "./start-server";
-import { config } from "#config";
+import { test } from "vitest";
+
 import {
   createAuthStateCookie,
   createSessionCookie,
@@ -13,6 +11,10 @@ import {
   readSession,
 } from "#auth/session";
 import { resetShooCaches } from "#auth/shoo";
+import { config } from "#config";
+import { createTestStore } from "@postplan/store/testing";
+
+import { createServerOptions } from "./start-server";
 
 // Exercise rendered pages, native forms, and local Shoo callbacks without external services.
 test("SSR dashboard forms preserve ownership, escape content, and manage drafts and keys", async () => {
@@ -158,13 +160,14 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.doesNotMatch(css, /&quot;/);
     assert.equal((await post("/assets/styles.css")).status, 404);
     assert.equal((dashboardHtml.match(/<html\b/g) ?? []).length, 1);
-    const nonce = dashboard.headers.get("content-security-policy")!.match(/'nonce-([^']+)'/)?.[1];
-    assert.ok(nonce);
-    const scripts = [...dashboardHtml.matchAll(/<script\b[^>]*>/g)];
-    assert.ok(scripts.length > 0);
-    for (const [tag] of scripts) {
-      assert.ok(tag.includes(`nonce="${nonce}"`), tag);
-    }
+    assert.match(dashboard.headers.get("content-security-policy")!, /script-src 'none'/);
+    assert.doesNotMatch(dashboardHtml, /<script\b/);
+    assert.match(dashboardHtml, /<head>.*<title>Your drafts · Postplan<\/title>.*<\/head>/);
+    const head = await app(
+      new Request(base + "/dashboard", { method: "HEAD", headers: { cookie } }),
+    );
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), "");
     assert.match(dashboardHtml, /Project roadmap/);
     const concurrentPages = await Promise.all([
       get("/dashboard").then((response) => response.text()),
@@ -177,59 +180,7 @@ test("SSR dashboard forms preserve ownership, escape content, and manage drafts 
     assert.match(concurrentPages[1], /Your next idea starts here/);
     assert.match(concurrentPages[2], /Version history/);
     assert.match(concurrentPages[3], /Create a key/);
-    // Chunk placement and optional property quotes differ between build platforms.
-    const serverDirectory = fileURLToPath(new URL("../dist/server/", import.meta.url));
-    const serverBundle = (
-      await Promise.all(
-        [...new Bun.Glob("**/*.js").scanSync({ cwd: serverDirectory, absolute: true })].map(
-          (file) => Bun.file(file).text(),
-        ),
-      )
-    ).join("\n");
-    const functionId = serverBundle.match(
-      /["']?([a-f0-9]{64})["']?:\s*\{\s*functionName:\s*["']loadDashboard_createServerFn_handler["']/,
-    )?.[1];
-    assert.ok(functionId);
-    const functionPath = `/_serverFn/${functionId}`;
-    const loadInBrowser = (sessionCookie: string, site = "same-origin", origin = base) =>
-      app(
-        new Request(base + functionPath, {
-          headers: {
-            cookie: sessionCookie,
-            "sec-fetch-site": site,
-            origin,
-            "x-tsr-serverFn": "true",
-          },
-        }),
-      );
-    const ownerData = await loadInBrowser(cookie);
-    assert.equal(ownerData.status, 200);
-    assert.equal(ownerData.headers.get("cache-control"), "no-store");
-    assert.match(await ownerData.text(), /Project roadmap/);
-    assert.doesNotMatch(await (await loadInBrowser(otherCookie)).text(), /Project roadmap/);
-    assert.doesNotMatch(await (await loadInBrowser("")).text(), /Project roadmap/);
-    assert.equal((await loadInBrowser(cookie, "cross-site", "https://evil.example")).status, 403);
-    assert.equal(
-      (
-        await app(
-          new Request(publicUrl + functionPath, {
-            headers: { cookie, "sec-fetch-site": "same-origin", "x-tsr-serverFn": "true" },
-          }),
-        )
-      ).status,
-      404,
-    );
-    for (const [tag] of scripts) {
-      const source = tag.match(/src="([^"]+)"/)?.[1];
-      if (!source) {
-        continue;
-      }
-      const asset = await get(source, "");
-      assert.equal(asset.status, 200);
-      assert.match(asset.headers.get("content-type")!, /javascript/);
-      assert.match(asset.headers.get("cache-control")!, /immutable/);
-      assert.equal((await app(new Request(publicUrl + source))).status, 404);
-    }
+    assert.equal((await get("/_serverFn/removed")).status, 404);
     assert.match(await (await get("/dashboard/")).text(), /Project roadmap/);
     assert.match(await (await get("/dashboard?q=absent")).text(), /No drafts match your filters/);
     assert.equal((await get(path, otherCookie)).status, 404);

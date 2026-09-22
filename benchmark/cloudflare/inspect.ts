@@ -1,6 +1,7 @@
 // Summarizes a CPU profile, or shows who calls matching functions.
 // Usage: bun inspect.ts <file.cpuprofile> [function-prefix...]
 import { readFileSync } from "node:fs";
+
 import { createParentMap, getNode, parseCpuProfile } from "./cpu-profile";
 import type { CpuProfileNode } from "./cpu-profile";
 

@@ -1,15 +1,19 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ORPCError } from "@orpc/server";
+
+import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "@postplan/store";
+
 import { encode, optimistic, conditionalFailure } from "./dynamo";
 import type { DynamoDatabase } from "./dynamo";
-import type { ApiKeyAuth, IdentityInput, IdentityAccount } from "@postplan/store";
 
 interface Account {
   id: string;
   name: string;
   createdAt: Date;
 }
+
 export interface DynamoApiKey {
   pk: string;
   sk: string;

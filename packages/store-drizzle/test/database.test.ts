@@ -1,13 +1,11 @@
-import { createDatabase } from "@postplan/store-drizzle/client";
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "vitest";
-import { migrateDatabase } from "@postplan/store-drizzle/migrate";
-import { finalizePrepared, statement } from "@postplan/store-drizzle/database";
+
 import { eq } from "drizzle-orm";
-import * as schema from "@postplan/store-drizzle/schema";
+import { test } from "vitest";
+
 import {
   createApiKey,
   findApiKeyByToken,
@@ -15,6 +13,10 @@ import {
   revokeApiKey,
   seedAccounts,
 } from "@postplan/store-drizzle/account-queries";
+import { createDatabase } from "@postplan/store-drizzle/client";
+import { finalizePrepared, statement } from "@postplan/store-drizzle/database";
+import { migrateDatabase } from "@postplan/store-drizzle/migrate";
+import * as schema from "@postplan/store-drizzle/schema";
 
 test("SQLite survives reopen and rolls back a failed transaction", async () => {
   const directory = mkdtempSync(join(tmpdir(), "postplan-sqlite-"));

@@ -1,7 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
-  "jsPlugins": ["@tanstack/eslint-plugin-router"],
   "categories": {
     "correctness": "error"
   },
@@ -12,9 +11,7 @@
   "rules": {
     "typescript/no-explicit-any": "error",
     "typescript/no-unsafe-type-assertion": "off",
-    "eslint/curly": ["error", "all"],
-    "@tanstack/router/create-route-property-order": "error",
-    "@tanstack/router/route-param-names": "error"
+    "eslint/curly": ["error", "all"]
   },
   "ignorePatterns": [
     "**/dist/**",

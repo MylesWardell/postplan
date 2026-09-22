@@ -24,3 +24,5 @@ apps/cli/bin
 **/.dev.vars*
 packages/cloudflare/generated
 packages/cloudflare/env.d.ts
+
+**/.astro

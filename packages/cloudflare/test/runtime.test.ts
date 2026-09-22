@@ -1,15 +1,16 @@
-import { env } from "cloudflare:workers";
 import {
   evictDurableObject,
   reset,
   runInDurableObject,
   runDurableObjectAlarm,
 } from "cloudflare:test";
+import { env } from "cloudflare:workers";
 import { afterEach, expect, test, vi } from "vitest";
+
 import { cloudflareGateway } from "../src/gateway";
-import { handleCloudflareRequest } from "../src/request-pipeline";
-import { limiterName, validateRule } from "../src/rate-limit";
 import { r2Storage } from "../src/r2";
+import { limiterName, validateRule } from "../src/rate-limit";
+import { handleCloudflareRequest } from "../src/request-pipeline";
 
 afterEach(async () => {
   vi.restoreAllMocks();

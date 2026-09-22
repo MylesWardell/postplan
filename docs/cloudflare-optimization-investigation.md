@@ -1,5 +1,7 @@
 # Cloudflare optimization investigation
 
+> Historical investigation: the measurements and bundle sizes below describe the TanStack-era revisions used in those experiments. The frontend now uses Astro 7 and Hono JSX. Uploads bypass both Astro and the oRPC HTTP pipeline; other API requests use Astro endpoints with oRPC's Fetch adapter. Pages use native links/forms without hydration or server-function endpoints. See the [current benchmark architecture](../benchmark/cloudflare/README.md#current-request-paths). The old figures do not establish the new architecture's CPU cost or Workers Free suitability.
+
 The first optimization pass reduces avoidable work, but **the application still does not reliably fit Workers Free's 10 ms CPU allowance**. The package cleanup is complete; permanent regression tests remain tracked and all one-off probes/profilers are outside the package in gitignored `.local/cloudflare/`.
 
 ## Changes retained

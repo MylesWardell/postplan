@@ -1,7 +1,8 @@
 import { test, expect } from "vitest";
-import { gatewayRequest } from "#lib/gateway";
+
 import { config } from "#config";
 import { clientIp } from "#lib/client-ip";
+import { gatewayRequest } from "#lib/gateway";
 
 test("gateway context preserves public origin/body and overrides forged proxy headers", async () => {
   const before = { ...config };

@@ -129,10 +129,16 @@ prepare_work() {
   else
     rsync -a --delete \
       --exclude node_modules --exclude .git --exclude .turbo --exclude .wrangler --exclude dist \
-      --exclude .local --exclude generated --exclude benchmark/cloudflare/results \
+      --exclude .local --exclude .astro --exclude generated --exclude benchmark/cloudflare/results \
       "$repo/" "$target_work/"
   fi
   cp "$repo/packages/cloudflare/src/benchmark.ts" "$target_work/packages/cloudflare/src/worker.ts"
+  # Pre-Astro baselines own their renderer inside createApplication. Keep the same
+  # benchmark cases/fixtures, but do not import a module absent from that revision.
+  if [[ ! -f "$target_work/apps/web/src/astro-render.ts" ]]; then
+    sed -i '/import { renderFrontend } from "@postplan\/web\/astro-render";/d; s/, renderFrontend//g' \
+      "$target_work/packages/cloudflare/src/worker.ts"
+  fi
   cp \
     "$repo/packages/cloudflare/src/request-pipeline.ts" \
     "$target_work/packages/cloudflare/src/request-pipeline.ts"

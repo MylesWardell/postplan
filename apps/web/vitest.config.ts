@@ -1,5 +1,6 @@
 import { defaultServerConditions } from "vite";
 import { defineConfig, mergeConfig } from "vitest/config";
+
 import base from "../../scripts/testing/vitest.config.ts";
 
 const store = process.env.POSTPLAN_TEST_STORE || "drizzle";

@@ -1,9 +1,10 @@
+import type { StoreConnection } from "@postplan/store";
 import { createDrizzleStore } from "@postplan/store-drizzle";
 import { createDatabase } from "@postplan/store-drizzle/client";
 import { createDynamoStore } from "@postplan/store-dynamodb";
-import type { StoreConnection } from "@postplan/store";
-import { createRuntimeDynamoDatabase } from "./database";
+
 import { selectDatabase } from "./configuration";
+import { createRuntimeDynamoDatabase } from "./database";
 
 // Backend selection belongs only at the application composition boundary.
 export function createRuntimeStore(config: {

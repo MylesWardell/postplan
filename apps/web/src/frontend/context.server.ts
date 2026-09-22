@@ -1,9 +1,11 @@
 import { ORPCError } from "@orpc/server";
-import { assertApplicationOrigin, readSession } from "#auth/session";
-import { config } from "#config";
-import { createCaller } from "#client";
-import type { ContextFactory, ServerDependencies } from "#context";
+
 import type { createApiHandler } from "#api";
+import { assertApplicationOrigin, readSession } from "#auth/session";
+import { createCaller } from "#client";
+import { config } from "#config";
+import type { ContextFactory, ServerDependencies } from "#context";
+
 import { messageResponse } from "./response.server";
 
 export interface AppRequestContext {
@@ -11,11 +13,6 @@ export interface AppRequestContext {
   createContext: ContextFactory;
   api: ReturnType<typeof createApiHandler>;
   peerIp: string | null;
-}
-declare module "@tanstack/react-router" {
-  interface Register {
-    server: { requestContext: AppRequestContext };
-  }
 }
 export function requireConfiguredSignIn() {
   if (!config.sessionSecret || !config.publicBaseUrl) {

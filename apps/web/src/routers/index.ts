@@ -1,5 +1,7 @@
 import { publicOS } from "#orpc";
+
 import { getAccount } from "./account";
+import { listApiKeys, createApiKey, revokeApiKey } from "./api-key";
 import {
   listDrafts,
   listDraftTotals,
@@ -10,7 +12,6 @@ import {
   enableDraft,
   uploadDraft,
 } from "./draft";
-import { listApiKeys, createApiKey, revokeApiKey } from "./api-key";
 
 export const router = publicOS.router({
   account: { me: getAccount },

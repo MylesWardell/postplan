@@ -1,8 +1,10 @@
-import { createContextFactory } from "#context";
 import assert from "node:assert/strict";
+
 import { test } from "vitest";
-import { createTestStore } from "@postplan/store/testing";
+
 import { createCaller } from "#client";
+import { createContextFactory } from "#context";
+import { createTestStore } from "@postplan/store/testing";
 
 test("concurrent requests serialize draft versions and first logins", async () => {
   const { store, close } = await createTestStore();

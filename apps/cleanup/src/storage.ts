@@ -4,8 +4,9 @@ import {
   ListObjectsV2Command,
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
-import type { CleanupStorage } from "@postplan/store-dynamodb/cleanup";
 import type { S3ClientConfig } from "@aws-sdk/client-s3";
+
+import type { CleanupStorage } from "@postplan/store-dynamodb/cleanup";
 
 export function cleanupStorage(bucket: string, options: S3ClientConfig = {}): CleanupStorage {
   const client = new S3Client(options);

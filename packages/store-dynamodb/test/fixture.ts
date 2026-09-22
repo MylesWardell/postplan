@@ -1,7 +1,9 @@
-import { createDynamoStore } from "@postplan/store-dynamodb";
 import { randomUUID } from "node:crypto";
+
 import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+
+import { createDynamoStore } from "@postplan/store-dynamodb";
 import { DynamoDatabase } from "@postplan/store-dynamodb/dynamo";
 
 export const dynamoEndpoint = process.env.POSTPLAN_TEST_DYNAMODB_ENDPOINT;

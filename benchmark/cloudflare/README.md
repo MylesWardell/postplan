@@ -2,6 +2,21 @@
 
 Repeatable, in-process CPU benchmark for the Cloudflare Worker. Use it to compare changes before spending remote Workers Free CPU tests. Background and findings are in [the optimization investigation](../../docs/cloudflare-optimization-investigation.md#second-pass-in-process-cpu-benchmark).
 
+## Current request paths
+
+The benchmark builds the same Astro 7 application as production, using `apps/web/astro.config.ts` and the Cloudflare adapter. All cases first enter `handleCloudflareRequest` (gateway, application/usage guards and assets), then the shared outer Hono application:
+
+| Cases                          | Application path                                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `upload`, `uploadLarge`        | Hono direct upload handler → schema/auth/rate limits → store → HTML validation and storage. Neither Astro nor the oRPC HTTP handler/plugin pipeline dispatches these requests. |
+| `public`                       | Public-draft handler → store and HTML storage response. Bypasses Astro and the oRPC HTTP handler.                                                                              |
+| `list`, `listMax`              | Astro `astro/hono` pipeline → `/api/[...path]` endpoint → oRPC OpenAPI Fetch handler → store.                                                                                  |
+| `home`, `dashboard`, `healthz` | Astro `astro/hono` pipeline → document endpoint → Hono route. Pages render Hono JSX; dashboard loaders use direct in-process oRPC calls.                                       |
+
+There is no React renderer, TanStack router, hydration JavaScript, or server-function request in the new frontend. Cookie authentication, exact-origin checks on form mutations, ownership checks and security headers remain part of the measured path. Direct uploads still perform their own validation, authentication, request limits and rate limits; bypassing the oRPC HTTP pipeline does not bypass those controls.
+
+`benchmark.ts` supplies `renderFrontend` to `createApplication`, just like the production Worker. The benchmark's D1/R2/limiter substitutions below remain unchanged. The previously reported approximately 2 ms oRPC upload overhead motivated keeping uploads direct. The migration measurements below cover warm local application CPU; they do not establish deployed CPU or Workers Free acceptance.
+
 ## Why this setup
 
 - **Linux only.** workerd on Windows samples at the timer tick (about 16 ms), so profiles cannot attribute CPU. Use WSL or another Linux host.
@@ -105,7 +120,7 @@ Do not infer an optimization from a single run. Review each result's three batch
 | `upload`      | `POST /api/uploads`, 5,356 bytes, then trimmed back to the seed |
 | `uploadLarge` | `POST /api/uploads`, just under 512 KiB                         |
 
-The account is seeded with 58 plans. Set `BENCH_PLANS` to seed a larger account, for example `wsl env BENCH_PLANS=120 bash benchmark/cloudflare/run.sh after list,listMax,dashboard`. `run.sh` copies the current benchmark entry into every target, so archived baselines seed the same count and accept `listMax`; revisions without list pagination ignore `limit` and return every plan.
+The account is seeded with 58 plans. Set `BENCH_PLANS` to seed a larger account, for example `wsl env BENCH_PLANS=120 bash benchmark/cloudflare/run.sh after list,listMax,dashboard`. `run.sh` copies the current benchmark entry into every target, so archived baselines seed the same count and accept `listMax`; revisions without list pagination ignore `limit` and return every plan. For pre-Astro archives, the runner removes only the new renderer import/option from the copied benchmark entry: those revisions create their own renderer internally. This keeps the baseline on its original framework while sharing the cases and fixtures.
 
 To add a case, add a request factory to `packages/cloudflare/src/benchmark.ts` and a batch size to `PLAN` in `profile.ts`.
 
@@ -119,6 +134,25 @@ To add a case, add a request factory to `packages/cloudflare/src/benchmark.ts` a
 - Keep `metadata.json`, `summary.json`, `comparison.json` and every `.cpuprofile` together when sharing a result. They record the commit, exact built-source hash, dirty/patch state, tool versions, scenario order and batch execution order.
 
 ## Results history
+
+### 2026-09-22 Astro/Hono JSX rewrite
+
+Two independent interleaved runs compared clean `master` at `ee944b4` with the clean Astro/Hono JSX rewrite at `ac1f7ea`. The baseline already uses direct Hono uploads, so this comparison isolates the frontend rewrite from that earlier upload change. Each value is the median application CPU per request from three profiled batch averages after applying the benchmark exclusions. All warm and profiled reads returned 200; all uploads returned 201.
+
+| Case          | TanStack run 1 | Astro/Hono run 1 | TanStack run 2 | Astro/Hono run 2 |
+| ------------- | -------------: | ---------------: | -------------: | ---------------: |
+| `healthz`     |           0.59 |             0.55 |           0.51 |             0.60 |
+| `home`        |           0.68 |             0.39 |           0.66 |             0.36 |
+| `dashboard`   |           2.05 |             1.44 |           2.06 |             1.26 |
+| `list`        |           1.25 |             1.43 |           1.28 |             1.49 |
+| `listMax`     |           1.26 |             1.75 |           1.23 |             1.56 |
+| `public`      |           2.37 |             2.43 |           2.20 |             2.44 |
+| `upload`      |           5.14 |             5.63 |           5.06 |             5.63 |
+| `uploadLarge` |          15.79 |            18.37 |          15.94 |            16.39 |
+
+The page-rendering improvement repeated: `home` was 43-45% lower and `dashboard` was 30-39% lower. `list` and `listMax` were 0.15-0.49 ms higher after gaining Astro endpoint dispatch, but bypass paths also moved between builds, so these runs do not isolate an exact Astro dispatch cost. `healthz` and `uploadLarge` changed direction or magnitude between runs. Treat the other differences as whole-build variance rather than optimization claims. These are warm local profiles, not remote CPU, cold-start or production-traffic measurements.
+
+### 2026-09-17 benchmark parity
 
 Application CPU per request in milliseconds. This 2026-09-17 parity run interleaved the archived application at `7266f84` with the issue #22 working tree at the same application commit. The comparison applies exclusions independently to all three raw profiles and reports their median.
 

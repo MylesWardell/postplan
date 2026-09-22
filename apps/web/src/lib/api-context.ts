@@ -1,9 +1,10 @@
 import { ORPCError } from "@orpc/server";
-import type { ApiContext, BaseContext } from "#context";
+
+import { assertApplicationOrigin, readSession } from "#auth/session";
 import { config } from "#config";
+import type { ApiContext, BaseContext } from "#context";
 import { clientIp } from "#lib/client-ip";
 import { getRequestBaseUrl } from "@postplan/store/public-url";
-import { assertApplicationOrigin, readSession } from "#auth/session";
 
 // Shared authentication/metadata for direct HTTP uploads and the remaining oRPC API.
 export async function resolveApiContext(base: BaseContext, headers?: Headers): Promise<ApiContext> {

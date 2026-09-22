@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+
 import { test } from "vitest";
+
 import { validateHtml } from "@postplan/store/html-policy";
 
 const page = (body: string, head = "<title>Plan</title>") =>

@@ -1,11 +1,13 @@
-import { drizzle } from "drizzle-orm/d1";
 import type { Query } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
+
 import { createDrizzleStore } from "@postplan/store-drizzle";
 import * as schema from "@postplan/store-drizzle/schema";
-import { limiterName } from "./rate-limit";
-import { assertSqliteDatabase } from "./configuration";
 import { parseRetentionDays } from "@postplan/store/retention";
-import { eq } from "drizzle-orm";
+
+import { assertSqliteDatabase } from "./configuration";
+import { limiterName } from "./rate-limit";
 
 export function createDatabase(binding: D1Database) {
   return Object.assign(drizzle(binding, { schema, casing: "snake_case" }), {

@@ -1,15 +1,18 @@
-import { shutdownInstrumentation } from "./instrumentation";
+import { fileURLToPath } from "node:url";
+
 import { serve } from "bun";
 import type { Server } from "bun";
-import { fileURLToPath } from "node:url";
+
 import { createRuntimeStore } from "#db/client";
+import { notFoundResponse } from "#frontend/response.server";
 import { gatewayRequest } from "#lib/gateway";
+import { onlyApplication } from "#lib/host-guard";
+import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";
+
 import { config } from "./config";
 import type { ServerDependencies } from "./context";
+import { shutdownInstrumentation } from "./instrumentation";
 import type { createApplication } from "./server";
-import { onlyApplication } from "#lib/host-guard";
-import { notFoundResponse } from "#frontend/response.server";
-import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";
 
 export function createServerOptions(
   deps: ServerDependencies,
