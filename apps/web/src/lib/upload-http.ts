@@ -1,3 +1,4 @@
+import type { RateLimiter } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
 
 import type { ContextFactory } from "#context";
@@ -5,9 +6,11 @@ import { uploadInput, uploadOutput } from "@postplan/api/schemas";
 import { requireUploadAuth } from "@postplan/store";
 
 import { resolveApiContext } from "./api-context";
+import { clientIp } from "./client-ip";
 import { respond } from "./respond";
 
 const MAX_BODY = 2 * 1024 * 1024;
+const MAX_ENCODINGS = 2;
 async function readBody(
   stream: ReadableStream<Uint8Array> | null,
 ): Promise<Uint8Array<ArrayBuffer>> {
@@ -42,45 +45,9 @@ export function createUploadHandler(createContext: ContextFactory) {
   return async (request: Request, peerIp: string | null): Promise<Response> => {
     const headers = new Headers();
     const response = await respond(async () => {
-      const ctx = await resolveApiContext(createContext(request, peerIp, false), headers);
-      const auth = requireUploadAuth(ctx.apiKey);
-      let bytes = await readBody(request.body);
-      const encodings =
-        request.headers
-          .get("content-encoding")
-          ?.split(",")
-          .map((part) => part.trim().toLowerCase())
-          .filter((part) => part !== "identity") ?? [];
-      for (const encoding of encodings.toReversed()) {
-        if (encoding !== "gzip" && encoding !== "deflate" && encoding !== "deflate-raw") {
-          throw new ORPCError("UNSUPPORTED_MEDIA_TYPE");
-        }
-        try {
-          bytes = await readBody(
-            new Blob([bytes]).stream().pipeThrough(new DecompressionStream(encoding)),
-          );
-        } catch (error) {
-          if (error instanceof ORPCError) {
-            throw error;
-          }
-          throw new ORPCError("BAD_REQUEST", { message: "Invalid compressed request." });
-        }
-      }
-      let body: unknown;
-      try {
-        body = JSON.parse(new TextDecoder().decode(bytes));
-      } catch {
-        throw new ORPCError("BAD_REQUEST", { message: "Invalid JSON." });
-      }
-      const parsed = uploadInput.safeParse(body);
-      if (!parsed.success) {
-        throw new ORPCError("BAD_REQUEST", { message: "Invalid upload input." });
-      }
+      const base = createContext(request, peerIp, false);
       let remaining = Infinity;
-      for (const [limiter, key] of [
-        [ctx.rateLimiters["upload-ip"], ctx.sourceIp || "anonymous"],
-        [ctx.rateLimiters["upload-key"], auth.id],
-      ] as const) {
+      const admit = async (limiter: RateLimiter, key: string) => {
         const result = await limiter.limit(key);
         if (!result.success || (result.remaining ?? Infinity) <= remaining) {
           remaining = result.remaining ?? Infinity;
@@ -101,6 +68,53 @@ export function createUploadHandler(createContext: ContextFactory) {
             data: { limit: result.limit, remaining: result.remaining, reset: result.reset },
           });
         }
+      };
+      // Meter every attempt before authentication lookup or reading the body.
+      await admit(base.rateLimiters["upload-ip"], clientIp(request, peerIp) || "anonymous");
+      const ctx = await resolveApiContext(base, headers);
+      const auth = requireUploadAuth(ctx.apiKey);
+      await admit(ctx.rateLimiters["upload-key"], auth.id);
+
+      const encodings =
+        request.headers
+          .get("content-encoding")
+          ?.split(",", MAX_ENCODINGS + 1)
+          .map((part) => part.trim().toLowerCase()) ?? [];
+      if (
+        encodings.length > MAX_ENCODINGS ||
+        encodings.some(
+          (encoding) => !["identity", "gzip", "deflate", "deflate-raw"].includes(encoding),
+        )
+      ) {
+        throw new ORPCError("UNSUPPORTED_MEDIA_TYPE");
+      }
+      let bytes = await readBody(request.body);
+      for (const encoding of encodings.toReversed()) {
+        if (encoding === "identity") {
+          continue;
+        }
+        try {
+          bytes = await readBody(
+            new Blob([bytes])
+              .stream()
+              .pipeThrough(new DecompressionStream(encoding as CompressionFormat)),
+          );
+        } catch (error) {
+          if (error instanceof ORPCError) {
+            throw error;
+          }
+          throw new ORPCError("BAD_REQUEST", { message: "Invalid compressed request." });
+        }
+      }
+      let body: unknown;
+      try {
+        body = JSON.parse(new TextDecoder().decode(bytes));
+      } catch {
+        throw new ORPCError("BAD_REQUEST", { message: "Invalid JSON." });
+      }
+      const parsed = uploadInput.safeParse(body);
+      if (!parsed.success) {
+        throw new ORPCError("BAD_REQUEST", { message: "Invalid upload input." });
       }
       const result = await ctx.store.drafts.upload({ context: ctx, input: parsed.data });
       if (!result.ok) {
