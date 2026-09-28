@@ -106,14 +106,14 @@
     "@postplan/lambda": "workspace:*",
     "@postplan/store": "workspace:*",
     "@postplan/store-drizzle": "workspace:*",
-    "astro": "7.3.3",
-    "hono": "4.13.8",
+    "astro": "7.3.5",
+    "hono": "4.13.9",
     "jose": "^6.2.12",
     "proxy-addr": "^2.0.8",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@astrojs/cloudflare": "14.3.2",
+    "@astrojs/cloudflare": "14.3.3",
     "@types/bun": "catalog:",
     "@types/proxy-addr": "^2.0.3",
     "vite": "catalog:"
