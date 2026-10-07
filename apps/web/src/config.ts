@@ -21,6 +21,7 @@ export interface Config {
   bootstrapApiKey: string | undefined;
   publicBaseUrl: string | undefined;
   maxHtmlBytes: number;
+  maxRequestBodyBytes: number;
   sessionSecret: string | undefined;
   shooBaseUrl: string;
   allowedLoginEmails: string[];
@@ -51,6 +52,7 @@ export const config: Config = {
   bootstrapApiKey: env.POSTPLAN_BOOTSTRAP_API_KEY,
   publicBaseUrl: env.POSTPLAN_PUBLIC_BASE_URL,
   maxHtmlBytes: Number(env.MAX_HTML_BYTES || 512 * 1024),
+  maxRequestBodyBytes: parseRequestBodyBytes(env.MAX_REQUEST_BODY_BYTES),
   // Web sign-in (dashboard). Absent POSTPLAN_SESSION_SECRET, all web-auth
   // routes respond 503 and the API/serving paths are unaffected.
   sessionSecret: env.POSTPLAN_SESSION_SECRET,
@@ -94,6 +96,14 @@ export const config: Config = {
     forcePathStyle: (env.AWS_S3_FORCE_PATH_STYLE || (s3Endpoint ? "true" : "false")) !== "false",
   },
 };
+
+function parseRequestBodyBytes(value: string | undefined): number {
+  const bytes = value === undefined ? 2 * 1024 * 1024 : Number(value);
+  if (!Number.isSafeInteger(bytes) || bytes <= 0) {
+    throw new Error("MAX_REQUEST_BODY_BYTES must be a positive integer.");
+  }
+  return bytes;
+}
 
 export function requireEnv(name: string, value: string | undefined): string {
   if (!value) {

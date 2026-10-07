@@ -95,3 +95,52 @@ test("Hono uploads preserve raw JSON, CORS, body bounds and rate-limit responses
     await close();
   }
 });
+
+test("configured AWS upload limits admit larger plans but bound decompression", async () => {
+  const { store, close } = await createTestStore();
+  const previous = { ...config };
+  const objects = new Map<string, string>();
+  await store.accounts.seed({ bootstrapKey: "large-upload-key" });
+  config.maxHtmlBytes = 2 * 1024 * 1024;
+  config.maxRequestBodyBytes = 4 * 1024 * 1024;
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    ...createServerOptions({
+      store,
+      putHtml: async (key, html) => {
+        objects.set(key, html);
+      },
+      getHtml: async (key) => objects.get(key) ?? "",
+    }),
+  });
+  try {
+    config.publicBaseUrl = server.url.origin;
+    const html = "<!doctype html><title>Large plan</title><p>" + "a".repeat(1024 * 1024) + "</p>";
+    const send = (body: BodyInit, extra = {}) =>
+      fetch(new URL("/api/uploads", server.url), {
+        method: "POST",
+        headers: {
+          authorization: "Bearer large-upload-key",
+          "content-type": "application/json",
+          ...extra,
+        },
+        body,
+      });
+    assert.equal((await send(JSON.stringify({ html }))).status, 201);
+    assert.equal(objects.size, 1);
+    assert.equal(
+      (
+        await send(gzipSync(JSON.stringify({ html: "a".repeat(config.maxRequestBodyBytes) })), {
+          "content-encoding": "gzip",
+        })
+      ).status,
+      413,
+    );
+    assert.equal(objects.size, 1);
+  } finally {
+    Object.assign(config, previous);
+    await server.stop(true);
+    await close();
+  }
+});

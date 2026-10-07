@@ -53,6 +53,40 @@ variable "plan_retention_days" {
     error_message = "Retention must be a nonnegative whole number of days within safe timestamp arithmetic; 0 disables expiry."
   }
 }
+variable "max_html_bytes" {
+  type    = number
+  default = 524288
+  validation {
+    condition     = var.max_html_bytes > 0 && floor(var.max_html_bytes) == var.max_html_bytes && var.max_html_bytes <= 2097152
+    error_message = "HTML limit must be a positive integer no larger than 2 MiB for buffered Lambda responses."
+  }
+}
+variable "cloudfront" {
+  description = "Optional protected ingress. Certificate must cover the root and plan wildcard in us-east-1. VPN IPv4 ranges also gate viewer requests, independently of shared WAF exceptions."
+  type = object({
+    certificate_arn = string
+    web_acl_arn     = string
+    vpn_ipv4_cidrs  = set(string)
+  })
+  default = null
+  validation {
+    condition = var.cloudfront == null ? true : (
+      can(regex("^arn:aws:acm:us-east-1:", var.cloudfront.certificate_arn)) &&
+      can(regex("^arn:aws:wafv2:us-east-1:[0-9]+:global/webacl/", var.cloudfront.web_acl_arn)) &&
+      length(var.cloudfront.vpn_ipv4_cidrs) > 0 &&
+      alltrue([for cidr in var.cloudfront.vpn_ipv4_cidrs : can(cidrnetmask(cidr)) && !endswith(cidr, "/0")])
+    )
+    error_message = "Supply an edge certificate, global WAF ARN and nonempty restricted IPv4 CIDRs."
+  }
+}
+variable "max_request_body_bytes" {
+  type    = number
+  default = 2097152
+  validation {
+    condition     = var.max_request_body_bytes > 0 && floor(var.max_request_body_bytes) == var.max_request_body_bytes && var.max_request_body_bytes <= 4194304
+    error_message = "Request limit must be a positive integer at most 4 MiB, leaving room for Lambda event encoding."
+  }
+}
 variable "session_secret_parameter_arn" {
   type = string
   validation {
