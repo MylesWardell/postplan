@@ -88,10 +88,10 @@
     "preview": "bun dist/src/launch.js"
   },
   "dependencies": {
-    "@opentelemetry/auto-instrumentations-node": "^0.80.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.81.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
     "@opentelemetry/resources": "^2.11.0",
-    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/sdk-node": "^0.223.0",
     "@opentelemetry/sdk-trace-node": "^2.11.0",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
@@ -106,14 +106,14 @@
     "@postplan/lambda": "workspace:*",
     "@postplan/store": "workspace:*",
     "@postplan/store-drizzle": "workspace:*",
-    "astro": "7.3.3",
-    "hono": "4.13.8",
+    "astro": "7.3.8",
+    "hono": "4.13.13",
     "jose": "^6.2.12",
     "proxy-addr": "^2.0.8",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@astrojs/cloudflare": "14.3.2",
+    "@astrojs/cloudflare": "14.3.4",
     "@types/bun": "catalog:",
     "@types/proxy-addr": "^2.0.3",
     "vite": "catalog:"
