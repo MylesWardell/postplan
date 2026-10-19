@@ -7,11 +7,11 @@
       "packages/*"
     ],
     "catalog": {
-      "@aws-sdk/client-cloudwatch": "^3.1131.0",
-      "@aws-sdk/client-dynamodb": "^3.1131.0",
-      "@aws-sdk/client-s3": "^3.1131.0",
-      "@aws-sdk/client-ssm": "^3.1131.0",
-      "@aws-sdk/lib-dynamodb": "^3.1131.0",
+      "@aws-sdk/client-cloudwatch": "^3.1152.0",
+      "@aws-sdk/client-dynamodb": "^3.1152.0",
+      "@aws-sdk/client-s3": "^3.1152.0",
+      "@aws-sdk/client-ssm": "^3.1152.0",
+      "@aws-sdk/lib-dynamodb": "^3.1152.0",
       "@orpc/client": "2.0.0-beta.35",
       "@orpc/cloudflare": "2.0.0-beta.35",
       "@orpc/contract": "2.0.0-beta.35",
@@ -22,10 +22,10 @@
       "@orpc/ratelimit": "2.0.0-beta.35",
       "@orpc/server": "2.0.0-beta.35",
       "@orpc/zod": "2.0.0-beta.35",
-      "@types/bun": "1.4.2",
-      "@types/node": "^26.5.1",
-      "drizzle-orm": "^0.45.2",
-      "nanoid": "^6.0.1",
+      "@types/bun": "1.4.3",
+      "@types/node": "^26.6.5",
+      "drizzle-orm": "^0.45.4",
+      "nanoid": "^6.0.2",
       "vite": "^8.3.0",
       "zod": "^4.6.5"
     }
@@ -59,13 +59,13 @@
     "@postplan/store-dynamodb": "workspace:*",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
-    "oxfmt": "0.68.0",
-    "oxlint": "1.83.0",
-    "oxlint-tsgolint": "7.0.2002",
-    "tsdown": "0.23.0",
-    "turbo": "2.11.2",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
+    "oxlint-tsgolint": "7.0.2004",
+    "tsdown": "0.23.1",
+    "turbo": "2.11.8",
     "typescript": "^7.0.2",
-    "vitest": "5.0.1"
+    "vitest": "5.0.5"
   },
   "engines": {
     "bun": ">=1.4.2",

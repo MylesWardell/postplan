@@ -22,13 +22,13 @@
     "drizzle-orm": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.56.0",
-    "@cloudflare/vitest-plugin": "1.1.13",
+    "@cloudflare/vite-plugin": "1.64.0",
+    "@cloudflare/vitest-plugin": "1.4.4",
     "@types/node": "catalog:",
-    "astro": "7.3.3",
+    "astro": "7.4.0",
     "vite": "catalog:",
-    "vitest": "4.1.0",
-    "wrangler": "4.135.0",
+    "vitest": "5.0.5",
+    "wrangler": "4.151.1",
     "zod": "catalog:"
   }
 }
