@@ -39,7 +39,7 @@ resource "aws_dynamodb_table" "data" {
     for_each = each.value.ttl ? [true] : []
     content {
       attribute_name = "ttlAt"
-      enabled        = true
+      enabled        = each.key != "plans" || var.plan_retention_days > 0
     }
   }
   point_in_time_recovery {

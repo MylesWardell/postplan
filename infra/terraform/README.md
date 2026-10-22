@@ -97,3 +97,38 @@ PITR retains durable metadata for seven days; it cannot recover deleted HTML. No
 Update image digests through a saved Terraform plan; Terraform publishes versions and advances the `live` aliases. Keep compatible previous digests for rollback. A rollback to SQLite after DynamoDB has received writes requires a data migration. Pause cleanup during incident recovery and preserve expiry checks in rollback code.
 
 Before opening traffic, verify: native forms/CLI, sessions, concurrent uploads, key revocation, domain isolation, payload limits, expiry races, cleanup retries, restore, alerts and measured cold starts. Finish each deployment with a full zero-diff plan. Local validation and mock tests do not replace that deployed acceptance.
+
+## VPN-protected CloudFront ingress
+
+Set `cloudfront` to an object containing an existing `us-east-1` ACM certificate ARN,
+a global WAF ACL ARN and a nonempty `vpn_ipv4_cidrs` set. The certificate must cover
+both the application domain and its wildcard when enabled. Root and plan hosts use
+one distribution with caching disabled, preserving viewer Host, cookies and API auth.
+An additional viewer-request function denies clients outside those IPv4 ranges,
+even if the shared WAF has earlier allow rules. IPv6 is disabled deliberately.
+
+A generated secret is injected by CloudFront and checked by an HTTP API Lambda
+authorizer on every route. Direct API/custom-domain requests without this secret
+are denied. Keep Terraform state and CloudFront configuration access restricted:
+the origin secret is stored in both. Rotation requires coordinating the authorizer
+and distribution; deployment propagation can temporarily deny requests.
+
+For external DNS use the `cloudfront_domain` output for **both** root and wildcard
+CNAME records. `domain_targets` describes the regional API origins, not the public
+DNS destination in this mode. Confirm VPN access and off-VPN denial for dashboard,
+plan, raw HTML and API paths, plus direct-origin denial, before accepting deployment.
+
+For permanent plan history set `plan_retention_days = 0` and keep
+`cleanup_enabled = false`. Plan-table TTL is explicitly disabled; temporary rate
+limits still expire. No S3 lifecycle rule expires plan content. This retains
+versions, but does not make the application an immutable compliance archive or
+prevent an authorized user from logically deleting a plan.
+
+AWS deployments can set `max_html_bytes = 2097152` (2 MiB) and
+`max_request_body_bytes = 4194304` (4 MiB). The body limit applies to both encoded
+and decompressed JSON; JSON escaping can consume more bytes than the HTML itself.
+These bounds leave room for Lambda event and buffered response encoding. Defaults
+remain 512 KiB HTML and 2 MiB requests; Cloudflare's independent limits are unchanged.
+
+Run `node --test infra/terraform/app/edge.test.mjs` for origin/VPN boundary tests.
+Terraform mocked plans do not verify real AWS permissions, DNS or live WAF behavior.

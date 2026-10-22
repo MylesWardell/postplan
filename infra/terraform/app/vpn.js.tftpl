@@ -1,0 +1,23 @@
+var cidrs = ${cidrs};
+function ipv4(value) {
+  var parts = value.split('.');
+  if (parts.length !== 4) return null;
+  var result = 0;
+  for (var i = 0; i < 4; i++) {
+    if (!/^\d{1,3}$/.test(parts[i]) || Number(parts[i]) > 255) return null;
+    result = (result * 256 + Number(parts[i])) >>> 0;
+  }
+  return result;
+}
+function handler(event) {
+  var ip = ipv4(event.viewer.ip);
+  if (ip !== null) {
+    for (var i = 0; i < cidrs.length; i++) {
+      var parts = cidrs[i].split('/');
+      var network = ipv4(parts[0]);
+      var mask = (0xffffffff << (32 - Number(parts[1]))) >>> 0;
+      if ((ip & mask) === (network & mask)) return event.request;
+    }
+  }
+  return { statusCode: 403, statusDescription: 'Forbidden', headers: { 'cache-control': { value: 'no-store' } } };
+}
