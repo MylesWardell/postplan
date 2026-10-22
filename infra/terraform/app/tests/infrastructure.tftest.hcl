@@ -122,3 +122,38 @@ run "reject_mutable_images" {
   }
   expect_failures = [var.image_uris]
 }
+
+run "permanent_plans" {
+  command = plan
+  variables {
+    plan_retention_days    = 0
+    max_html_bytes         = 2097152
+    max_request_body_bytes = 4194304
+  }
+  assert {
+    condition     = !aws_dynamodb_table.data["plans"].ttl[0].enabled && aws_dynamodb_table.data["limits"].ttl[0].enabled
+    error_message = "Permanent plans must disable plan TTL while expiring temporary rate limits."
+  }
+  assert {
+    condition     = aws_lambda_function.function["app"].environment[0].variables.MAX_HTML_BYTES == "2097152" && aws_lambda_function.function["app"].environment[0].variables.MAX_REQUEST_BODY_BYTES == "4194304"
+    error_message = "AWS upload limits must reach the runtime."
+  }
+}
+run "protected_ingress" {
+  command = plan
+  variables {
+    cloudfront = {
+      certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/00000000-0000-0000-0000-000000000000"
+      web_acl_arn     = "arn:aws:wafv2:us-east-1:123456789012:global/webacl/qa/00000000-0000-0000-0000-000000000000"
+      vpn_ipv4_cidrs  = ["203.0.113.10/32"]
+    }
+  }
+  assert {
+    condition     = aws_apigatewayv2_route.app.authorization_type == "CUSTOM" && aws_apigatewayv2_api.app.disable_execute_api_endpoint
+    error_message = "Direct origin access must require the CloudFront secret."
+  }
+  assert {
+    condition     = aws_cloudfront_distribution.app[0].web_acl_id == var.cloudfront.web_acl_arn && length(aws_cloudfront_distribution.app[0].aliases) == 2 && length(aws_cloudfront_distribution.app[0].default_cache_behavior[0].function_association) == 1
+    error_message = "Root and wildcard must share WAF and the strict viewer VPN gate."
+  }
+}

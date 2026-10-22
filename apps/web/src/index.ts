@@ -26,7 +26,7 @@ export function createServerOptions(
     assets.set("/" + file.replaceAll("\\", "/"), Bun.file(directory + "/" + file));
   }
   return {
-    maxRequestBodySize: 2 * 1024 * 1024,
+    maxRequestBodySize: config.maxRequestBodyBytes,
     fetch: (incoming: Request, server: Server<undefined>) => {
       let request = incoming;
       let peerIp = server.requestIP(incoming)?.address ?? null;

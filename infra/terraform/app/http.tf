@@ -11,9 +11,11 @@ resource "aws_apigatewayv2_integration" "app" {
   timeout_milliseconds   = 29000
 }
 resource "aws_apigatewayv2_route" "app" {
-  api_id    = aws_apigatewayv2_api.app.id
-  route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.app.id}"
+  api_id             = aws_apigatewayv2_api.app.id
+  route_key          = "$default"
+  target             = "integrations/${aws_apigatewayv2_integration.app.id}"
+  authorization_type = var.cloudfront == null ? "NONE" : "CUSTOM"
+  authorizer_id      = var.cloudfront == null ? null : aws_apigatewayv2_authorizer.edge[0].id
 }
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/aws/apigateway/${var.name}"
@@ -93,8 +95,8 @@ resource "aws_route53_record" "app" {
   name     = each.value
   type     = "A"
   alias {
-    name                   = aws_apigatewayv2_domain_name.app[each.key].domain_name_configuration[0].target_domain_name
-    zone_id                = aws_apigatewayv2_domain_name.app[each.key].domain_name_configuration[0].hosted_zone_id
+    name                   = var.cloudfront == null ? aws_apigatewayv2_domain_name.app[each.key].domain_name_configuration[0].target_domain_name : aws_cloudfront_distribution.app[0].domain_name
+    zone_id                = var.cloudfront == null ? aws_apigatewayv2_domain_name.app[each.key].domain_name_configuration[0].hosted_zone_id : aws_cloudfront_distribution.app[0].hosted_zone_id
     evaluate_target_health = false
   }
 }

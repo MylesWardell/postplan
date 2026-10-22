@@ -1,6 +1,7 @@
 import type { RateLimiter } from "@orpc/ratelimit";
 import { ORPCError } from "@orpc/server";
 
+import { config } from "#config";
 import type { ContextFactory } from "#context";
 import { uploadInput, uploadOutput } from "@postplan/api/schemas";
 import { requireUploadAuth } from "@postplan/store";
@@ -9,7 +10,6 @@ import { resolveApiContext } from "./api-context";
 import { clientIp } from "./client-ip";
 import { respond } from "./respond";
 
-const MAX_BODY = 2 * 1024 * 1024;
 const MAX_ENCODINGS = 2;
 async function readBody(
   stream: ReadableStream<Uint8Array> | null,
@@ -26,7 +26,7 @@ async function readBody(
       break;
     }
     length += value.byteLength;
-    if (length > MAX_BODY) {
+    if (length > config.maxRequestBodyBytes) {
       await reader.cancel();
       throw new ORPCError("PAYLOAD_TOO_LARGE");
     }

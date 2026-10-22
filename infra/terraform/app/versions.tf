@@ -5,6 +5,14 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.64"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.7"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.7"
+    }
   }
   backend "s3" {}
 }
@@ -22,6 +30,8 @@ locals {
   environment = {
     NODE_ENV                   = "production"
     PLAN_RETENTION_DAYS        = tostring(var.plan_retention_days)
+    MAX_HTML_BYTES             = tostring(var.max_html_bytes)
+    MAX_REQUEST_BODY_BYTES     = tostring(var.max_request_body_bytes)
     AWS_S3_BUCKET_NAME         = aws_s3_bucket.html.id
     POSTPLAN_IDENTITY_TABLE    = aws_dynamodb_table.data["identity"].name
     POSTPLAN_PLANS_TABLE       = aws_dynamodb_table.data["plans"].name

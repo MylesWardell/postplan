@@ -11,3 +11,4 @@ output "domain_targets" {
 }
 output "function_aliases" { value = { for k, v in aws_lambda_alias.live : k => v.arn } }
 output "cleanup_failure_queue_url" { value = aws_sqs_queue.failures.url }
+output "cloudfront_domain" { value = var.cloudfront == null ? null : aws_cloudfront_distribution.app[0].domain_name }
