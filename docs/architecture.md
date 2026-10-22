@@ -48,6 +48,7 @@ The server uses oRPC's standard error shape: `code`, `message`, and optional `da
 ```ts
 import { createORPCClient } from "@orpc/client";
 import { OpenAPILink } from "@orpc/openapi/fetch";
+
 import { contract, type ApiClient } from "@postplan/api";
 
 const api = createORPCClient<ApiClient>(
