@@ -19,7 +19,7 @@
       "@orpc/json-schema": "2.0.0-beta.35",
       "@orpc/openapi": "2.0.0-beta.35",
       "@orpc/opentelemetry": "2.0.0-beta.35",
-      "@orpc/ratelimit": "2.0.0-beta.35",
+      "@orpc/ratelimit": "2.0.0-beta.45",
       "@orpc/server": "2.0.0-beta.35",
       "@orpc/zod": "2.0.0-beta.35",
       "@types/bun": "1.4.3",
