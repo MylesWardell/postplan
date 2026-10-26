@@ -90,7 +90,7 @@
   "dependencies": {
     "@opentelemetry/auto-instrumentations-node": "^0.81.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.223.0",
-    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/resources": "^3.0.0",
     "@opentelemetry/sdk-node": "^0.223.0",
     "@opentelemetry/sdk-trace-node": "^2.11.0",
     "@orpc/client": "catalog:",
