@@ -77,4 +77,4 @@ The upload response includes `publicUrl` and `rawUrl`. The `/raw` routes are ali
 - `https://postplan.dev/d/<draft-id>/raw`
 - `https://postplan.dev/d/<draft-id>/v/<n>/raw`
 
-Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to export traces. `OTEL_SERVICE_NAME` defaults to `postplan`.
+Set `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to export traces. `OTEL_SERVICE_NAME` defaults to `postplan`. The Bun server wraps each request in a server span named by method and low-cardinality route; on Lambda it flushes spans before responding. See [Datadog telemetry](../infra/terraform/README.md#datadog-telemetry) for the AWS setup.

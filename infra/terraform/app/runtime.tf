@@ -28,7 +28,7 @@ resource "aws_lambda_function" "function" {
       CLEANUP_METRIC_NAMESPACE = "Postplan/${var.name}"
       }, each.key == "app" && var.bootstrap_secret_parameter_arn != null ? {
       POSTPLAN_BOOTSTRAP_SECRET_PARAMETER_ARN = var.bootstrap_secret_parameter_arn
-    } : {})
+    } : {}, each.key == "app" ? local.datadog_environment : {})
   }
   depends_on = [aws_iam_role_policy.function, aws_cloudwatch_log_group.function]
 }
@@ -69,4 +69,22 @@ resource "aws_scheduler_schedule" "cleanup" {
     dead_letter_config { arn = aws_sqs_queue.failures.arn }
   }
   depends_on = [aws_iam_role_policy.scheduler, aws_lambda_function_event_invoke_config.cleanup]
+}
+locals {
+  # The Datadog Lambda Extension receives OTLP spans locally and forwards traces,
+  # enhanced invocation metrics and function logs to Datadog.
+  datadog_service = var.datadog == null ? null : coalesce(var.datadog.service, var.name)
+  datadog_environment = var.datadog == null ? {} : merge({
+    DD_API_KEY_SSM_ARN                              = var.datadog.api_key_parameter_arn
+    DD_SITE                                         = var.datadog.site
+    DD_ENV                                          = var.datadog.environment
+    DD_SERVICE                                      = local.datadog_service
+    DD_SERVERLESS_LOGS_ENABLED                      = "true"
+    DD_ENHANCED_METRICS                             = "true"
+    DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT = "localhost:4318"
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT              = "http://localhost:4318/v1/traces"
+    OTEL_SERVICE_NAME                               = local.datadog_service
+    }, var.datadog.version == null ? {} : {
+    DD_VERSION = var.datadog.version
+  })
 }

@@ -11,7 +11,7 @@ import { assertStorageConfigured, getHtmlObject, putHtmlObject } from "#lib/s3";
 
 import { config } from "./config";
 import type { ServerDependencies } from "./context";
-import { shutdownInstrumentation } from "./instrumentation";
+import { shutdownInstrumentation, traceRequest } from "./instrumentation";
 import type { createApplication } from "./server";
 
 export function createServerOptions(
@@ -62,7 +62,7 @@ export function createServerOptions(
             : notFoundResponse(),
         );
       }
-      return application(request, peerIp);
+      return traceRequest(request, () => application(request, peerIp));
     },
   };
 }

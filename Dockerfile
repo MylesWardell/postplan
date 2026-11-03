@@ -42,6 +42,11 @@ FROM app-base AS lambda-app
 COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:1.0.1 /lambda-adapter /opt/extensions/lambda-adapter
 ENV AWS_LWA_PORT=3000 AWS_LWA_READINESS_CHECK_PATH=/healthz AWS_LWA_INVOKE_MODE=buffered
 
+# Adds the Datadog Lambda Extension (OTLP receiver, enhanced metrics, log forwarding).
+# Deploy only with the Terraform `datadog` variable set; it needs DD_API_KEY_SSM_ARN.
+FROM lambda-app AS lambda-app-datadog
+COPY --from=public.ecr.aws/datadog/lambda-extension:102 /opt/. /opt/
+
 FROM app-base AS lambda-cleanup
 COPY --from=build /workspace/apps/cleanup/dist/src ./apps/cleanup/dist/src
 CMD ["bun", "apps/cleanup/dist/src/index.js"]

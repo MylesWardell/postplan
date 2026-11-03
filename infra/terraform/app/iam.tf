@@ -7,7 +7,7 @@ resource "aws_iam_role" "function" {
   })
 }
 locals {
-  secret_arns    = compact([var.session_secret_parameter_arn, var.bootstrap_secret_parameter_arn])
+  secret_arns    = compact([var.session_secret_parameter_arn, var.bootstrap_secret_parameter_arn, try(var.datadog.api_key_parameter_arn, null)])
   app_tables     = flatten([for arn in values(local.table_arns) : [arn, "${arn}/index/*"]])
   cleanup_tables = [local.table_arns.plans, local.table_arns.records]
 }
