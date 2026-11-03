@@ -2,7 +2,7 @@ import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentation
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
 import { NodeSDK } from "@opentelemetry/sdk-node";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-node";
+import { BatchSpanProcessor } from "@opentelemetry/sdk-trace";
 import { ORPCInstrumentation } from "@orpc/opentelemetry";
 
 // Enable export only when a collector is configured; never assume a local Jaeger instance.
@@ -12,7 +12,9 @@ const sdk = endpoint
       resource: resourceFromAttributes({
         "service.name": process.env.OTEL_SERVICE_NAME || "postplan",
       }),
-      spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter({ url: endpoint }))],
+      spanProcessors: [
+        new BatchSpanProcessor({ exporter: new OTLPTraceExporter({ url: endpoint }) }),
+      ],
       instrumentations: [getNodeAutoInstrumentations(), new ORPCInstrumentation()],
     })
   : undefined;
