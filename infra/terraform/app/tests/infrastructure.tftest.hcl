@@ -157,3 +157,43 @@ run "protected_ingress" {
     error_message = "Root and wildcard must share WAF and the strict viewer VPN gate."
   }
 }
+run "datadog_disabled_by_default" {
+  command = plan
+  assert {
+    condition     = alltrue([for f in aws_lambda_function.function : !contains(keys(f.environment[0].variables), "DD_API_KEY_SSM_ARN") && !contains(keys(f.environment[0].variables), "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")])
+    error_message = "Telemetry export must stay off unless Datadog is configured."
+  }
+}
+run "datadog_telemetry" {
+  command = plan
+  variables {
+    datadog = {
+      api_key_parameter_arn = "arn:aws:ssm:ap-southeast-2:123456789012:parameter/postplan/datadog-api-key"
+      environment           = "qa"
+      version               = "abc123"
+    }
+  }
+  assert {
+    condition     = aws_lambda_function.function["app"].environment[0].variables.DD_API_KEY_SSM_ARN == "arn:aws:ssm:ap-southeast-2:123456789012:parameter/postplan/datadog-api-key" && aws_lambda_function.function["app"].environment[0].variables.DD_SITE == "datadoghq.com" && aws_lambda_function.function["app"].environment[0].variables.DD_SERVICE == "postplan" && aws_lambda_function.function["app"].environment[0].variables.DD_VERSION == "abc123"
+    error_message = "The app must reference the Datadog key by ARN with unified service tags."
+  }
+  assert {
+    condition     = aws_lambda_function.function["app"].environment[0].variables.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT == "http://localhost:4318/v1/traces" && aws_lambda_function.function["app"].environment[0].variables.DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT == "localhost:4318"
+    error_message = "Spans must go to the local extension receiver."
+  }
+  assert {
+    condition     = !contains(keys(aws_lambda_function.function["cleanup"].environment[0].variables), "DD_API_KEY_SSM_ARN")
+    error_message = "The cleanup image has no Datadog extension."
+  }
+  assert {
+    condition     = strcontains(aws_iam_role_policy.function["app"].policy, "parameter/postplan/datadog-api-key") && !strcontains(aws_iam_role_policy.function["cleanup"].policy, "datadog-api-key")
+    error_message = "Only the app role may read the Datadog key."
+  }
+}
+run "reject_plaintext_datadog_key" {
+  command = plan
+  variables {
+    datadog = { api_key_parameter_arn = "0123456789abcdef", environment = "qa" }
+  }
+  expect_failures = [var.datadog]
+}

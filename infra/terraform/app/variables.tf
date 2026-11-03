@@ -158,3 +158,22 @@ variable "log_retention_days" {
     error_message = "Choose 1, 3, 5, 7, 14, 30, 60 or 90 days."
   }
 }
+variable "datadog" {
+  type = object({
+    api_key_parameter_arn = string
+    site                  = optional(string, "datadoghq.com")
+    environment           = string
+    service               = optional(string)
+    version               = optional(string)
+  })
+  default     = null
+  description = "Optional Datadog telemetry for the app function. Requires the lambda-app-datadog image target."
+  validation {
+    condition     = var.datadog == null || can(regex("^arn:[^:]+:ssm:[^:]+:[0-9]{12}:parameter/.+", var.datadog.api_key_parameter_arn))
+    error_message = "Supply the Datadog API key as an SSM SecureString parameter ARN, not its value."
+  }
+  validation {
+    condition     = var.datadog == null || can(regex("^[a-z0-9.-]+$", var.datadog.site)) && can(regex("^[a-z0-9_.-]+$", var.datadog.environment))
+    error_message = "Datadog site and environment must be lowercase identifiers."
+  }
+}

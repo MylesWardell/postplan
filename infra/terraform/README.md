@@ -132,3 +132,27 @@ remain 512 KiB HTML and 2 MiB requests; Cloudflare's independent limits are unch
 
 Run `node --test infra/terraform/app/edge.test.mjs` for origin/VPN boundary tests.
 Terraform mocked plans do not verify real AWS permissions, DNS or live WAF behavior.
+
+## Datadog telemetry
+
+Optional. Build the `lambda-app-datadog` image target instead of `lambda-app`; it adds the
+pinned Datadog Lambda Extension beside the Lambda Web Adapter. Store a Datadog API key as an
+SSM SecureString and set:
+
+```hcl
+datadog = {
+  api_key_parameter_arn = "arn:aws:ssm:<region>:<account>:parameter/<name>/datadog-api-key"
+  environment           = "qa"            # DD_ENV
+  site                  = "datadoghq.com" # US1 default; match your Datadog org
+  version               = "<git sha>"     # optional DD_VERSION
+}
+```
+
+Only the app function changes. Its role may read that parameter (and decrypt via
+`secret_kms_key_arn` if set). The extension reads the key with `DD_API_KEY_SSM_ARN`, receives
+OpenTelemetry spans on `localhost:4318`, and forwards traces, enhanced invocation metrics (cold
+starts, duration, errors) and function logs. The app emits one server span per request named by
+a low-cardinality route (`GET /d/:id/raw`) with oRPC procedure spans nested beneath, and flushes
+spans before each Lambda response returns. Leaving `datadog = null` disables export. The
+extension's OTLP receiver is a Datadog preview feature; the Lambda must reach Datadog's public
+intake (functions here are not VPC-attached).
