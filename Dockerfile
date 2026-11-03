@@ -1,5 +1,6 @@
 FROM oven/bun:1.4.4-debian AS bun
 FROM node:26-bookworm-slim AS build
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /workspace
 COPY . .
