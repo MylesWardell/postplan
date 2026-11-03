@@ -46,23 +46,25 @@ export function createServerOptions(
           return new Response("Invalid gateway request", { status: 400 });
         }
       }
-      const pathname = new URL(request.url).pathname;
-      const asset = assets.get(pathname);
-      if (asset) {
-        return onlyApplication(request, () =>
-          request.method === "GET" || request.method === "HEAD"
-            ? new Response(request.method === "HEAD" ? null : asset, {
-                headers: {
-                  "Content-Type": asset.type,
-                  "Cache-Control": /-[\w-]{8,}\.(js|css)$/.test(pathname)
-                    ? "public, max-age=31536000, immutable"
-                    : "no-cache",
-                },
-              })
-            : notFoundResponse(),
-        );
-      }
-      return traceRequest(request, () => application(request, peerIp));
+      return traceRequest(request, () => {
+        const pathname = new URL(request.url).pathname;
+        const asset = assets.get(pathname);
+        if (asset) {
+          return onlyApplication(request, () =>
+            request.method === "GET" || request.method === "HEAD"
+              ? new Response(request.method === "HEAD" ? null : asset, {
+                  headers: {
+                    "Content-Type": asset.type,
+                    "Cache-Control": /-[\w-]{8,}\.(js|css)$/.test(pathname)
+                      ? "public, max-age=31536000, immutable"
+                      : "no-cache",
+                  },
+                })
+              : notFoundResponse(),
+          );
+        }
+        return application(request, peerIp);
+      });
     },
   };
 }

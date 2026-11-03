@@ -1,4 +1,5 @@
-import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import { SpanKind, SpanStatusCode, context, propagation, trace } from "@opentelemetry/api";
+import type { TextMapGetter } from "@opentelemetry/api";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { resourceFromAttributes } from "@opentelemetry/resources";
@@ -27,9 +28,14 @@ const sdk = processor
 sdk?.start();
 
 const tracer = trace.getTracer("postplan");
+const headerGetter: TextMapGetter<Headers> = {
+  get: (headers, key) => headers.get(key) ?? undefined,
+  keys: (headers) => [...headers.keys()],
+};
 
-// Path segments that are followed by a caller-chosen identifier.
+// Path segments that are followed by a caller-chosen identifier, except fixed routes.
 const identifierParents = new Set(["d", "drafts", "keys", "v"]);
+const fixedSegments = new Set(["totals"]);
 
 /** Collapses draft IDs, key IDs and version numbers so span names stay low-cardinality. */
 export function routeTemplate(pathname: string): string {
@@ -38,6 +44,7 @@ export function routeTemplate(pathname: string): string {
     segments
       .map((segment, index) =>
         segment &&
+        !fixedSegments.has(segment) &&
         (identifierParents.has(segments[index - 1] ?? "") ||
           /^\d+$/.test(segment) ||
           /^[0-9a-f-]{32,36}$/i.test(segment))
@@ -70,6 +77,8 @@ export async function traceRequest(
           "server.address": url.hostname,
         },
       },
+      // Bun.serve is not auto-instrumented, so continue any caller's W3C trace here.
+      propagation.extract(context.active(), request.headers, headerGetter),
       async (span) => {
         try {
           const response = await handle();
