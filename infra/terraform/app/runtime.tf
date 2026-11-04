@@ -75,7 +75,6 @@ locals {
   # enhanced invocation metrics and function logs to Datadog.
   datadog_service = var.datadog == null ? null : coalesce(var.datadog.service, var.name)
   datadog_environment = var.datadog == null ? {} : merge({
-    DD_API_KEY_SSM_ARN                              = var.datadog.api_key_parameter_arn
     DD_SITE                                         = var.datadog.site
     DD_ENV                                          = var.datadog.environment
     DD_SERVICE                                      = local.datadog_service
@@ -84,7 +83,9 @@ locals {
     DD_OTLP_CONFIG_RECEIVER_PROTOCOLS_HTTP_ENDPOINT = "localhost:4318"
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT              = "http://localhost:4318/v1/traces"
     OTEL_SERVICE_NAME                               = local.datadog_service
-    }, var.datadog.version == null ? {} : {
-    DD_VERSION = var.datadog.version
-  })
+    }, { for k, v in {
+      DD_API_KEY_SSM_ARN    = var.datadog.api_key_parameter_arn
+      DD_API_KEY_SECRET_ARN = var.datadog.api_key_secret_arn
+      DD_VERSION            = var.datadog.version
+  } : k => v if v != null })
 }
