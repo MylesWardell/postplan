@@ -190,6 +190,34 @@ run "datadog_telemetry" {
     error_message = "Only the app role may read the Datadog key."
   }
 }
+run "datadog_secrets_manager_key" {
+  command = plan
+  variables {
+    datadog = {
+      api_key_secret_arn = "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:shared/datadog-api-key-AbCdEf"
+      environment        = "qa"
+    }
+  }
+  assert {
+    condition     = aws_lambda_function.function["app"].environment[0].variables.DD_API_KEY_SECRET_ARN == "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:shared/datadog-api-key-AbCdEf" && !contains(keys(aws_lambda_function.function["app"].environment[0].variables), "DD_API_KEY_SSM_ARN") && !contains(keys(aws_lambda_function.function["app"].environment[0].variables), "DD_VERSION")
+    error_message = "A Secrets Manager key must be passed as DD_API_KEY_SECRET_ARN only."
+  }
+  assert {
+    condition     = strcontains(aws_iam_role_policy.function["app"].policy, "secretsmanager:GetSecretValue") && strcontains(aws_iam_role_policy.function["app"].policy, "secret:shared/datadog-api-key-AbCdEf") && !strcontains(aws_iam_role_policy.function["cleanup"].policy, "secretsmanager")
+    error_message = "Only the app role may read the shared Datadog secret."
+  }
+}
+run "reject_two_datadog_keys" {
+  command = plan
+  variables {
+    datadog = {
+      api_key_parameter_arn = "arn:aws:ssm:ap-southeast-2:123456789012:parameter/postplan/datadog-api-key"
+      api_key_secret_arn    = "arn:aws:secretsmanager:ap-southeast-2:123456789012:secret:shared/datadog-api-key-AbCdEf"
+      environment           = "qa"
+    }
+  }
+  expect_failures = [var.datadog]
+}
 run "reject_plaintext_datadog_key" {
   command = plan
   variables {

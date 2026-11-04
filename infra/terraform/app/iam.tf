@@ -33,7 +33,9 @@ resource "aws_iam_role_policy" "function" {
       }
       ], jsondecode(each.key == "app" ? jsonencode(concat([
         { Effect = "Allow", Action = ["ssm:GetParameter"], Resource = local.secret_arns }
-        ], var.secret_kms_key_arn == null ? [] : [{
+        ], try(var.datadog.api_key_secret_arn, null) == null ? [] : [{
+          Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = [var.datadog.api_key_secret_arn]
+          }], var.secret_kms_key_arn == null ? [] : [{
           Effect    = "Allow", Action = ["kms:Decrypt"], Resource = [var.secret_kms_key_arn]
           Condition = { StringEquals = { "kms:ViaService" = "ssm.${var.region}.amazonaws.com" } }
         }])) : jsonencode([

@@ -148,8 +148,12 @@ datadog = {
 }
 ```
 
-Only the app function changes. Its role may read that parameter (and decrypt via
-`secret_kms_key_arn` if set). The extension reads the key with `DD_API_KEY_SSM_ARN`, receives
+To reuse a key already in Secrets Manager, set `api_key_secret_arn` (full secret ARN, plain-string
+value encrypted with the AWS-managed key) instead of `api_key_parameter_arn`; supply exactly one.
+
+Only the app function changes. Its role may read that key (and decrypt an SSM parameter via
+`secret_kms_key_arn` if set). The extension reads the key with `DD_API_KEY_SSM_ARN` or
+`DD_API_KEY_SECRET_ARN`, receives
 OpenTelemetry spans on `localhost:4318`, and forwards traces, enhanced invocation metrics (cold
 starts, duration, errors) and function logs. The app emits one server span per request named by
 a low-cardinality route (`GET /d/:id/raw`) with oRPC procedure spans nested beneath, and flushes

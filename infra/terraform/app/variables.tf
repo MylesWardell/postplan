@@ -160,17 +160,22 @@ variable "log_retention_days" {
 }
 variable "datadog" {
   type = object({
-    api_key_parameter_arn = string
+    api_key_parameter_arn = optional(string)
+    api_key_secret_arn    = optional(string)
     site                  = optional(string, "datadoghq.com")
     environment           = string
     service               = optional(string)
     version               = optional(string)
   })
   default     = null
-  description = "Optional Datadog telemetry for the app function. Requires the lambda-app-datadog image target."
+  description = "Optional Datadog telemetry for the app function. Requires the lambda-app-datadog image target. Reference the API key by SSM parameter or Secrets Manager secret ARN."
   validation {
-    condition     = var.datadog == null || can(regex("^arn:[^:]+:ssm:[^:]+:[0-9]{12}:parameter/.+", var.datadog.api_key_parameter_arn))
-    error_message = "Supply the Datadog API key as an SSM SecureString parameter ARN, not its value."
+    condition = var.datadog == null ? true : (
+      var.datadog.api_key_secret_arn == null
+      ? can(regex("^arn:[^:]+:ssm:[^:]+:[0-9]{12}:parameter/.+", var.datadog.api_key_parameter_arn))
+      : var.datadog.api_key_parameter_arn == null && can(regex("^arn:[^:]+:secretsmanager:[^:]+:[0-9]{12}:secret:.+", var.datadog.api_key_secret_arn))
+    )
+    error_message = "Supply exactly one Datadog API key reference: an SSM SecureString parameter ARN or a Secrets Manager secret ARN, never the key itself."
   }
   validation {
     condition     = var.datadog == null || can(regex("^[a-z0-9.-]+$", var.datadog.site)) && can(regex("^[a-z0-9_.-]+$", var.datadog.environment))
