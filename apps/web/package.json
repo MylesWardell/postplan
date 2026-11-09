@@ -89,10 +89,10 @@
   },
   "dependencies": {
     "@opentelemetry/api": "^1.10.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.82.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.300.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.83.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.301.0",
     "@opentelemetry/resources": "^3.0.0",
-    "@opentelemetry/sdk-node": "^0.300.0",
+    "@opentelemetry/sdk-node": "^0.301.0",
     "@opentelemetry/sdk-trace": "^3.0.0",
     "@orpc/client": "catalog:",
     "@orpc/contract": "catalog:",
@@ -108,14 +108,14 @@
     "@postplan/lambda": "workspace:*",
     "@postplan/store": "workspace:*",
     "@postplan/store-drizzle": "workspace:*",
-    "astro": "7.4.4",
-    "hono": "4.13.14",
-    "jose": "^6.2.14",
+    "astro": "7.4.7",
+    "hono": "4.13.16",
+    "jose": "^6.2.15",
     "proxy-addr": "^2.0.8",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@astrojs/cloudflare": "14.4.3",
+    "@astrojs/cloudflare": "14.4.6",
     "@types/bun": "catalog:",
     "@types/proxy-addr": "^2.0.3",
     "vite": "catalog:"
